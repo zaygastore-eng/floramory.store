@@ -809,6 +809,10 @@ body {
 .product-admin-main { margin-bottom: 8px; }
 .product-admin-name { font-size: 0.88rem; font-weight: 600; color: var(--text); line-height: 1.35; }
 .product-admin-meta { font-size: 0.72rem; color: var(--text-muted); margin-top: 2px; word-break: break-word; }
+.product-admin-note {
+  margin-top: 7px; padding: 8px; border-radius: 8px; background: rgba(255,255,255,0.65);
+  color: var(--text-muted); font-size: 0.75rem; line-height: 1.45;
+}
 .product-admin-actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
 .product-admin-actions button, .product-admin-actions a {
   display: inline-flex; align-items: center; justify-content: center;

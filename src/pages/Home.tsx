@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { fetchAllProducts, tierLabel, tierEmoji, tierBadgeClass, type Product } from "@/lib/sheets";
+import { createPreOrder, fetchAllProducts, tierLabel, tierEmoji, tierBadgeClass, type Product } from "@/lib/sheets";
 
 const BASE_PATH = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -115,7 +115,17 @@ export default function Home() {
   const [filter, setFilter] = useState("all");
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [toastVisible, setToastVisible] = useState(false);
-  const [orderForm, setOrderForm] = useState({ nama: "", wa: "", pesan: "", produk: "" });
+  const [toastMsg, setToastMsg] = useState("✦ Pre-order Anda telah terkirim! Kami akan menghubungi via WhatsApp segera.");
+  const [orderSubmitting, setOrderSubmitting] = useState(false);
+  const [orderForm, setOrderForm] = useState({
+    nama: "",
+    wa: "",
+    pesan: "",
+    produk: "",
+    namaPenerima: "",
+    dari: "",
+    pesanPersonal: "",
+  });
 
   useEffect(() => {
     fetchAllProducts()
@@ -126,11 +136,39 @@ export default function Home() {
 
   const filtered = filter === "all" ? products : products.filter(p => p.tier.toLowerCase() === filter);
 
-  const showToast = () => { setToastVisible(true); setTimeout(() => setToastVisible(false), 3500); };
+  const showToast = (msg: string) => {
+    setToastMsg(msg);
+    setToastVisible(true);
+    setTimeout(() => setToastVisible(false), 3500);
+  };
 
-  const submitOrder = (e: React.FormEvent) => {
+  const submitOrder = async (e: React.FormEvent) => {
     e.preventDefault();
-    showToast();
+    if (!orderForm.nama.trim() || !orderForm.wa.trim()) {
+      showToast("Lengkapi nama dan nomor WhatsApp terlebih dahulu.");
+      return;
+    }
+
+    const selected = products.find(p => p.id === orderForm.produk);
+    setOrderSubmitting(true);
+    try {
+      await createPreOrder({
+        customer_name: orderForm.nama,
+        whatsapp: orderForm.wa,
+        product_id: orderForm.produk,
+        product_name: selected?.nama_produk || orderForm.produk,
+        custom_request: orderForm.pesan,
+        recipient_name: orderForm.namaPenerima,
+        sender_name: orderForm.dari,
+        personal_message: orderForm.pesanPersonal,
+      });
+      setOrderForm({ nama: "", wa: "", pesan: "", produk: "", namaPenerima: "", dari: "", pesanPersonal: "" });
+      showToast("✦ Pre-order Anda tersimpan! Tim kami akan menghubungi via WhatsApp segera.");
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "Gagal mengirim pre-order. Silakan coba lagi.");
+    } finally {
+      setOrderSubmitting(false);
+    }
   };
 
   return (
@@ -334,7 +372,27 @@ export default function Home() {
                 placeholder="Ceritakan momen yang ingin diabadikan, pilihan bunga, warna, dan isi Memory Vault (foto/pesan) yang ingin Anda sertakan..."
                 value={orderForm.pesan} onChange={e => setOrderForm(f => ({ ...f, pesan: e.target.value }))} />
             </div>
-            <button type="submit" className="form-submit">Kirim Pre-Order →</button>
+            <div className="form-row">
+              <div className="form-group">
+                <label className="form-label">Nama Penerima Memory Vault</label>
+                <input className="form-input" type="text" placeholder="Contoh: Nabila Putri"
+                  value={orderForm.namaPenerima} onChange={e => setOrderForm(f => ({ ...f, namaPenerima: e.target.value }))} />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Dari / Pengirim</label>
+                <input className="form-input" type="text" placeholder="Contoh: Keluarga Putri"
+                  value={orderForm.dari} onChange={e => setOrderForm(f => ({ ...f, dari: e.target.value }))} />
+              </div>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Pesan Personal Untuk QR</label>
+              <textarea className="form-textarea"
+                placeholder="Pesan ini bisa ditampilkan saat penerima scan QR produk..."
+                value={orderForm.pesanPersonal} onChange={e => setOrderForm(f => ({ ...f, pesanPersonal: e.target.value }))} />
+            </div>
+            <button type="submit" className="form-submit" disabled={orderSubmitting}>
+              {orderSubmitting ? "Mengirim..." : "Kirim Pre-Order →"}
+            </button>
             <p className="form-note">Tim kami akan menghubungi Anda via WhatsApp dalam 1×24 jam untuk konfirmasi detail & pembayaran DP 50%.</p>
           </form>
         </div>
@@ -364,7 +422,7 @@ export default function Home() {
 
       {/* TOAST */}
       <div className={`fm-toast${toastVisible ? " show" : ""}`}>
-        ✦ Pre-order Anda telah terkirim! Kami akan menghubungi via WhatsApp segera.
+        {toastMsg}
       </div>
     </>
   );

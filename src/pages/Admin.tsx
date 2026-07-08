@@ -4,13 +4,16 @@ import {
   createProduct,
   deleteProduct,
   fetchManagedProducts,
+  fetchPreOrders,
   fetchWhatsAppNumber,
   hasSupabaseConfig,
   hasSupabaseSession,
   signInAdmin,
   signOutAdmin,
+  updatePreOrderStatus,
   updateWhatsAppNumber,
   updateProduct,
+  type PreOrder,
   type Product,
 } from "@/lib/sheets";
 
@@ -157,6 +160,8 @@ export default function Admin() {
   const [savingProduct, setSavingProduct] = useState(false);
   const [managedProducts, setManagedProducts] = useState<Product[]>([]);
   const [loadingProducts, setLoadingProducts] = useState(false);
+  const [preOrders, setPreOrders] = useState<PreOrder[]>([]);
+  const [loadingOrders, setLoadingOrders] = useState(false);
   const [editingId, setEditingId] = useState("");
   const [productSearch, setProductSearch] = useState("");
   const [toastMsg, setToastMsg] = useState("");
@@ -206,8 +211,23 @@ export default function Admin() {
     }
   };
 
+  const loadPreOrders = async () => {
+    setLoadingOrders(true);
+    try {
+      const list = await fetchPreOrders();
+      setPreOrders(list);
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "Gagal memuat pre-order");
+    } finally {
+      setLoadingOrders(false);
+    }
+  };
+
   useEffect(() => {
-    if (authed) void loadProducts();
+    if (authed) {
+      void loadProducts();
+      void loadPreOrders();
+    }
   }, [authed]);
 
   const saveConfig = async () => {
@@ -318,6 +338,28 @@ export default function Admin() {
     }
   };
 
+  const useOrderMemory = (order: PreOrder) => {
+    setForm(f => ({
+      ...f,
+      namaPembeli: order.recipient_name || order.customer_name,
+      dari: order.sender_name || order.customer_name,
+      pesan: order.personal_message || order.custom_request,
+    }));
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    showToast("Data Memory Vault dari pre-order sudah dimasukkan");
+  };
+
+  const setOrderStatus = async (order: PreOrder, status: string) => {
+    if (!order.id) return;
+    try {
+      await updatePreOrderStatus(order.id, status);
+      await loadPreOrders();
+      showToast("Status pre-order diperbarui");
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "Gagal mengubah status pre-order");
+    }
+  };
+
   const logout = () => {
     sessionStorage.removeItem(AUTH_KEY);
     signOutAdmin();
@@ -371,6 +413,7 @@ export default function Admin() {
     p.nama_produk.toLowerCase().includes(search) ||
     p.tier.toLowerCase().includes(search)
   );
+  const newOrders = preOrders.filter(order => (order.status || "new") === "new");
 
   return (
     <div style={{ background: "#f0ede8", minHeight: "100vh" }}>
@@ -592,6 +635,54 @@ export default function Admin() {
                   <span>{activeProducts.length} aktif</span>
                   <span>{archivedProducts.length} terhapus</span>
                 </div>
+              </div>
+            </div>
+
+            <div className="card manage-card">
+              <div className="card-header">
+                <div className="card-num">{newOrders.length}</div>
+                <h2>Pre-order masuk</h2>
+              </div>
+              <div className="card-body">
+                <div className="manage-toolbar">
+                  <div className="manage-empty" style={{ padding: "8px 10px", textAlign: "left" }}>
+                    Data dari form pemesanan pelanggan
+                  </div>
+                  <button className="btn-save-config" onClick={loadPreOrders} disabled={loadingOrders}>
+                    {loadingOrders ? "..." : "Refresh"}
+                  </button>
+                </div>
+
+                {loadingOrders ? (
+                  <div className="manage-empty">Memuat pre-order...</div>
+                ) : preOrders.length === 0 ? (
+                  <div className="manage-empty">Belum ada pre-order.</div>
+                ) : (
+                  <div className="product-admin-list">
+                    {preOrders.slice(0, 8).map(order => (
+                      <div className={`product-admin-item${(order.status || "new") === "new" ? " editing" : ""}`} key={order.id || `${order.whatsapp}-${order.created_at}`}>
+                        <div className="product-admin-main">
+                          <div className="product-admin-name">{order.customer_name || "Tanpa nama"}</div>
+                          <div className="product-admin-meta">
+                            {order.whatsapp || "Tanpa WA"} · {order.product_name || order.product_id || "Produk belum dipilih"}
+                          </div>
+                          {(order.recipient_name || order.personal_message) && (
+                            <div className="product-admin-note">
+                              Untuk {order.recipient_name || "penerima"}: {order.personal_message || order.custom_request}
+                            </div>
+                          )}
+                        </div>
+                        <div className="product-admin-actions">
+                          <button onClick={() => useOrderMemory(order)}>Pakai</button>
+                          <a href={`https://wa.me/${order.whatsapp}`} target="_blank" rel="noopener noreferrer">WA</a>
+                          <button onClick={() => setOrderStatus(order, (order.status || "new") === "new" ? "contacted" : "new")}>
+                            {(order.status || "new") === "new" ? "Kontak" : "Baru"}
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
 

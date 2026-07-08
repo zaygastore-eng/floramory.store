@@ -24,6 +24,20 @@ export interface Product {
   status?: string;
 }
 
+export interface PreOrder {
+  id?: string;
+  customer_name: string;
+  whatsapp: string;
+  product_id: string;
+  product_name: string;
+  custom_request: string;
+  recipient_name: string;
+  sender_name: string;
+  personal_message: string;
+  status?: string;
+  created_at?: string;
+}
+
 function parseCSV(text: string): string[][] {
   const rows: string[][] = [];
   let row: string[] = [];
@@ -210,6 +224,22 @@ function productPayload(product: Product, status = product.status || "active") {
     foto_produk: product.foto_produk.trim(),
     foto_qr: product.foto_qr.trim(),
     status,
+  };
+}
+
+function normalizePreOrder(obj: Partial<PreOrder> & Record<string, unknown>): PreOrder {
+  return {
+    id: String(obj.id || "").trim(),
+    customer_name: String(obj.customer_name || "").trim(),
+    whatsapp: String(obj.whatsapp || "").trim(),
+    product_id: String(obj.product_id || "").trim(),
+    product_name: String(obj.product_name || "").trim(),
+    custom_request: String(obj.custom_request || "").trim(),
+    recipient_name: String(obj.recipient_name || "").trim(),
+    sender_name: String(obj.sender_name || "").trim(),
+    personal_message: String(obj.personal_message || "").trim(),
+    status: String(obj.status || "new").trim(),
+    created_at: String(obj.created_at || "").trim(),
   };
 }
 
@@ -404,6 +434,83 @@ export async function deleteProduct(id: string): Promise<void> {
     throw new Error(data.message || data.details || "Gagal menghapus produk");
   }
   cachedProducts = null;
+}
+
+export async function createPreOrder(order: PreOrder): Promise<PreOrder> {
+  if (!isSupabaseConfigured()) {
+    throw new Error("Supabase belum dikonfigurasi untuk menerima pre-order");
+  }
+
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/preorder_orders`, {
+    method: "POST",
+    headers: {
+      ...supabaseHeaders(),
+      Prefer: "return=representation",
+    },
+    body: JSON.stringify({
+      customer_name: order.customer_name.trim(),
+      whatsapp: order.whatsapp.trim(),
+      product_id: order.product_id.trim(),
+      product_name: order.product_name.trim(),
+      custom_request: order.custom_request.trim(),
+      recipient_name: order.recipient_name.trim(),
+      sender_name: order.sender_name.trim(),
+      personal_message: order.personal_message.trim(),
+      status: "new",
+    }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(data.message || data.details || "Gagal mengirim pre-order");
+  }
+
+  return normalizePreOrder(Array.isArray(data) ? data[0] : data);
+}
+
+export async function fetchPreOrders(): Promise<PreOrder[]> {
+  if (!isSupabaseConfigured()) {
+    return [];
+  }
+
+  const session = getStoredSession();
+  if (!session?.access_token) {
+    throw new Error("Login admin Supabase diperlukan untuk melihat pre-order");
+  }
+
+  const res = await fetch(
+    `${SUPABASE_URL}/rest/v1/preorder_orders?select=*&order=created_at.desc`,
+    { headers: supabaseHeaders(session.access_token) }
+  );
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || !Array.isArray(data)) {
+    throw new Error(data.message || data.details || "Gagal memuat pre-order");
+  }
+
+  return data.map(normalizePreOrder);
+}
+
+export async function updatePreOrderStatus(id: string, status: string): Promise<void> {
+  if (!isSupabaseConfigured()) {
+    throw new Error("Supabase belum dikonfigurasi");
+  }
+
+  const session = getStoredSession();
+  if (!session?.access_token) {
+    throw new Error("Login admin Supabase diperlukan untuk mengubah pre-order");
+  }
+
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/preorder_orders?id=eq.${encodeURIComponent(id)}`, {
+    method: "PATCH",
+    headers: supabaseHeaders(session.access_token),
+    body: JSON.stringify({
+      status,
+      updated_at: new Date().toISOString(),
+    }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(data.message || data.details || "Gagal mengubah status pre-order");
+  }
 }
 
 export function tierLabel(tier: string): string {
