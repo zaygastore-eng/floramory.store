@@ -12,16 +12,16 @@ CREATE TABLE IF NOT EXISTS public.products_backup_20260708 AS
 -- 2) Normalize tier values to the new naming used by UI
 --    legacy: 'lite' -> new: 'classic'
 --    legacy: 'home' -> new: 'masterpiece'
---    preserve 'signature' and normalize case/whitespace
+--    normalize case and whitespace for existing values
 UPDATE public.products
 SET tier = CASE
   WHEN lower(trim(coalesce(tier, ''))) = 'lite' THEN 'classic'
   WHEN lower(trim(coalesce(tier, ''))) = 'home' THEN 'masterpiece'
   WHEN lower(trim(coalesce(tier, ''))) = 'signature' THEN 'signature'
+  WHEN lower(trim(coalesce(tier, ''))) = 'classic' THEN 'classic'
   WHEN tier IS NULL OR trim(coalesce(tier, '')) = '' THEN 'classic'
-  ELSE 'classic'
-END
-WHERE lower(trim(coalesce(tier, ''))) NOT IN ('classic', 'signature', 'masterpiece');
+  ELSE lower(trim(coalesce(tier, '')))
+END;
 
 -- 3) Verify counts per tier (optional quick check)
 -- SELECT tier, count(*) FROM public.products GROUP BY tier ORDER BY tier;
