@@ -868,6 +868,80 @@ body {
 .admin-list-actions .danger { color: var(--red); }
 .admin-check-list { display: grid; gap: 10px; color: #39563e; font-size: 0.9rem; line-height: 1.5; }
 
+.sql-layout { grid-template-columns: minmax(0, 1fr) 360px; }
+.sql-editor-card { min-width: 0; }
+.sql-editor {
+  width: 100%;
+  min-height: 560px;
+  resize: vertical;
+  border: 1px solid #decfb8;
+  border-radius: 10px;
+  background: #173128;
+  color: #f7f0e6;
+  padding: 1rem;
+  font: 0.88rem/1.65 Consolas, 'Courier New', monospace;
+  outline: none;
+  tab-size: 2;
+  white-space: pre;
+  overflow: auto;
+}
+.sql-editor:focus {
+  border-color: #c98a98;
+  box-shadow: 0 0 0 3px rgba(201,138,152,0.18);
+}
+.sql-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 1rem;
+}
+.sql-toolbar .admin-outline-btn { min-width: 128px; }
+.admin-outline-btn.danger { color: var(--red); }
+.sql-guide p {
+  border-bottom: 1px solid rgba(216,203,184,0.65);
+  padding-bottom: 10px;
+}
+.sql-guide p:last-child { border-bottom: none; padding-bottom: 0; }
+.sql-warning {
+  display: none;
+  margin-top: 1rem;
+  border: 1px solid rgba(192,57,43,0.28);
+  border-radius: 10px;
+  background: #fff6f4;
+  color: var(--red);
+  padding: 0.85rem 1rem;
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+.sql-warning.show { display: block; }
+.sql-meta-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 1rem;
+}
+.sql-meta-grid div {
+  border: 1px solid #decfb8;
+  border-radius: 10px;
+  background: rgba(255,255,255,0.55);
+  padding: 0.9rem;
+}
+.sql-meta-grid strong {
+  display: block;
+  color: #173128;
+  font-size: 1rem;
+  line-height: 1.1;
+  word-break: break-word;
+}
+.sql-meta-grid span {
+  display: block;
+  margin-top: 6px;
+  color: #6d7667;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
 .admin-nav {
   background: var(--text); padding: 0 2rem; height: 56px;
   display: flex; align-items: center; justify-content: space-between;
@@ -1141,6 +1215,10 @@ body {
   .admin-main-header h1 { font-size: 2rem; }
   .admin-stats-grid { grid-template-columns: 1fr 1fr; }
   .admin-two-col, .admin-two-col.wide-left { grid-template-columns: 1fr; }
+  .sql-layout { grid-template-columns: 1fr; }
+  .sql-editor { min-height: 420px; font-size: 0.8rem; }
+  .sql-toolbar .admin-outline-btn { flex: 1; min-width: 0; }
+  .sql-meta-grid { grid-template-columns: 1fr; }
   .admin-form-actions { grid-template-columns: 1fr; }
   .admin-list-item { grid-template-columns: 1fr; }
   .admin-list-actions { justify-content: stretch; }

@@ -3,10 +3,14 @@ import { QRCodeCanvas as QRCode } from "qrcode.react";
 import {
   Box,
   ClipboardList,
+  Copy,
+  Database,
+  Download,
   LayoutDashboard,
   LogOut,
   RefreshCw,
   Settings,
+  Trash2,
 } from "lucide-react";
 import {
   createProduct,
@@ -28,6 +32,7 @@ import {
 const BASE_URL_KEY = "fm_base_url";
 const WA_KEY = "fm_wa";
 const AUTH_KEY = "fm_admin_auth";
+const SQL_DRAFT_KEY = "fm_sql_draft";
 const ADMIN_PASSWORD = "floramory2026";
 
 const TIER_OPTIONS = [
@@ -36,7 +41,50 @@ const TIER_OPTIONS = [
   { value: "masterpiece", label: "Floramory Masterpiece" },
 ];
 
-type AdminTab = "dashboard" | "produk" | "pesanan" | "pengaturan";
+type AdminTab = "dashboard" | "produk" | "pesanan" | "sql" | "pengaturan";
+
+const DEFAULT_SQL = `-- Floramory Supabase SQL
+-- Tulis atau tempel SQL di sini, lalu salin ke Supabase SQL Editor.
+
+create table if not exists public.products (
+  id text primary key,
+  nama_produk text not null,
+  tier text not null default 'classic',
+  harga text not null default '',
+  bunga text not null default '',
+  deskripsi text not null default '',
+  bahan text not null default '',
+  ukuran text not null default '',
+  nama_pembeli text not null default '',
+  dari text not null default '',
+  pesan_personal text not null default '',
+  foto_produk text not null default '',
+  foto_qr text not null default '',
+  status text not null default 'active',
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists public.preorder_orders (
+  id uuid primary key default gen_random_uuid(),
+  customer_name text not null default '',
+  whatsapp text not null default '',
+  product_id text not null default '',
+  product_name text not null default '',
+  custom_request text not null default '',
+  recipient_name text not null default '',
+  sender_name text not null default '',
+  personal_message text not null default '',
+  status text not null default 'new',
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists public.app_settings (
+  key text primary key,
+  value text not null default '',
+  updated_at timestamptz not null default now()
+);`;
 
 interface FormState {
   id: string;
@@ -93,6 +141,13 @@ function getAutoBaseUrl(): string {
   const base = import.meta.env.BASE_URL?.replace(/\/$/, "") || "";
   const origin = `${protocol}//${host}`;
   return base ? `${origin}${base}` : origin;
+}
+
+function countSqlStatements(sql: string): number {
+  return sql
+    .split(";")
+    .map(part => part.trim())
+    .filter(Boolean).length;
 }
 
 function LoginGate({ onLogin }: { onLogin: () => void }) {
@@ -199,6 +254,7 @@ export default function Admin() {
   const [loadingOrders, setLoadingOrders] = useState(false);
   const [editingId, setEditingId] = useState("");
   const [productSearch, setProductSearch] = useState("");
+  const [sqlDraft, setSqlDraft] = useState(DEFAULT_SQL);
   const [toastMsg, setToastMsg] = useState("");
   const [toastVisible, setToastVisible] = useState(false);
   const qrRef = useRef<HTMLDivElement>(null);
@@ -225,6 +281,16 @@ export default function Admin() {
       }
     });
   }, [authed]);
+
+  useEffect(() => {
+    if (!authed) return;
+    setSqlDraft(localStorage.getItem(SQL_DRAFT_KEY) || DEFAULT_SQL);
+  }, [authed]);
+
+  useEffect(() => {
+    if (!authed) return;
+    localStorage.setItem(SQL_DRAFT_KEY, sqlDraft);
+  }, [authed, sqlDraft]);
 
   const showToast = (msg: string) => {
     setToastMsg(msg);
@@ -444,6 +510,28 @@ export default function Admin() {
     showToast("QR Code berhasil didownload");
   };
 
+  const copySql = () => {
+    navigator.clipboard.writeText(sqlDraft).then(() => showToast("SQL disalin. Tempel di Supabase SQL Editor."));
+  };
+
+  const downloadSql = () => {
+    const blob = new Blob([sqlDraft], { type: "text/sql;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.download = "floramory-supabase.sql";
+    link.href = url;
+    link.click();
+    URL.revokeObjectURL(url);
+    showToast("File SQL berhasil didownload");
+  };
+
+  const resetSqlDraft = () => {
+    const ok = window.confirm("Reset isi SQL editor ke template awal?");
+    if (!ok) return;
+    setSqlDraft(DEFAULT_SQL);
+    showToast("Template SQL dimuat ulang");
+  };
+
   const activeProducts = useMemo(
     () => managedProducts.filter(p => (p.status || "active") === "active"),
     [managedProducts]
@@ -469,11 +557,18 @@ export default function Admin() {
     count: activeProducts.filter(product => product.tier === option.value).length,
   }));
   const previewUrl = getPreviewUrl();
+  const sqlStats = useMemo(() => {
+    const lines = sqlDraft.split(/\r?\n/).length;
+    const statements = countSqlStatements(sqlDraft);
+    const hasDangerousCommand = /\b(drop|truncate|delete\s+from|alter\s+table)\b/i.test(sqlDraft);
+    return { lines, statements, hasDangerousCommand };
+  }, [sqlDraft]);
 
   const tabs: { id: AdminTab; label: string; icon: ComponentType<{ size?: number }> }[] = [
     { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
     { id: "produk", label: "Produk", icon: Box },
     { id: "pesanan", label: "Pesanan", icon: ClipboardList },
+    { id: "sql", label: "SQL", icon: Database },
     { id: "pengaturan", label: "Pengaturan", icon: Settings },
   ];
 
@@ -743,10 +838,59 @@ export default function Admin() {
     </div>
   );
 
+  const renderSqlEditor = () => (
+    <div className="admin-two-col sql-layout">
+      <div className="admin-panel-card sql-editor-card">
+        <div className="admin-panel-head">
+          <div>
+            <h2>SQL Editor</h2>
+            <p>Siapkan query di website, lalu salin dan jalankan di Supabase.</p>
+          </div>
+          <span className="admin-pill">{sqlStats.statements} statement</span>
+        </div>
+        <textarea
+          className="sql-editor"
+          spellCheck={false}
+          value={sqlDraft}
+          onChange={e => setSqlDraft(e.target.value)}
+        />
+        <div className="sql-toolbar">
+          <button className="admin-outline-btn" onClick={copySql}><Copy size={16} /> Salin SQL</button>
+          <button className="admin-outline-btn" onClick={downloadSql}><Download size={16} /> Download</button>
+          <button className="admin-outline-btn danger" onClick={resetSqlDraft}><Trash2 size={16} /> Reset</button>
+        </div>
+      </div>
+
+      <div className="admin-panel-card">
+        <div className="admin-panel-head">
+          <div>
+            <h2>Panduan Supabase</h2>
+            <p>Editor ini tidak mengeksekusi SQL langsung agar database tetap aman.</p>
+          </div>
+        </div>
+        <div className="admin-check-list sql-guide">
+          <p>Buka Supabase Dashboard, lalu masuk ke menu SQL Editor.</p>
+          <p>Klik New query, tempel SQL dari tombol Salin SQL.</p>
+          <p>Jalankan query, lalu cek tabel products, preorder_orders, dan app_settings.</p>
+          <p>Setelah berhasil, isi environment VITE_SUPABASE_URL dan VITE_SUPABASE_ANON_KEY.</p>
+        </div>
+        <div className={`sql-warning${sqlStats.hasDangerousCommand ? " show" : ""}`}>
+          Query berisi perintah berisiko. Pastikan kamu sudah backup database sebelum menjalankannya.
+        </div>
+        <div className="sql-meta-grid">
+          <div><strong>{sqlStats.lines}</strong><span>Baris</span></div>
+          <div><strong>{sqlDraft.length}</strong><span>Karakter</span></div>
+          <div><strong>{hasSupabaseConfig() ? "Aktif" : "Belum"}</strong><span>Env Supabase</span></div>
+        </div>
+      </div>
+    </div>
+  );
+
   const titleMap: Record<AdminTab, { title: string; desc: string }> = {
     dashboard: { title: "Dashboard", desc: "Ringkasan katalog dan pesanan Floramory." },
     produk: { title: "Produk", desc: "Tambah, edit, dan arsipkan produk katalog." },
     pesanan: { title: "Pesanan", desc: "Kelola pre-order dan pakai data Memory Vault pelanggan." },
+    sql: { title: "SQL Editor", desc: "Tulis, simpan draft, dan salin query untuk Supabase." },
     pengaturan: { title: "Pengaturan", desc: "Atur domain QR dan nomor WhatsApp aktif." },
   };
 
@@ -754,6 +898,7 @@ export default function Admin() {
     if (activeTab === "dashboard") return renderDashboard();
     if (activeTab === "produk") return <div className="admin-two-col wide-left">{renderProductForm()}{renderProductList()}</div>;
     if (activeTab === "pesanan") return renderOrders();
+    if (activeTab === "sql") return renderSqlEditor();
     return renderSettings();
   };
 
