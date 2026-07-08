@@ -57,6 +57,7 @@ export default function Produk() {
   const emoji = tierEmoji(tier);
   const heroBg = tierBg(tier);
   const qrImage = product.foto_qr || product.foto_produk || product.foto_url;
+  const hasQrImage = qrImage.startsWith("http");
 
   const waMsg = encodeURIComponent(
     `Halo Floramory! 🌸\n\nSaya tertarik dengan produk:\n*${product.nama_produk}* (${product.id})\nHarga: ${product.harga}\n\nApakah masih tersedia? Saya ingin tanya lebih lanjut.`
@@ -101,10 +102,10 @@ export default function Produk() {
       </section>
 
       <div className="product-hero" style={{ background: heroBg }}>
-        {qrImage && qrImage.startsWith("http") && (
+        {hasQrImage && (
           <img src={qrImage} alt={product.nama_produk} />
         )}
-        <div className="hero-emoji">{emoji}</div>
+        {!hasQrImage && <div className="hero-emoji">{emoji}</div>}
         <div className="tier-ribbon">{tierLabel(tier)}</div>
         <span className="serial-tag">#{product.id || "—"}</span>
         <div className="hero-overlay" />

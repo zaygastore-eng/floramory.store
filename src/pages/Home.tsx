@@ -9,16 +9,21 @@ function ProductCard({ product, onClick }: { product: Product; onClick: () => vo
   const badgeClass = tierBadgeClass(tier);
   const badge = tierLabel(tier);
   const productImage = product.foto_produk || product.foto_url;
+  const hasProductImage = productImage.startsWith("http");
   const desc = product.deskripsi ? product.deskripsi.slice(0, 80) + (product.deskripsi.length > 80 ? "…" : "") : "";
 
   return (
     <div className="product-card" onClick={onClick}>
       <div className="product-img">
-        {productImage && productImage.startsWith("http") && (
+        {hasProductImage && (
           <img src={productImage} alt={product.nama_produk} />
         )}
-        <div className="flower-bg">{emoji}</div>
-        <div className="flower-main">{emoji}</div>
+        {!hasProductImage && (
+          <>
+            <div className="flower-bg">{emoji}</div>
+            <div className="flower-main">{emoji}</div>
+          </>
+        )}
         <span className={`product-badge ${badgeClass}`}>{badge}</span>
         <div className="product-qr-icon">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="18" height="18">
@@ -44,6 +49,7 @@ function ProductModal({ product, onClose }: { product: Product; onClose: () => v
   const tier = product.tier.toLowerCase();
   const emoji = tierEmoji(tier);
   const productImage = product.foto_produk || product.foto_url;
+  const hasProductImage = productImage.startsWith("http");
 
   const chips: [string, string][] = [];
   if (product.bahan) chips.push(["Bahan", product.bahan]);
@@ -57,10 +63,10 @@ function ProductModal({ product, onClose }: { product: Product; onClose: () => v
     <div className="modal-overlay open" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="modal">
         <div className="modal-hero">
-          {productImage && productImage.startsWith("http") && (
+          {hasProductImage && (
             <img src={productImage} alt={product.nama_produk} />
           )}
-          <span className="emoji-fallback">{emoji}</span>
+          {!hasProductImage && <span className="emoji-fallback">{emoji}</span>}
           <button className="modal-close" onClick={onClose}>✕</button>
         </div>
         <div className="modal-body">

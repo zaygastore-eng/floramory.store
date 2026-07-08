@@ -473,7 +473,11 @@ body {
 .error-msg { font-size: 0.9rem; color: var(--text-muted); max-width: 300px; line-height: 1.6; }
 
 .produk-page { min-height: 100vh; }
-.produk-page .product-hero { display: none; }
+.produk-page .product-hero {
+  display: flex;
+  min-height: 360px;
+  max-height: 520px;
+}
 .site-header {
   padding: 1rem 1.5rem;
   display: flex; align-items: center; justify-content: space-between;
