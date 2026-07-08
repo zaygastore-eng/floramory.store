@@ -4,6 +4,7 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "";
 const SUPABASE_URL = String(import.meta.env.VITE_SUPABASE_URL || "").replace(/\/$/, "");
 const SUPABASE_ANON_KEY = String(import.meta.env.VITE_SUPABASE_ANON_KEY || "");
 const SUPABASE_AUTH_KEY = "fm_supabase_auth";
+const FALLBACK_WA_NUMBER = String(import.meta.env.VITE_WA_NUMBER || "6281234567890");
 
 export interface Product {
   id: string;
@@ -127,6 +128,50 @@ export async function signInAdmin(email: string, password: string): Promise<void
 
 export function signOutAdmin() {
   localStorage.removeItem(SUPABASE_AUTH_KEY);
+}
+
+export async function fetchWhatsAppNumber(): Promise<string> {
+  if (!isSupabaseConfigured()) return FALLBACK_WA_NUMBER;
+
+  try {
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/app_settings?key=eq.wa_number&select=value&limit=1`,
+      { headers: supabaseHeaders() }
+    );
+    if (!res.ok) return FALLBACK_WA_NUMBER;
+    const data = await res.json();
+    const value = Array.isArray(data) ? data[0]?.value : "";
+    return String(value || FALLBACK_WA_NUMBER).trim();
+  } catch {
+    return FALLBACK_WA_NUMBER;
+  }
+}
+
+export async function updateWhatsAppNumber(value: string): Promise<void> {
+  if (!isSupabaseConfigured()) return;
+
+  const session = getStoredSession();
+  if (!session?.access_token) {
+    throw new Error("Login admin Supabase diperlukan untuk menyimpan nomor WhatsApp");
+  }
+
+  const clean = value.trim();
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/app_settings?on_conflict=key`, {
+    method: "POST",
+    headers: {
+      ...supabaseHeaders(session.access_token),
+      Prefer: "resolution=merge-duplicates",
+    },
+    body: JSON.stringify({
+      key: "wa_number",
+      value: clean,
+      updated_at: new Date().toISOString(),
+    }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(data.message || data.details || "Gagal menyimpan nomor WhatsApp");
+  }
 }
 
 function normalizeProduct(obj: Partial<Product> & Record<string, unknown>): Product {

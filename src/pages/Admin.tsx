@@ -4,10 +4,12 @@ import {
   createProduct,
   deleteProduct,
   fetchManagedProducts,
+  fetchWhatsAppNumber,
   hasSupabaseConfig,
   hasSupabaseSession,
   signInAdmin,
   signOutAdmin,
+  updateWhatsAppNumber,
   updateProduct,
   type Product,
 } from "@/lib/sheets";
@@ -178,6 +180,12 @@ export default function Admin() {
       localStorage.setItem(BASE_URL_KEY, auto);
     }
     setWaNum(localStorage.getItem(WA_KEY) || "");
+    fetchWhatsAppNumber().then((value) => {
+      if (value) {
+        setWaNum(value);
+        localStorage.setItem(WA_KEY, value);
+      }
+    });
   }, [authed]);
 
   const showToast = (msg: string) => {
@@ -202,13 +210,18 @@ export default function Admin() {
     if (authed) void loadProducts();
   }, [authed]);
 
-  const saveConfig = () => {
+  const saveConfig = async () => {
     const clean = baseUrl.trim().replace(/\/$/, "");
     localStorage.setItem(BASE_URL_KEY, clean);
     localStorage.setItem(WA_KEY, waNum.trim());
-    setConfigSaved(true);
-    setTimeout(() => setConfigSaved(false), 2000);
-    showToast("Konfigurasi tersimpan ✓");
+    try {
+      await updateWhatsAppNumber(waNum);
+      setConfigSaved(true);
+      setTimeout(() => setConfigSaved(false), 2000);
+      showToast("Konfigurasi tersimpan ✓");
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "Nomor WA tersimpan lokal, tetapi gagal tersimpan ke Supabase");
+    }
   };
 
   const useAutoUrl = () => {

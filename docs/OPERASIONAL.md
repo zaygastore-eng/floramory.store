@@ -7,6 +7,7 @@ Tambahkan variable berikut di Vercel Project Settings -> Environment Variables:
 ```text
 VITE_SUPABASE_URL=https://fcevjiflawxmzrccramo.supabase.co
 VITE_SUPABASE_ANON_KEY=isi_anon_public_key
+VITE_WA_NUMBER=6281234567890
 ```
 
 Redeploy project setelah environment variable diubah.
@@ -17,6 +18,34 @@ Tabel utama:
 
 ```text
 products
+```
+
+Tabel pengaturan:
+
+```sql
+create table if not exists public.app_settings (
+  key text primary key,
+  value text not null,
+  updated_at timestamptz not null default now()
+);
+
+alter table public.app_settings enable row level security;
+
+create policy "Pengaturan publik bisa dibaca"
+on public.app_settings
+for select
+using (key in ('wa_number'));
+
+create policy "Admin login bisa kelola pengaturan"
+on public.app_settings
+for all
+to authenticated
+using (true)
+with check (true);
+
+insert into public.app_settings (key, value)
+values ('wa_number', '6281234567890')
+on conflict (key) do nothing;
 ```
 
 Kolom minimum:
