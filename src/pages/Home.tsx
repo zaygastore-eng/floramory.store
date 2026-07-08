@@ -185,6 +185,24 @@ export default function Home() {
         <span className="nav-badge">Smart QR ✦ Eco</span>
       </nav>
 
+      <section className="hero">
+        <div className="hero-bg" />
+        <div className="hero-inner">
+          <div className="hero-eyebrow">Smart Eco-Preserved Artware</div>
+          <h1>Kenangan Abadi<br />dalam <em>Bunga Nyata</em></h1>
+          <p className="hero-sub">
+            Aksesori & dekorasi premium dari preserved flower asli yang terintegrasi teknologi Smart-QR Code —
+            simpan foto, video, dan pesan di dalam keindahan botani.
+          </p>
+          <a className="hero-cta" href="#produk">
+            Jelajahi Koleksi
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16">
+              <path d="M5 12h14M12 5l7 7-7 7" />
+            </svg>
+          </a>
+        </div>
+      </section>
+
       <main className="home-sections">
       {/* PRODUCTS */}
       <section className="fm-section products-section" id="produk">

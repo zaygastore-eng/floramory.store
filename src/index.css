@@ -804,6 +804,44 @@ body {
   letter-spacing: 0.08em; text-transform: uppercase; font-size: 0.75rem;
 }
 .admin-form-actions { display: grid; grid-template-columns: 1fr 1fr auto; gap: 10px; align-items: center; }
+.admin-inline-qr {
+  margin-top: 1rem;
+  border: 1px solid #decfb8;
+  border-radius: 12px;
+  background: #fffaf2;
+  padding: 1rem;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 1rem;
+  align-items: center;
+}
+.admin-inline-qr strong {
+  display: block;
+  color: #173128;
+  margin-bottom: 6px;
+}
+.admin-inline-qr span {
+  display: block;
+  color: #6d7667;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  word-break: break-all;
+}
+.admin-inline-qr-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+.admin-inline-qr-actions button {
+  border: 1px solid #decfb8;
+  background: #fff;
+  color: #668a62;
+  border-radius: 999px;
+  padding: 8px 12px;
+  font: 700 0.72rem 'DM Sans', sans-serif;
+  cursor: pointer;
+}
 .admin-table-wrap { overflow-x: auto; }
 .admin-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
 .admin-table th {

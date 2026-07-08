@@ -3,10 +3,8 @@ import { QRCodeCanvas as QRCode } from "qrcode.react";
 import {
   Box,
   ClipboardList,
-  Grid2X2,
   LayoutDashboard,
   LogOut,
-  QrCode,
   RefreshCw,
   Settings,
 } from "lucide-react";
@@ -38,7 +36,7 @@ const TIER_OPTIONS = [
   { value: "home", label: "Floramory Home" },
 ];
 
-type AdminTab = "dashboard" | "produk" | "qr" | "pesanan" | "pengaturan";
+type AdminTab = "dashboard" | "produk" | "pesanan" | "pengaturan";
 
 interface FormState {
   id: string;
@@ -316,7 +314,6 @@ export default function Admin() {
     }
     setGeneratedUrl(url);
     setQrVisible(true);
-    setActiveTab("qr");
     showToast("QR Code berhasil dibuat");
   };
 
@@ -476,7 +473,6 @@ export default function Admin() {
   const tabs: { id: AdminTab; label: string; icon: ComponentType<{ size?: number }> }[] = [
     { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
     { id: "produk", label: "Produk", icon: Box },
-    { id: "qr", label: "Generator QR", icon: QrCode },
     { id: "pesanan", label: "Pesanan", icon: ClipboardList },
     { id: "pengaturan", label: "Pengaturan", icon: Settings },
   ];
@@ -488,7 +484,7 @@ export default function Admin() {
       <div className="admin-panel-head">
         <div>
           <h2>{editingId ? "Edit Produk" : "Tambah Produk"}</h2>
-          <p>Lengkapi data katalog, Memory Vault, dan foto sebelum membuat QR.</p>
+          <p>Lengkapi data katalog dan foto sebelum membuat QR.</p>
         </div>
         {editingId && <span className="admin-pill">Edit #{editingId}</span>}
       </div>
@@ -547,24 +543,6 @@ export default function Admin() {
         </div>
       </div>
 
-      <div className="admin-subsection-title">Memory Vault</div>
-      <div className="admin-form-row">
-        <div className="admin-form-group">
-          <label className="admin-form-label">Nama Penerima</label>
-          <input className="admin-form-input" type="text" placeholder="Contoh: Nabila Putri"
-            value={form.namaPembeli} onChange={e => setForm(f => ({ ...f, namaPembeli: e.target.value }))} />
-        </div>
-        <div className="admin-form-group">
-          <label className="admin-form-label">Dari / Pengirim</label>
-          <input className="admin-form-input" type="text" placeholder="Contoh: Keluarga Putri"
-            value={form.dari} onChange={e => setForm(f => ({ ...f, dari: e.target.value }))} />
-        </div>
-      </div>
-      <div className="admin-form-group">
-        <label className="admin-form-label">Pesan Personal</label>
-        <textarea className="admin-form-textarea" placeholder="Pesan yang muncul saat penerima scan QR..."
-          value={form.pesan} onChange={e => setForm(f => ({ ...f, pesan: e.target.value }))} />
-      </div>
 
       <div className="admin-subsection-title">Foto</div>
       <div className="admin-form-group">
@@ -585,6 +563,21 @@ export default function Admin() {
         <button className="btn-secondary-admin" onClick={generateQR}>Generate QR</button>
         <button className="btn-reset" onClick={resetForm}>Bersihkan</button>
       </div>
+      {qrVisible && (
+        <div className="admin-inline-qr">
+          <div ref={qrRef}>
+            <QRCode value={generatedUrl} size={168} fgColor="#2d2820" bgColor="#faf7f2" level="M" />
+          </div>
+          <div>
+            <strong>{form.nama || form.id}</strong>
+            <span>{generatedUrl}</span>
+            <div className="admin-inline-qr-actions">
+              <button onClick={downloadQR}>Download PNG</button>
+              <button onClick={copyUrl}>Salin URL</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 
@@ -708,41 +701,6 @@ export default function Admin() {
     </>
   );
 
-  const renderQr = () => (
-    <div className="admin-two-col">
-      <div className="admin-panel-card">
-        <div className="admin-panel-head">
-          <div>
-            <h2>Generator QR</h2>
-            <p>QR memakai ID produk dan Base URL aktif.</p>
-          </div>
-        </div>
-        <div className="url-preview">
-          <strong>URL QR Code:</strong><br />
-          {previewUrl ? <strong>{previewUrl}</strong> : <span>Isi ID produk untuk melihat URL.</span>}
-        </div>
-        <button className="btn-generate" onClick={generateQR}>Generate QR Code</button>
-        <button className="btn-secondary-admin" onClick={() => setActiveTab("produk")}>Edit Data Produk</button>
-      </div>
-      {qrVisible && (
-        <div className="admin-panel-card">
-          <div className="qr-result-box">
-            <div ref={qrRef} style={{ display: "inline-block", marginBottom: 12 }}>
-              <QRCode value={generatedUrl} size={200} fgColor="#2d2820" bgColor="#faf7f2" level="M" />
-            </div>
-            <div className="qr-product-name-label">{form.nama || form.id}</div>
-            <div className="qr-product-id-label">#{form.id}</div>
-          </div>
-          <div className="qr-url-box">{generatedUrl}</div>
-          <div className="qr-actions">
-            <button className="btn-download" onClick={downloadQR}>Download PNG</button>
-            <button className="btn-copy-url" onClick={copyUrl}>Salin URL</button>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-
   const renderSettings = () => (
     <div className="admin-two-col">
       <div className="admin-panel-card">
@@ -788,7 +746,6 @@ export default function Admin() {
   const titleMap: Record<AdminTab, { title: string; desc: string }> = {
     dashboard: { title: "Dashboard", desc: "Ringkasan katalog dan pesanan Floramory." },
     produk: { title: "Produk", desc: "Tambah, edit, dan arsipkan produk katalog." },
-    qr: { title: "Generator QR", desc: "Buat QR Memory Vault dari produk yang sedang dipilih." },
     pesanan: { title: "Pesanan", desc: "Kelola pre-order dan pakai data Memory Vault pelanggan." },
     pengaturan: { title: "Pengaturan", desc: "Atur domain QR dan nomor WhatsApp aktif." },
   };
@@ -796,7 +753,6 @@ export default function Admin() {
   const renderContent = () => {
     if (activeTab === "dashboard") return renderDashboard();
     if (activeTab === "produk") return <div className="admin-two-col wide-left">{renderProductForm()}{renderProductList()}</div>;
-    if (activeTab === "qr") return renderQr();
     if (activeTab === "pesanan") return renderOrders();
     return renderSettings();
   };
