@@ -247,6 +247,18 @@ function normalizeTierValue(tier: string): string {
   return tierMap[normalized] || normalized;
 }
 
+function tierToDbValue(tier: string): string {
+  // Convert normalized UI tier values back to the legacy values
+  // expected by the database constraint (if present).
+  const normalized = normalizeTierValue(tier);
+  const dbMap: Record<string, string> = {
+    classic: "lite",
+    signature: "signature",
+    masterpiece: "home",
+  };
+  return dbMap[normalized] || normalized;
+}
+
 function normalizeProduct(obj: Partial<Product> & Record<string, unknown>): Product {
   return {
     id: String(obj.id || "").trim(),
@@ -271,7 +283,9 @@ function productPayload(product: Product, status = product.status || "active") {
   return {
     id: product.id.trim(),
     nama_produk: product.nama_produk.trim(),
-    tier: normalizeTierValue(product.tier),
+    // Send the DB-compatible tier value to Supabase so existing
+    // check constraints (products_tier_check) are not violated.
+    tier: tierToDbValue(product.tier),
     harga: product.harga.trim(),
     bunga: product.bunga.trim(),
     deskripsi: product.deskripsi.trim(),
