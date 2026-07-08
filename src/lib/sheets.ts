@@ -248,15 +248,13 @@ function normalizeTierValue(tier: string): string {
 }
 
 function tierToDbValue(tier: string): string {
-  // Convert normalized UI tier values back to the legacy values
-  // expected by the database constraint (if present).
   const normalized = normalizeTierValue(tier);
-  const dbMap: Record<string, string> = {
+  const legacyMap: Record<string, string> = {
     classic: "lite",
     signature: "signature",
     masterpiece: "home",
   };
-  return dbMap[normalized] || normalized;
+  return legacyMap[normalized] || normalized;
 }
 
 function normalizeProduct(obj: Partial<Product> & Record<string, unknown>): Product {
@@ -279,13 +277,11 @@ function normalizeProduct(obj: Partial<Product> & Record<string, unknown>): Prod
   };
 }
 
-function productPayload(product: Product, status = product.status || "active") {
+function productPayload(product: Product, status = product.status || "active", useLegacyTier = false) {
   return {
     id: product.id.trim(),
     nama_produk: product.nama_produk.trim(),
-    // Send the DB-compatible tier value to Supabase so existing
-    // check constraints (products_tier_check) are not violated.
-    tier: tierToDbValue(product.tier),
+    tier: useLegacyTier ? tierToDbValue(product.tier) : normalizeTierValue(product.tier),
     harga: product.harga.trim(),
     bunga: product.bunga.trim(),
     deskripsi: product.deskripsi.trim(),
@@ -435,7 +431,24 @@ export async function createProduct(product: Product): Promise<Product> {
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
-      throw new Error(data.message || data.details || "Gagal menyimpan produk ke Supabase");
+      const errorText = String(data.message || data.details || "");
+      if (isTierConstraintError(errorText)) {
+        const retry = await fetch(`${SUPABASE_URL}/rest/v1/products`, {
+          method: "POST",
+          headers: {
+            ...supabaseHeaders(session.access_token),
+            Prefer: "return=representation",
+          },
+          body: JSON.stringify(productPayload(product, "active", true)),
+        });
+        const retryData = await retry.json().catch(() => ({}));
+        if (retry.ok) {
+          cachedProducts = null;
+          return normalizeProduct(Array.isArray(retryData) ? retryData[0] : retryData);
+        }
+        throw new Error(retryData.message || retryData.details || errorText || "Gagal menyimpan produk ke Supabase");
+      }
+      throw new Error(errorText || "Gagal menyimpan produk ke Supabase");
     }
     cachedProducts = null;
     return normalizeProduct(Array.isArray(data) ? data[0] : data);
@@ -478,7 +491,28 @@ export async function updateProduct(id: string, product: Product): Promise<Produ
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
-    throw new Error(data.message || data.details || "Gagal mengubah produk");
+    const errorText = String(data.message || data.details || "");
+    if (isTierConstraintError(errorText)) {
+      const retry = await fetch(`${SUPABASE_URL}/rest/v1/products?id=eq.${encodeURIComponent(id)}`, {
+        method: "PATCH",
+        headers: {
+          ...supabaseHeaders(session.access_token),
+          Prefer: "return=representation",
+        },
+        body: JSON.stringify({
+          ...productPayload(product, product.status || "active", true),
+          id,
+          updated_at: new Date().toISOString(),
+        }),
+      });
+      const retryData = await retry.json().catch(() => ({}));
+      if (retry.ok) {
+        cachedProducts = null;
+        return normalizeProduct(Array.isArray(retryData) ? retryData[0] : retryData);
+      }
+      throw new Error(retryData.message || retryData.details || errorText || "Gagal mengubah produk");
+    }
+    throw new Error(errorText || "Gagal mengubah produk");
   }
   cachedProducts = null;
   return normalizeProduct(Array.isArray(data) ? data[0] : data);
@@ -518,7 +552,7 @@ export async function createPreOrder(order: PreOrder): Promise<PreOrder> {
     method: "POST",
     headers: {
       ...supabaseHeaders(),
-      Prefer: "return=representation",
+      Prefer: "return=minimal",
     },
     body: JSON.stringify({
       customer_name: order.customer_name.trim(),
@@ -537,7 +571,12 @@ export async function createPreOrder(order: PreOrder): Promise<PreOrder> {
     throw new Error(data.message || data.details || "Gagal mengirim pre-order");
   }
 
-  return normalizePreOrder(Array.isArray(data) ? data[0] : data);
+  return normalizePreOrder({ ...order });
+}
+
+function isTierConstraintError(message: string): boolean {
+  const lower = String(message || "").toLowerCase();
+  return /products_tier_check|check.*tier|tier.*check|invalid.*tier|constraint.*tier/.test(lower);
 }
 
 export async function fetchPreOrders(): Promise<PreOrder[]> {
