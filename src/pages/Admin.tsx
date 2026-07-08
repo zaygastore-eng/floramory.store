@@ -84,7 +84,64 @@ create table if not exists public.app_settings (
   key text primary key,
   value text not null default '',
   updated_at timestamptz not null default now()
-);`;
+);
+
+alter table public.products enable row level security;
+alter table public.preorder_orders enable row level security;
+alter table public.app_settings enable row level security;
+
+drop policy if exists "Public can read active products" on public.products;
+drop policy if exists "Authenticated admin can manage products" on public.products;
+
+create policy "Public can read active products"
+on public.products
+for select
+to anon, authenticated
+using (status = 'active');
+
+create policy "Authenticated admin can manage products"
+on public.products
+for all
+to authenticated
+using (true)
+with check (true);
+
+drop policy if exists "Public can create preorder" on public.preorder_orders;
+drop policy if exists "Authenticated admin can manage preorder" on public.preorder_orders;
+
+create policy "Public can create preorder"
+on public.preorder_orders
+for insert
+to anon, authenticated
+with check (true);
+
+create policy "Authenticated admin can manage preorder"
+on public.preorder_orders
+for all
+to authenticated
+using (true)
+with check (true);
+
+drop policy if exists "Public can read app settings" on public.app_settings;
+drop policy if exists "Authenticated admin can manage app settings" on public.app_settings;
+
+create policy "Public can read app settings"
+on public.app_settings
+for select
+to anon, authenticated
+using (true);
+
+create policy "Authenticated admin can manage app settings"
+on public.app_settings
+for all
+to authenticated
+using (true)
+with check (true);
+
+grant usage on schema public to anon, authenticated;
+grant select on public.products to anon, authenticated;
+grant insert on public.preorder_orders to anon, authenticated;
+grant select on public.app_settings to anon, authenticated;`;
 
 interface FormState {
   id: string;
