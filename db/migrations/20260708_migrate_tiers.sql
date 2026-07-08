@@ -9,16 +9,19 @@ BEGIN;
 CREATE TABLE IF NOT EXISTS public.products_backup_20260708 AS
   TABLE public.products;
 
--- 2) Update legacy tier values to the new naming used by UI
+-- 2) Normalize tier values to the new naming used by UI
 --    legacy: 'lite' -> new: 'classic'
 --    legacy: 'home' -> new: 'masterpiece'
+--    preserve 'signature' and normalize case/whitespace
 UPDATE public.products
-  SET tier = 'classic'
-  WHERE tier = 'lite';
-
-UPDATE public.products
-  SET tier = 'masterpiece'
-  WHERE tier = 'home';
+SET tier = CASE
+  WHEN lower(trim(coalesce(tier, ''))) = 'lite' THEN 'classic'
+  WHEN lower(trim(coalesce(tier, ''))) = 'home' THEN 'masterpiece'
+  WHEN lower(trim(coalesce(tier, ''))) = 'signature' THEN 'signature'
+  WHEN tier IS NULL OR trim(coalesce(tier, '')) = '' THEN 'classic'
+  ELSE lower(trim(coalesce(tier, '')))
+END
+WHERE lower(trim(coalesce(tier, ''))) NOT IN ('classic', 'signature', 'masterpiece');
 
 -- 3) Verify counts per tier (optional quick check)
 -- SELECT tier, count(*) FROM public.products GROUP BY tier ORDER BY tier;
@@ -40,6 +43,6 @@ COMMIT;
 -- COMMIT;
 
 -- Notes:
--- - This migration assumes the only legacy values used were 'lite','signature','home'.
+-- - This migration now normalizes common legacy values and cleans empty tier cells.
 -- - If you want to keep legacy DB values and only map in the app, skip running this script.
 -- - Run the SELECT verification step after the UPDATEs to confirm data looks correct before changing the constraint.
