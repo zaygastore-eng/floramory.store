@@ -88,6 +88,55 @@ function isSupabaseConfigured(): boolean {
   return Boolean(SUPABASE_URL && SUPABASE_ANON_KEY);
 }
 
+function isSessionExpired(session: SupabaseSession | null | undefined): boolean {
+  if (!session?.expires_at) return false;
+
+  const expiresAt = Number(session.expires_at);
+  if (!Number.isFinite(expiresAt)) return false;
+
+  return Date.now() / 1000 >= expiresAt - 60;
+}
+
+async function refreshSupabaseSession(session: SupabaseSession): Promise<SupabaseSession | null> {
+  if (!isSupabaseConfigured() || !session?.refresh_token) {
+    signOutAdmin();
+    return null;
+  }
+
+  const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=refresh_token`, {
+    method: "POST",
+    headers: supabaseHeaders(),
+    body: JSON.stringify({ refresh_token: session.refresh_token }),
+  });
+
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || !data.access_token) {
+    signOutAdmin();
+    return null;
+  }
+
+  const refreshedSession: SupabaseSession = {
+    access_token: data.access_token,
+    refresh_token: data.refresh_token || session.refresh_token,
+    expires_at: data.expires_at,
+    user: data.user || session.user,
+  };
+
+  storeSession(refreshedSession);
+  return refreshedSession;
+}
+
+async function getValidSession(): Promise<SupabaseSession | null> {
+  const session = getStoredSession();
+  if (!session?.access_token) return null;
+
+  if (!isSessionExpired(session)) {
+    return session;
+  }
+
+  return refreshSupabaseSession(session);
+}
+
 function supabaseHeaders(accessToken?: string): HeadersInit {
   return {
     apikey: SUPABASE_ANON_KEY,
@@ -148,9 +197,10 @@ export async function fetchWhatsAppNumber(): Promise<string> {
   if (!isSupabaseConfigured()) return FALLBACK_WA_NUMBER;
 
   try {
+    const session = await getValidSession();
     const res = await fetch(
       `${SUPABASE_URL}/rest/v1/app_settings?key=eq.wa_number&select=value&limit=1`,
-      { headers: supabaseHeaders() }
+      { headers: supabaseHeaders(session?.access_token) }
     );
     if (!res.ok) return FALLBACK_WA_NUMBER;
     const data = await res.json();
@@ -164,9 +214,9 @@ export async function fetchWhatsAppNumber(): Promise<string> {
 export async function updateWhatsAppNumber(value: string): Promise<void> {
   if (!isSupabaseConfigured()) return;
 
-  const session = getStoredSession();
+  const session = await getValidSession();
   if (!session?.access_token) {
-    throw new Error("Login admin Supabase diperlukan untuk menyimpan nomor WhatsApp");
+    throw new Error("Sesi admin Supabase sudah kadaluarsa. Silakan login kembali.");
   }
 
   const clean = value.trim();
@@ -188,11 +238,20 @@ export async function updateWhatsAppNumber(value: string): Promise<void> {
   }
 }
 
+function normalizeTierValue(tier: string): string {
+  const normalized = String(tier || "classic").trim().toLowerCase();
+  const tierMap: Record<string, string> = {
+    lite: "classic",
+    home: "masterpiece",
+  };
+  return tierMap[normalized] || normalized;
+}
+
 function normalizeProduct(obj: Partial<Product> & Record<string, unknown>): Product {
   return {
     id: String(obj.id || "").trim(),
     nama_produk: String(obj.nama_produk || "").trim(),
-    tier: String(obj.tier || "lite").trim().toLowerCase(),
+    tier: normalizeTierValue(String(obj.tier || "classic")),
     harga: String(obj.harga || "").trim(),
     bunga: String(obj.bunga || "").trim(),
     deskripsi: String(obj.deskripsi || "").trim(),
@@ -212,7 +271,7 @@ function productPayload(product: Product, status = product.status || "active") {
   return {
     id: product.id.trim(),
     nama_produk: product.nama_produk.trim(),
-    tier: product.tier.trim().toLowerCase(),
+    tier: normalizeTierValue(product.tier),
     harga: product.harga.trim(),
     bunga: product.bunga.trim(),
     deskripsi: product.deskripsi.trim(),
@@ -321,9 +380,9 @@ export async function fetchManagedProducts(): Promise<Product[]> {
     return fetchAllProducts();
   }
 
-  const session = getStoredSession();
+  const session = await getValidSession();
   if (!session?.access_token) {
-    throw new Error("Login admin Supabase diperlukan untuk melihat daftar produk");
+    throw new Error("Sesi admin Supabase sudah kadaluarsa. Silakan login kembali.");
   }
 
   const res = await fetch(
@@ -347,9 +406,9 @@ export async function fetchProductById(id: string): Promise<Product | null> {
 
 export async function createProduct(product: Product): Promise<Product> {
   if (isSupabaseConfigured()) {
-    const session = getStoredSession();
+    const session = await getValidSession();
     if (!session?.access_token) {
-      throw new Error("Login admin Supabase diperlukan untuk menyimpan produk");
+      throw new Error("Sesi admin Supabase sudah kadaluarsa. Silakan login kembali.");
     }
 
     const res = await fetch(`${SUPABASE_URL}/rest/v1/products`, {
@@ -386,9 +445,9 @@ export async function updateProduct(id: string, product: Product): Promise<Produ
     throw new Error("Update produk hanya tersedia saat Supabase aktif");
   }
 
-  const session = getStoredSession();
+  const session = await getValidSession();
   if (!session?.access_token) {
-    throw new Error("Login admin Supabase diperlukan untuk mengubah produk");
+    throw new Error("Sesi admin Supabase sudah kadaluarsa. Silakan login kembali.");
   }
 
   const res = await fetch(`${SUPABASE_URL}/rest/v1/products?id=eq.${encodeURIComponent(id)}`, {
@@ -416,9 +475,9 @@ export async function deleteProduct(id: string): Promise<void> {
     throw new Error("Hapus produk hanya tersedia saat Supabase aktif");
   }
 
-  const session = getStoredSession();
+  const session = await getValidSession();
   if (!session?.access_token) {
-    throw new Error("Login admin Supabase diperlukan untuk menghapus produk");
+    throw new Error("Sesi admin Supabase sudah kadaluarsa. Silakan login kembali.");
   }
 
   const res = await fetch(`${SUPABASE_URL}/rest/v1/products?id=eq.${encodeURIComponent(id)}`, {
@@ -472,9 +531,9 @@ export async function fetchPreOrders(): Promise<PreOrder[]> {
     return [];
   }
 
-  const session = getStoredSession();
+  const session = await getValidSession();
   if (!session?.access_token) {
-    throw new Error("Login admin Supabase diperlukan untuk melihat pre-order");
+    throw new Error("Sesi admin Supabase sudah kadaluarsa. Silakan login kembali.");
   }
 
   const res = await fetch(
@@ -494,9 +553,9 @@ export async function updatePreOrderStatus(id: string, status: string): Promise<
     throw new Error("Supabase belum dikonfigurasi");
   }
 
-  const session = getStoredSession();
+  const session = await getValidSession();
   if (!session?.access_token) {
-    throw new Error("Login admin Supabase diperlukan untuk mengubah pre-order");
+    throw new Error("Sesi admin Supabase sudah kadaluarsa. Silakan login kembali.");
   }
 
   const res = await fetch(`${SUPABASE_URL}/rest/v1/preorder_orders?id=eq.${encodeURIComponent(id)}`, {
@@ -515,36 +574,36 @@ export async function updatePreOrderStatus(id: string, status: string): Promise<
 
 export function tierLabel(tier: string): string {
   const labels: Record<string, string> = {
-    lite: "Floramory Lite",
+    classic: "Floramory Classic",
     signature: "Floramory Signature",
-    home: "Floramory Home",
+    masterpiece: "Floramory Masterpiece",
   };
-  return labels[tier.toLowerCase()] || "Floramory";
+  return labels[normalizeTierValue(tier)] || "Floramory";
 }
 
 export function tierEmoji(tier: string): string {
   const emojis: Record<string, string> = {
-    lite: "💍",
+    classic: "🌸",
     signature: "🎓",
-    home: "🌙",
+    masterpiece: "✨",
   };
-  return emojis[tier.toLowerCase()] || "🌸";
+  return emojis[normalizeTierValue(tier)] || "🌸";
 }
 
 export function tierBg(tier: string): string {
   const bgs: Record<string, string> = {
-    lite: "#eef4ed",
+    classic: "#eef4ed",
     signature: "#fdf0ee",
-    home: "#fef9ef",
+    masterpiece: "#fef7e6",
   };
-  return bgs[tier.toLowerCase()] || "#eef4ed";
+  return bgs[normalizeTierValue(tier)] || "#eef4ed";
 }
 
 export function tierBadgeClass(tier: string): string {
   const classes: Record<string, string> = {
-    lite: "badge-lite",
+    classic: "badge-classic",
     signature: "badge-signature",
-    home: "badge-home",
+    masterpiece: "badge-masterpiece",
   };
-  return classes[tier.toLowerCase()] || "badge-lite";
+  return classes[normalizeTierValue(tier)] || "badge-classic";
 }

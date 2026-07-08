@@ -31,9 +31,9 @@ const AUTH_KEY = "fm_admin_auth";
 const ADMIN_PASSWORD = "floramory2026";
 
 const TIER_OPTIONS = [
-  { value: "lite", label: "Floramory Lite" },
+  { value: "classic", label: "Floramory Classic" },
   { value: "signature", label: "Floramory Signature" },
-  { value: "home", label: "Floramory Home" },
+  { value: "masterpiece", label: "Floramory Masterpiece" },
 ];
 
 type AdminTab = "dashboard" | "produk" | "pesanan" | "pengaturan";

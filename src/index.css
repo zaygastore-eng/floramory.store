@@ -234,9 +234,9 @@ body {
   font-size: 0.68rem; font-weight: 500; letter-spacing: 0.05em; text-transform: uppercase;
   padding: 4px 10px; border-radius: 12px; z-index: 2;
 }
-.badge-lite { background: var(--sage-pale); color: var(--sage); border: 1px solid var(--sage-light); }
+.badge-classic { background: var(--sage-pale); color: var(--sage); border: 1px solid var(--sage-light); }
 .badge-signature { background: var(--blush-light); color: var(--blush); border: 1px solid var(--blush-light); }
-.badge-home { background: #fef7e6; color: #a07530; border: 1px solid #f0d898; }
+.badge-masterpiece { background: #fef7e6; color: #a07530; border: 1px solid #f0d898; }
 .product-qr-icon {
   position: absolute; bottom: 12px; left: 12px;
   width: 30px; height: 30px; background: rgba(255,255,255,0.9); border-radius: 8px;

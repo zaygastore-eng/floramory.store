@@ -215,9 +215,9 @@ export default function Home() {
           <div className="tier-tabs">
             {[
               { val: "all", label: "Semua Produk" },
-              { val: "lite", label: "Floramory Lite" },
+              { val: "classic", label: "Floramory Classic" },
               { val: "signature", label: "Floramory Signature" },
-              { val: "home", label: "Floramory Home" },
+              { val: "masterpiece", label: "Floramory Masterpiece" },
             ].map(tab => (
               <button key={tab.val} className={`tier-tab${filter === tab.val ? " active" : ""}`}
                 onClick={() => setFilter(tab.val)}>{tab.label}</button>
@@ -355,7 +355,7 @@ export default function Home() {
                 <option value="">— Pilih lini produk —</option>
                 {products.length > 0 ? (
                   <>
-                    {["lite", "signature", "home"].map(tier => {
+                    {["classic", "signature", "masterpiece"].map(tier => {
                       const tierProds = products.filter(p => p.tier.toLowerCase() === tier);
                       if (!tierProds.length) return null;
                       return (
@@ -367,7 +367,7 @@ export default function Home() {
                   </>
                 ) : (
                   <>
-                    <optgroup label="Floramory Lite (Rp 30.000 – 85.000)">
+                    <optgroup label="Floramory Classic (Rp 30.000 – 85.000)">
                       <option>Cincin Preserved Flower</option>
                       <option>Anting Botani</option>
                       <option>Gantungan Kunci Resin</option>
@@ -376,7 +376,7 @@ export default function Home() {
                       <option>Plakat Wisuda Kustom</option>
                       <option>Full Set Aksesori Premium</option>
                     </optgroup>
-                    <optgroup label="Floramory Home Decor (Rp 135.000 – 450.000+)">
+                    <optgroup label="Floramory Masterpiece (Rp 135.000 – 450.000+)">
                       <option>Lampu Tidur Botani</option>
                       <option>Figura Dinding Preserved Flower</option>
                     </optgroup>
