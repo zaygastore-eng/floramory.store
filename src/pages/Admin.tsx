@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { QRCodeCanvas as QRCode } from "qrcode.react";
-import { createProduct, type Product } from "@/lib/sheets";
+import { createProduct, hasSupabaseConfig, hasSupabaseSession, signInAdmin, signOutAdmin, type Product } from "@/lib/sheets";
 
 const BASE_URL_KEY = "fm_base_url";
 const WA_KEY = "fm_wa";
@@ -29,18 +29,39 @@ function getAutoBaseUrl(): string {
 }
 
 function LoginGate({ onLogin }: { onLogin: () => void }) {
+  const useSupabaseAuth = hasSupabaseConfig();
+  const [email, setEmail] = useState("");
   const [pw, setPw] = useState("");
   const [error, setError] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
+  const [loading, setLoading] = useState(false);
   const [shake, setShake] = useState(false);
   const [show, setShow] = useState(false);
 
-  const submit = (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (useSupabaseAuth) {
+      setLoading(true);
+      try {
+        await signInAdmin(email.trim(), pw);
+        onLogin();
+      } catch (err) {
+        setError(true);
+        setErrorMsg(err instanceof Error ? err.message : "Login Supabase gagal");
+        setShake(true);
+        setTimeout(() => setShake(false), 600);
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
+
     if (pw === ADMIN_PASSWORD) {
       sessionStorage.setItem(AUTH_KEY, "1");
       onLogin();
     } else {
       setError(true);
+      setErrorMsg("Password salah. Coba lagi.");
       setShake(true);
       setTimeout(() => setShake(false), 600);
       setTimeout(() => setError(false), 3000);
@@ -55,23 +76,41 @@ function LoginGate({ onLogin }: { onLogin: () => void }) {
         <div className="login-subtitle">Admin Panel</div>
         <div className="login-icon">🔐</div>
         <form onSubmit={submit} style={{ width: "100%" }}>
+          {useSupabaseAuth && (
+            <div className="login-input-wrap" style={{ marginBottom: 10 }}>
+              <input
+                className={`login-input${error ? " login-input-error" : ""}`}
+                type="email"
+                placeholder="Email admin Supabase"
+                value={email}
+                onChange={e => { setEmail(e.target.value); setError(false); }}
+                autoFocus
+              />
+            </div>
+          )}
           <div className="login-input-wrap">
             <input
               className={`login-input${error ? " login-input-error" : ""}`}
               type={show ? "text" : "password"}
-              placeholder="Masukkan password admin"
+              placeholder={useSupabaseAuth ? "Password Supabase" : "Masukkan password admin"}
               value={pw}
               onChange={e => { setPw(e.target.value); setError(false); }}
-              autoFocus
+              autoFocus={!useSupabaseAuth}
             />
             <button type="button" className="login-eye" onClick={() => setShow(s => !s)}>
               {show ? "🙈" : "👁"}
             </button>
           </div>
-          {error && <div className="login-error">Password salah. Coba lagi.</div>}
-          <button type="submit" className="login-btn">Masuk →</button>
+          {error && <div className="login-error">{errorMsg}</div>}
+          <button type="submit" className="login-btn" disabled={loading}>
+            {loading ? "Masuk..." : "Masuk →"}
+          </button>
         </form>
-        <p className="login-hint">Password default: <code>floramory2026</code></p>
+        <p className="login-hint">
+          {useSupabaseAuth
+            ? "Gunakan akun admin yang dibuat di Supabase Authentication."
+            : <>Password default: <code>floramory2026</code></>}
+        </p>
       </div>
     </div>
   );
@@ -91,6 +130,10 @@ export default function Admin() {
   const qrRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    if (hasSupabaseConfig()) {
+      if (hasSupabaseSession()) setAuthed(true);
+      return;
+    }
     if (sessionStorage.getItem(AUTH_KEY) === "1") setAuthed(true);
   }, []);
 
@@ -187,6 +230,7 @@ export default function Admin() {
 
   const logout = () => {
     sessionStorage.removeItem(AUTH_KEY);
+    signOutAdmin();
     setAuthed(false);
   };
 

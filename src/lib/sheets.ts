@@ -1,6 +1,9 @@
 const SHEETS_CSV_URL =
   "https://docs.google.com/spreadsheets/d/e/2PACX-1vRjLp_qo1CZVcWWq7CMkstImftaN5DeI6wZpZ3TDlge8_DtDTtF3qjj4DkJn7era5lJQYqggbBzIT8G/pub?output=csv";
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "";
+const SUPABASE_URL = String(import.meta.env.VITE_SUPABASE_URL || "").replace(/\/$/, "");
+const SUPABASE_ANON_KEY = String(import.meta.env.VITE_SUPABASE_ANON_KEY || "");
+const SUPABASE_AUTH_KEY = "fm_supabase_auth";
 
 export interface Product {
   id: string;
@@ -58,6 +61,73 @@ let cachedProducts: Product[] | null = null;
 let cacheTime = 0;
 const CACHE_TTL = 60_000;
 
+interface SupabaseSession {
+  access_token: string;
+  refresh_token?: string;
+  expires_at?: number;
+  user?: { email?: string };
+}
+
+function isSupabaseConfigured(): boolean {
+  return Boolean(SUPABASE_URL && SUPABASE_ANON_KEY);
+}
+
+function supabaseHeaders(accessToken?: string): HeadersInit {
+  return {
+    apikey: SUPABASE_ANON_KEY,
+    Authorization: `Bearer ${accessToken || SUPABASE_ANON_KEY}`,
+    "Content-Type": "application/json",
+  };
+}
+
+function getStoredSession(): SupabaseSession | null {
+  try {
+    const raw = localStorage.getItem(SUPABASE_AUTH_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+function storeSession(session: SupabaseSession) {
+  localStorage.setItem(SUPABASE_AUTH_KEY, JSON.stringify(session));
+}
+
+export function hasSupabaseConfig(): boolean {
+  return isSupabaseConfigured();
+}
+
+export function hasSupabaseSession(): boolean {
+  return Boolean(getStoredSession()?.access_token);
+}
+
+export async function signInAdmin(email: string, password: string): Promise<void> {
+  if (!isSupabaseConfigured()) {
+    throw new Error("Supabase belum dikonfigurasi");
+  }
+
+  const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
+    method: "POST",
+    headers: supabaseHeaders(),
+    body: JSON.stringify({ email, password }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || !data.access_token) {
+    throw new Error(data.error_description || data.msg || "Login Supabase gagal");
+  }
+
+  storeSession({
+    access_token: data.access_token,
+    refresh_token: data.refresh_token,
+    expires_at: data.expires_at,
+    user: data.user,
+  });
+}
+
+export function signOutAdmin() {
+  localStorage.removeItem(SUPABASE_AUTH_KEY);
+}
+
 function normalizeProduct(obj: Partial<Product> & Record<string, unknown>): Product {
   return {
     id: String(obj.id || "").trim(),
@@ -89,8 +159,32 @@ async function fetchProductsFromApi(): Promise<Product[] | null> {
   }
 }
 
+async function fetchProductsFromSupabase(): Promise<Product[] | null> {
+  if (!isSupabaseConfigured()) return null;
+
+  try {
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/products?select=*&status=eq.active&order=created_at.desc`,
+      { headers: supabaseHeaders() }
+    );
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (!Array.isArray(data)) return null;
+    return data.map(normalizeProduct).filter((p: Product) => p.id);
+  } catch {
+    return null;
+  }
+}
+
 export async function fetchAllProducts(): Promise<Product[]> {
   if (cachedProducts && Date.now() - cacheTime < CACHE_TTL) {
+    return cachedProducts;
+  }
+
+  const supabaseProducts = await fetchProductsFromSupabase();
+  if (supabaseProducts) {
+    cachedProducts = supabaseProducts;
+    cacheTime = Date.now();
     return cachedProducts;
   }
 
@@ -134,6 +228,33 @@ export async function fetchProductById(id: string): Promise<Product | null> {
 }
 
 export async function createProduct(product: Product): Promise<Product> {
+  if (isSupabaseConfigured()) {
+    const session = getStoredSession();
+    if (!session?.access_token) {
+      throw new Error("Login admin Supabase diperlukan untuk menyimpan produk");
+    }
+
+    const payload = {
+      ...product,
+      foto_qr: product.foto_qr,
+      status: "active",
+    };
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/products`, {
+      method: "POST",
+      headers: {
+        ...supabaseHeaders(session.access_token),
+        Prefer: "return=representation",
+      },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(data.message || data.details || "Gagal menyimpan produk ke Supabase");
+    }
+    cachedProducts = null;
+    return normalizeProduct(Array.isArray(data) ? data[0] : data);
+  }
+
   const res = await fetch(`${API_BASE_URL}/api/products`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
