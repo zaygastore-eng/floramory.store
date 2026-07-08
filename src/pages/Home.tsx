@@ -8,13 +8,14 @@ function ProductCard({ product, onClick }: { product: Product; onClick: () => vo
   const emoji = tierEmoji(tier);
   const badgeClass = tierBadgeClass(tier);
   const badge = tierLabel(tier);
+  const productImage = product.foto_produk || product.foto_url;
   const desc = product.deskripsi ? product.deskripsi.slice(0, 80) + (product.deskripsi.length > 80 ? "…" : "") : "";
 
   return (
     <div className="product-card" onClick={onClick}>
       <div className="product-img">
-        {product.foto_url && product.foto_url.startsWith("http") && (
-          <img src={product.foto_url} alt={product.nama_produk} />
+        {productImage && productImage.startsWith("http") && (
+          <img src={productImage} alt={product.nama_produk} />
         )}
         <div className="flower-bg">{emoji}</div>
         <div className="flower-main">{emoji}</div>
@@ -42,6 +43,7 @@ function ProductCard({ product, onClick }: { product: Product; onClick: () => vo
 function ProductModal({ product, onClose }: { product: Product; onClose: () => void }) {
   const tier = product.tier.toLowerCase();
   const emoji = tierEmoji(tier);
+  const productImage = product.foto_produk || product.foto_url;
 
   const chips: [string, string][] = [];
   if (product.bahan) chips.push(["Bahan", product.bahan]);
@@ -55,8 +57,8 @@ function ProductModal({ product, onClose }: { product: Product; onClose: () => v
     <div className="modal-overlay open" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="modal">
         <div className="modal-hero">
-          {product.foto_url && product.foto_url.startsWith("http") && (
-            <img src={product.foto_url} alt={product.nama_produk} />
+          {productImage && productImage.startsWith("http") && (
+            <img src={productImage} alt={product.nama_produk} />
           )}
           <span className="emoji-fallback">{emoji}</span>
           <button className="modal-close" onClick={onClose}>✕</button>
@@ -139,73 +141,9 @@ export default function Home() {
         <span className="nav-badge">Smart QR ✦ Eco</span>
       </nav>
 
-      {/* HERO */}
-      <section className="hero">
-        <div className="hero-bg" />
-        <div className="hero-inner">
-          <div className="hero-eyebrow">Smart Eco-Preserved Artware</div>
-          <h1>Kenangan Abadi<br />dalam <em>Bunga Nyata</em></h1>
-          <p className="hero-sub">Aksesori & dekorasi premium dari preserved flower asli yang terintegrasi teknologi Smart-QR Code — simpan foto, video, dan pesan di dalam keindahan botani.</p>
-          <a className="hero-cta" href="#produk">
-            Jelajahi Koleksi
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16">
-              <path d="M5 12h14M12 5l7 7-7 7" />
-            </svg>
-          </a>
-        </div>
-        <div className="hero-scroll">
-          <span>Scroll</span>
-          <div className="scroll-line" />
-        </div>
-      </section>
-
-      {/* QR FEATURE */}
-      <section className="fm-section qr-section" id="qr">
-        <div className="qr-inner">
-          <div>
-            <span className="section-eyebrow">Teknologi Smart-QR</span>
-            <h2 className="section-title">Scan & Temukan<br /><em>Memory Vault</em></h2>
-            <p className="section-desc">Setiap produk Floramory menyimpan micro-QR code di dalam resin. Satu scan langsung membawa Anda ke halaman digital personal berisi foto, video, dan cerita di balik setiap bunga.</p>
-            <ul className="feature-list" style={{ marginTop: "1.5rem" }}>
-              {[
-                "QR Code dinamis — isi memori bisa diperbarui kapan saja",
-                "Stiker vinyl tahan air tertanam di dalam atau bawah produk",
-                "Informasi botani ilmiah dari setiap spesies bunga",
-                "Serial number unik untuk backup dan pengelolaan memori",
-              ].map((item, i) => (
-                <li key={i}><span className="dot">✦</span><span>{item}</span></li>
-              ))}
-            </ul>
-          </div>
-          <div className="qr-visual">
-            <div className="qr-phone-frame">
-              <div className="qr-phone-screen">
-                <div className="qr-screen-header">Floramory · Memory Vault</div>
-                <div className="qr-screen-img">
-                  <div className="qr-flower-icon">🌸</div>
-                </div>
-                <div className="qr-screen-info">
-                  <div className="qr-screen-name">Rosa Eternal — Cincin Resin</div>
-                  <div className="qr-screen-price">Floramory Lite · Smart QR</div>
-                  <div className="qr-screen-desc">Mawar pink asli diawetkan dengan silica gel laboratorium, tertanam dalam epoxy anti-UV crystal clear.</div>
-                </div>
-              </div>
-            </div>
-            <div className="qr-scan-label">Scan QR Code</div>
-            <div className="qr-placeholder">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="qr-placeholder-icon">
-                <rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" />
-                <rect x="3" y="14" width="7" height="7" />
-                <path d="M14 14h2v2h-2zM18 14h2v2h-2zM14 18h2v2h-2zM18 18h2v2h-2z" />
-              </svg>
-              <span>QR Anda</span>
-            </div>
-          </div>
-        </div>
-      </section>
-
+      <main className="home-sections">
       {/* PRODUCTS */}
-      <section className="fm-section" id="produk">
+      <section className="fm-section products-section" id="produk">
         <div className="catalog-section">
           <div className="catalog-header">
             <span className="section-eyebrow">Koleksi Produk</span>
@@ -395,6 +333,7 @@ export default function Home() {
           </form>
         </div>
       </section>
+      </main>
 
       {/* FOOTER */}
       <footer className="fm-footer">

@@ -56,6 +56,7 @@ export default function Produk() {
   const tier = product.tier.toLowerCase();
   const emoji = tierEmoji(tier);
   const heroBg = tierBg(tier);
+  const qrImage = product.foto_qr || product.foto_produk || product.foto_url;
 
   const waMsg = encodeURIComponent(
     `Halo Floramory! 🌸\n\nSaya tertarik dengan produk:\n*${product.nama_produk}* (${product.id})\nHarga: ${product.harga}\n\nApakah masih tersedia? Saya ingin tanya lebih lanjut.`
@@ -85,9 +86,23 @@ export default function Produk() {
         <span className="header-badge">{tierLabel(tier)}</span>
       </header>
 
+      <section className="memory-hero" style={{ background: heroBg }}>
+        <div className="memory-hero-inner">
+          <div className="memory-eyebrow">Memory Vault</div>
+          <h1 className="memory-title">Untuk {product.nama_pembeli || "Penerima Hadiah"}</h1>
+          <p className="memory-subtitle">
+            Ada pesan personal dari {product.dari || "pengirim"} yang tersimpan bersama hadiah ini.
+          </p>
+          <div className="memory-product-chip">
+            <span>{emoji}</span>
+            <span>{product.nama_produk || "Floramory Gift"}</span>
+          </div>
+        </div>
+      </section>
+
       <div className="product-hero" style={{ background: heroBg }}>
-        {product.foto_url && product.foto_url.startsWith("http") && (
-          <img src={product.foto_url} alt={product.nama_produk} />
+        {qrImage && qrImage.startsWith("http") && (
+          <img src={qrImage} alt={product.nama_produk} />
         )}
         <div className="hero-emoji">{emoji}</div>
         <div className="tier-ribbon">{tierLabel(tier)}</div>

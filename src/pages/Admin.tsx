@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { QRCodeCanvas as QRCode } from "qrcode.react";
+import { createProduct, type Product } from "@/lib/sheets";
 
 const BASE_URL_KEY = "fm_base_url";
 const WA_KEY = "fm_wa";
@@ -15,10 +16,10 @@ const TIER_OPTIONS = [
 interface FormState {
   id: string; tier: string; nama: string; harga: string; bunga: string;
   deskripsi: string; bahan: string; ukuran: string;
-  namaPembeli: string; dari: string; pesan: string; foto: string;
+  namaPembeli: string; dari: string; pesan: string; fotoProduk: string; fotoQr: string;
 }
 
-const EMPTY: FormState = { id: "", tier: "", nama: "", harga: "", bunga: "", deskripsi: "", bahan: "", ukuran: "", namaPembeli: "", dari: "", pesan: "", foto: "" };
+const EMPTY: FormState = { id: "", tier: "", nama: "", harga: "", bunga: "", deskripsi: "", bahan: "", ukuran: "", namaPembeli: "", dari: "", pesan: "", fotoProduk: "", fotoQr: "" };
 
 function getAutoBaseUrl(): string {
   const { protocol, host, pathname } = window.location;
@@ -84,6 +85,7 @@ export default function Admin() {
   const [form, setForm] = useState<FormState>(EMPTY);
   const [generatedUrl, setGeneratedUrl] = useState("");
   const [qrVisible, setQrVisible] = useState(false);
+  const [savingProduct, setSavingProduct] = useState(false);
   const [toastMsg, setToastMsg] = useState("");
   const [toastVisible, setToastVisible] = useState(false);
   const qrRef = useRef<HTMLDivElement>(null);
@@ -133,12 +135,48 @@ export default function Admin() {
 
   const canGenerate = !!form.id.trim() && !!((localStorage.getItem(BASE_URL_KEY) || baseUrl).trim());
 
+  const productFromForm = (): Product => ({
+    id: form.id,
+    nama_produk: form.nama,
+    tier: form.tier,
+    harga: form.harga,
+    bunga: form.bunga,
+    deskripsi: form.deskripsi,
+    bahan: form.bahan,
+    ukuran: form.ukuran,
+    nama_pembeli: form.namaPembeli,
+    dari: form.dari,
+    pesan_personal: form.pesan,
+    foto_produk: form.fotoProduk,
+    foto_qr: form.fotoQr,
+    foto_url: form.fotoProduk,
+  });
+
   const generateQR = () => {
     const url = getPreviewUrl();
     if (!url) { showToast("⚠ Isi ID Produk terlebih dahulu"); return; }
     setGeneratedUrl(url);
     setQrVisible(true);
     showToast("QR Code berhasil dibuat! ✓");
+  };
+
+  const saveProductAndGenerateQR = async () => {
+    if (!canGenerate) { showToast("⚠ Isi ID Produk dan Base URL terlebih dahulu"); return; }
+    if (!form.nama.trim() || !form.tier.trim() || !form.harga.trim()) {
+      showToast("⚠ Lengkapi nama produk, tier, dan harga");
+      return;
+    }
+
+    setSavingProduct(true);
+    try {
+      await createProduct(productFromForm());
+      generateQR();
+      showToast("Produk tersimpan dan QR siap diprint! ✓");
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "Gagal menyimpan produk");
+    } finally {
+      setSavingProduct(false);
+    }
   };
 
   const resetForm = () => {
@@ -331,8 +369,14 @@ export default function Admin() {
                 <div className="admin-form-group">
                   <label className="admin-form-label">URL Foto Produk</label>
                   <input className="admin-form-input" type="text" placeholder="https://drive.google.com/uc?id=..."
-                    value={form.foto} onChange={e => setForm(f => ({ ...f, foto: e.target.value }))} />
-                  <p className="form-hint">Opsional. Upload ke Google Drive → Share → Anyone with link, lalu ubah ke format: https://drive.google.com/uc?id=FILE_ID</p>
+                    value={form.fotoProduk} onChange={e => setForm(f => ({ ...f, fotoProduk: e.target.value }))} />
+                  <p className="form-hint">Untuk katalog dan tampilan produk di halaman utama. Simpan di kolom <code>foto_produk</code>.</p>
+                </div>
+                <div className="admin-form-group">
+                  <label className="admin-form-label">URL Foto QR</label>
+                  <input className="admin-form-input" type="text" placeholder="https://drive.google.com/uc?id=..."
+                    value={form.fotoQr} onChange={e => setForm(f => ({ ...f, fotoQr: e.target.value }))} />
+                  <p className="form-hint">Untuk halaman yang terbuka setelah QR discan. Simpan di kolom <code>foto_QR</code>.</p>
                 </div>
               </div>
             </div>
@@ -344,8 +388,11 @@ export default function Admin() {
                 : <span>— isi ID Produk untuk melihat URL —</span>}
             </div>
 
-            <button className="btn-generate" onClick={generateQR} disabled={!canGenerate}>
-              Generate QR Code →
+            <button className="btn-generate" onClick={saveProductAndGenerateQR} disabled={!canGenerate || savingProduct}>
+              {savingProduct ? "Menyimpan Produk..." : "Simpan Produk + Generate QR →"}
+            </button>
+            <button className="btn-secondary-admin" onClick={generateQR} disabled={!canGenerate || savingProduct}>
+              Generate QR Saja
             </button>
             <button className="btn-reset" onClick={resetForm}>Bersihkan form</button>
           </div>
@@ -388,11 +435,11 @@ export default function Admin() {
               <div className="guide-header">📊 Cara pakai Google Sheets</div>
               <div className="guide-body">
                 {[
-                  { n: 1, t: <>Data terhubung otomatis ke Google Sheets via URL CSV. Website otomatis mengambil data setiap kali diakses.</> },
-                  { n: 2, t: <>Tambah produk baru: cukup <strong>tambah baris baru</strong> di Sheets. Website akan otomatis menampilkannya.</> },
+                  { n: 1, t: <>Data dibaca lewat backend Floramory dan fallback ke Google Sheets CSV jika backend tidak tersedia.</> },
+                  { n: 2, t: <>Tambah produk dari admin akan dikirim ke backend. Aktifkan <strong>SHEETS_WRITE_URL</strong> agar backend bisa menulis ke Google Sheets.</> },
                   { n: 3, t: <>Kolom wajib: <code className="step-code">id, nama_produk, tier, harga</code></> },
                   { n: 4, t: <>Hapus produk: hapus baris di Sheets. Tidak perlu update kode.</> },
-                  { n: 5, t: <>Generate QR di sini → print stiker → tempel ke produk. URL QR otomatis sinkron dengan Sheets.</> },
+                  { n: 5, t: <>Generate QR di sini → print stiker → tempel ke produk. URL QR otomatis memakai ID produk yang sama.</> },
                 ].map(({ n, t }) => (
                   <div className="guide-step" key={n}>
                     <div className="step-num">{n}</div>
@@ -422,7 +469,8 @@ export default function Admin() {
                       ["nama_pembeli", "Nama penerima hadiah", false],
                       ["dari", "Nama pengirim", false],
                       ["pesan_personal", "Isi Memory Vault", false],
-                      ["foto_url", "Link foto dari Google Drive", false],
+                      ["foto_produk", "Link foto untuk katalog/halaman utama", false],
+                      ["foto_QR", "Link foto untuk halaman scan QR", false],
                     ].map(([col, desc, req]) => (
                       <tr key={col as string}>
                         <td>{col as string}</td>

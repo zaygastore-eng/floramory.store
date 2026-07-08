@@ -112,6 +112,11 @@ body {
 @keyframes scrollAnim { 0%,100% { opacity: 0.3; transform: scaleY(0.6); } 50% { opacity: 1; transform: scaleY(1); } }
 
 /* ── SECTION COMMONS ── */
+.home-sections { display: flex; flex-direction: column; }
+.about-section { order: 1; }
+.products-section { order: 2; }
+.vault-section { order: 3; }
+.order-section { order: 4; }
 .fm-section { padding: 6rem 2rem; }
 .section-eyebrow {
   font-size: 0.73rem; font-weight: 500; letter-spacing: 0.14em; text-transform: uppercase;
@@ -468,6 +473,7 @@ body {
 .error-msg { font-size: 0.9rem; color: var(--text-muted); max-width: 300px; line-height: 1.6; }
 
 .produk-page { min-height: 100vh; }
+.produk-page .product-hero { display: none; }
 .site-header {
   padding: 1rem 1.5rem;
   display: flex; align-items: center; justify-content: space-between;
@@ -523,6 +529,55 @@ body {
 }
 
 .produk-body { padding: 1.75rem 1.5rem 5rem; max-width: 600px; margin: 0 auto; }
+.produk-page .produk-body { display: flex; flex-direction: column; gap: 1rem; }
+
+.memory-hero {
+  min-height: 320px;
+  display: flex; align-items: center; justify-content: center;
+  padding: 3rem 1.5rem;
+  position: relative; overflow: hidden;
+  border-bottom: 1px solid var(--border);
+}
+.memory-hero::after {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(to bottom, rgba(250,247,242,0.18), var(--cream));
+  pointer-events: none;
+}
+.memory-hero-inner {
+  position: relative; z-index: 1;
+  max-width: 620px; text-align: center;
+}
+.memory-eyebrow {
+  font-size: 0.72rem; font-weight: 500; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--sage); margin-bottom: 0.75rem;
+}
+.memory-title {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: clamp(2.6rem, 8vw, 4.5rem);
+  font-weight: 400; line-height: 1.05; color: var(--text);
+  margin-bottom: 0.9rem;
+}
+.memory-subtitle {
+  font-size: 0.95rem; color: var(--text-muted);
+  max-width: 460px; margin: 0 auto 1.5rem; line-height: 1.7;
+}
+.memory-product-chip {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: rgba(255,255,255,0.75); color: var(--sage);
+  border: 1px solid var(--sage-light); border-radius: 999px;
+  padding: 8px 16px;
+  font-size: 0.78rem; font-weight: 500; letter-spacing: 0.05em; text-transform: uppercase;
+}
+.produk-page .memory-vault { order: 1; }
+.produk-page .produk-name { order: 2; margin-top: 0.5rem; }
+.produk-page .produk-price { order: 3; margin-bottom: 0; }
+.produk-page .divider { order: 4; margin: 0; }
+.produk-page .botanical-tag { order: 5; }
+.produk-page .section-label { order: 6; }
+.produk-page .description-text { order: 7; margin-bottom: 0; }
+.produk-page .detail-grid { order: 8; }
+.produk-page .care-card { order: 9; }
+.produk-page .page-footer { order: 10; }
 
 .produk-name {
   font-family: 'Cormorant Garamond', serif;
@@ -556,6 +611,11 @@ body {
   background: var(--white); border: 1px solid var(--border); border-radius: 16px;
   padding: 1.25rem; margin-bottom: 1.25rem; position: relative; overflow: hidden;
 }
+.produk-page .memory-vault {
+  padding: 1.5rem;
+  box-shadow: 0 18px 48px rgba(44,40,32,0.08);
+  margin-top: -2.25rem;
+}
 .memory-vault::before {
   content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
   background: linear-gradient(to right, var(--sage), var(--sage-light));
@@ -573,6 +633,11 @@ body {
   line-height: 1.6; padding: 0.75rem;
   background: var(--sage-pale); border-radius: 10px;
   border-left: 3px solid var(--sage-light);
+}
+.produk-page .vault-message {
+  font-size: 1.45rem;
+  line-height: 1.65;
+  padding: 1.2rem;
 }
 .vault-from {
   font-family: 'DM Sans', sans-serif; font-style: normal;
@@ -683,10 +748,19 @@ body {
 }
 .btn-generate:hover { background: #668a62; transform: translateY(-1px); }
 .btn-generate:disabled { background: var(--sage-light); cursor: not-allowed; transform: none; }
+.btn-secondary-admin {
+  width: 100%; background: var(--white); color: var(--sage);
+  font-size: 0.78rem; font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase;
+  padding: 11px; border-radius: 24px; border: 1px solid var(--sage-light); cursor: pointer;
+  transition: background 0.2s; margin-top: 10px; font-family: 'DM Sans', sans-serif;
+}
+.btn-secondary-admin:hover { background: var(--sage-pale); }
+.btn-secondary-admin:disabled { color: var(--text-muted); border-color: var(--border); cursor: not-allowed; background: transparent; }
 .btn-reset {
   width: 100%; background: transparent; color: var(--text-muted);
   font-size: 0.78rem; border: 1px solid var(--border); border-radius: 24px;
   padding: 9px; cursor: pointer; transition: border-color 0.2s; font-family: 'DM Sans', sans-serif;
+  margin-top: 10px;
 }
 .btn-reset:hover { border-color: var(--blush); color: var(--red); }
 
