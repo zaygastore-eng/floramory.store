@@ -1,5 +1,15 @@
-import { useState, useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef, useState, type ComponentType } from "react";
 import { QRCodeCanvas as QRCode } from "qrcode.react";
+import {
+  Box,
+  ClipboardList,
+  Grid2X2,
+  LayoutDashboard,
+  LogOut,
+  QrCode,
+  RefreshCw,
+  Settings,
+} from "lucide-react";
 import {
   createProduct,
   deleteProduct,
@@ -28,13 +38,39 @@ const TIER_OPTIONS = [
   { value: "home", label: "Floramory Home" },
 ];
 
+type AdminTab = "dashboard" | "produk" | "qr" | "pesanan" | "pengaturan";
+
 interface FormState {
-  id: string; tier: string; nama: string; harga: string; bunga: string;
-  deskripsi: string; bahan: string; ukuran: string;
-  namaPembeli: string; dari: string; pesan: string; fotoProduk: string; fotoQr: string;
+  id: string;
+  tier: string;
+  nama: string;
+  harga: string;
+  bunga: string;
+  deskripsi: string;
+  bahan: string;
+  ukuran: string;
+  namaPembeli: string;
+  dari: string;
+  pesan: string;
+  fotoProduk: string;
+  fotoQr: string;
 }
 
-const EMPTY: FormState = { id: "", tier: "", nama: "", harga: "", bunga: "", deskripsi: "", bahan: "", ukuran: "", namaPembeli: "", dari: "", pesan: "", fotoProduk: "", fotoQr: "" };
+const EMPTY: FormState = {
+  id: "",
+  tier: "",
+  nama: "",
+  harga: "",
+  bunga: "",
+  deskripsi: "",
+  bahan: "",
+  ukuran: "",
+  namaPembeli: "",
+  dari: "",
+  pesan: "",
+  fotoProduk: "",
+  fotoQr: "",
+};
 
 function productToForm(product: Product): FormState {
   return {
@@ -55,7 +91,7 @@ function productToForm(product: Product): FormState {
 }
 
 function getAutoBaseUrl(): string {
-  const { protocol, host, pathname } = window.location;
+  const { protocol, host } = window.location;
   const base = import.meta.env.BASE_URL?.replace(/\/$/, "") || "";
   const origin = `${protocol}//${host}`;
   return base ? `${origin}${base}` : origin;
@@ -107,7 +143,7 @@ function LoginGate({ onLogin }: { onLogin: () => void }) {
       <div className={`login-card${shake ? " shake" : ""}`}>
         <div className="login-logo">Flora<span>mory</span></div>
         <div className="login-subtitle">Admin Panel</div>
-        <div className="login-icon">🔐</div>
+        <div className="login-icon">Admin</div>
         <form onSubmit={submit} style={{ width: "100%" }}>
           {useSupabaseAuth && (
             <div className="login-input-wrap" style={{ marginBottom: 10 }}>
@@ -131,12 +167,12 @@ function LoginGate({ onLogin }: { onLogin: () => void }) {
               autoFocus={!useSupabaseAuth}
             />
             <button type="button" className="login-eye" onClick={() => setShow(s => !s)}>
-              {show ? "🙈" : "👁"}
+              {show ? "Hide" : "Show"}
             </button>
           </div>
           {error && <div className="login-error">{errorMsg}</div>}
           <button type="submit" className="login-btn" disabled={loading}>
-            {loading ? "Masuk..." : "Masuk →"}
+            {loading ? "Masuk..." : "Masuk"}
           </button>
         </form>
         <p className="login-hint">
@@ -151,6 +187,7 @@ function LoginGate({ onLogin }: { onLogin: () => void }) {
 
 export default function Admin() {
   const [authed, setAuthed] = useState(false);
+  const [activeTab, setActiveTab] = useState<AdminTab>("dashboard");
   const [baseUrl, setBaseUrl] = useState("");
   const [waNum, setWaNum] = useState("");
   const [configSaved, setConfigSaved] = useState(false);
@@ -181,9 +218,7 @@ export default function Admin() {
     const saved = localStorage.getItem(BASE_URL_KEY);
     const auto = getAutoBaseUrl();
     setBaseUrl(saved || auto);
-    if (!saved) {
-      localStorage.setItem(BASE_URL_KEY, auto);
-    }
+    if (!saved) localStorage.setItem(BASE_URL_KEY, auto);
     setWaNum(localStorage.getItem(WA_KEY) || "");
     fetchWhatsAppNumber().then((value) => {
       if (value) {
@@ -202,8 +237,7 @@ export default function Admin() {
   const loadProducts = async () => {
     setLoadingProducts(true);
     try {
-      const list = await fetchManagedProducts();
-      setManagedProducts(list);
+      setManagedProducts(await fetchManagedProducts());
     } catch (error) {
       showToast(error instanceof Error ? error.message : "Gagal memuat produk");
     } finally {
@@ -214,8 +248,7 @@ export default function Admin() {
   const loadPreOrders = async () => {
     setLoadingOrders(true);
     try {
-      const list = await fetchPreOrders();
-      setPreOrders(list);
+      setPreOrders(await fetchPreOrders());
     } catch (error) {
       showToast(error instanceof Error ? error.message : "Gagal memuat pre-order");
     } finally {
@@ -223,11 +256,12 @@ export default function Admin() {
     }
   };
 
+  const reloadAll = async () => {
+    await Promise.all([loadProducts(), loadPreOrders()]);
+  };
+
   useEffect(() => {
-    if (authed) {
-      void loadProducts();
-      void loadPreOrders();
-    }
+    if (authed) void reloadAll();
   }, [authed]);
 
   const saveConfig = async () => {
@@ -238,7 +272,7 @@ export default function Admin() {
       await updateWhatsAppNumber(waNum);
       setConfigSaved(true);
       setTimeout(() => setConfigSaved(false), 2000);
-      showToast("Konfigurasi tersimpan ✓");
+      showToast("Konfigurasi tersimpan");
     } catch (error) {
       showToast(error instanceof Error ? error.message : "Nomor WA tersimpan lokal, tetapi gagal tersimpan ke Supabase");
     }
@@ -248,7 +282,7 @@ export default function Admin() {
     const auto = getAutoBaseUrl();
     setBaseUrl(auto);
     localStorage.setItem(BASE_URL_KEY, auto);
-    showToast("Base URL diambil otomatis ✓");
+    showToast("Base URL diambil otomatis");
   };
 
   const getPreviewUrl = () => {
@@ -256,8 +290,6 @@ export default function Admin() {
     if (!form.id.trim() || !b) return null;
     return `${b}/produk?id=${form.id.trim()}`;
   };
-
-  const canGenerate = !!form.id.trim() && !!((localStorage.getItem(BASE_URL_KEY) || baseUrl).trim());
 
   const productFromForm = (): Product => ({
     id: form.id,
@@ -278,29 +310,37 @@ export default function Admin() {
 
   const generateQR = () => {
     const url = getPreviewUrl();
-    if (!url) { showToast("⚠ Isi ID Produk terlebih dahulu"); return; }
+    if (!url) {
+      showToast("Isi ID Produk dan Base URL terlebih dahulu");
+      return;
+    }
     setGeneratedUrl(url);
     setQrVisible(true);
-    showToast("QR Code berhasil dibuat! ✓");
+    setActiveTab("qr");
+    showToast("QR Code berhasil dibuat");
   };
 
   const saveProductAndGenerateQR = async () => {
-    if (!canGenerate) { showToast("⚠ Isi ID Produk dan Base URL terlebih dahulu"); return; }
+    if (!form.id.trim() || !baseUrl.trim()) {
+      showToast("Isi ID Produk dan Base URL terlebih dahulu");
+      return;
+    }
     if (!form.nama.trim() || !form.tier.trim() || !form.harga.trim()) {
-      showToast("⚠ Lengkapi nama produk, tier, dan harga");
+      showToast("Lengkapi nama produk, tier, dan harga");
       return;
     }
 
     setSavingProduct(true);
     try {
-      if (editingId) {
-        await updateProduct(editingId, productFromForm());
-      } else {
-        await createProduct(productFromForm());
-      }
-      generateQR();
+      if (editingId) await updateProduct(editingId, productFromForm());
+      else await createProduct(productFromForm());
       await loadProducts();
-      showToast(editingId ? "Produk diperbarui dan QR siap diprint! ✓" : "Produk tersimpan dan QR siap diprint! ✓");
+      const url = getPreviewUrl();
+      if (url) {
+        setGeneratedUrl(url);
+        setQrVisible(true);
+      }
+      showToast(editingId ? "Produk diperbarui" : "Produk tersimpan");
     } catch (error) {
       showToast(error instanceof Error ? error.message : "Gagal menyimpan produk");
     } finally {
@@ -318,9 +358,9 @@ export default function Admin() {
   const editProduct = (product: Product) => {
     setForm(productToForm(product));
     setEditingId(product.id);
+    setActiveTab("produk");
     setQrVisible(false);
     setGeneratedUrl("");
-    window.scrollTo({ top: 0, behavior: "smooth" });
     showToast(`Mode edit: ${product.id}`);
   };
 
@@ -345,7 +385,7 @@ export default function Admin() {
       dari: order.sender_name || order.customer_name,
       pesan: order.personal_message || order.custom_request,
     }));
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    setActiveTab("produk");
     showToast("Data Memory Vault dari pre-order sudah dimasukkan");
   };
 
@@ -368,18 +408,24 @@ export default function Admin() {
 
   const copyUrl = () => {
     if (!generatedUrl) return;
-    navigator.clipboard.writeText(generatedUrl).then(() => showToast("URL disalin ke clipboard ✓"));
+    navigator.clipboard.writeText(generatedUrl).then(() => showToast("URL disalin ke clipboard"));
   };
 
   const downloadQR = () => {
     const canvas = qrRef.current?.querySelector("canvas");
-    if (!canvas) { showToast("Gagal download — canvas tidak tersedia"); return; }
+    if (!canvas) {
+      showToast("Gagal download, canvas tidak tersedia");
+      return;
+    }
     const printCanvas = document.createElement("canvas");
-    printCanvas.width = 300; printCanvas.height = 340;
+    printCanvas.width = 300;
+    printCanvas.height = 340;
     const ctx = printCanvas.getContext("2d")!;
     ctx.fillStyle = "#faf7f2";
-    if (ctx.roundRect) { ctx.roundRect(0, 0, 300, 340, 16); ctx.fill(); }
-    else { ctx.fillRect(0, 0, 300, 340); }
+    if (ctx.roundRect) {
+      ctx.roundRect(0, 0, 300, 340, 16);
+      ctx.fill();
+    } else ctx.fillRect(0, 0, 300, 340);
     ctx.drawImage(canvas, 50, 30, 200, 200);
     ctx.fillStyle = "#2d2820";
     ctx.font = "bold 16px serif";
@@ -390,7 +436,7 @@ export default function Admin() {
     ctx.fillText("Memory Vault", 150, 274);
     ctx.fillStyle = "#7a6e65";
     ctx.font = "10px monospace";
-    ctx.fillText("#" + (form.id || "—"), 150, 294);
+    ctx.fillText("#" + (form.id || "-"), 150, 294);
     ctx.fillStyle = "#c8dbc5";
     ctx.font = "9px sans-serif";
     ctx.fillText("Scan untuk info produk & pesan personal", 150, 316);
@@ -398,14 +444,21 @@ export default function Admin() {
     link.download = `floramory-qr-${form.id || "produk"}.png`;
     link.href = printCanvas.toDataURL("image/png");
     link.click();
-    showToast("QR Code berhasil didownload ✓");
+    showToast("QR Code berhasil didownload");
   };
 
-  if (!authed) return <LoginGate onLogin={() => setAuthed(true)} />;
-
-  const previewUrl = getPreviewUrl();
-  const activeProducts = managedProducts.filter(p => (p.status || "active") === "active");
-  const archivedProducts = managedProducts.filter(p => p.status === "archived");
+  const activeProducts = useMemo(
+    () => managedProducts.filter(p => (p.status || "active") === "active"),
+    [managedProducts]
+  );
+  const archivedProducts = useMemo(
+    () => managedProducts.filter(p => p.status === "archived"),
+    [managedProducts]
+  );
+  const newOrders = useMemo(
+    () => preOrders.filter(order => (order.status || "new") === "new"),
+    [preOrders]
+  );
   const search = productSearch.trim().toLowerCase();
   const filteredProducts = activeProducts.filter(p =>
     !search ||
@@ -413,365 +466,386 @@ export default function Admin() {
     p.nama_produk.toLowerCase().includes(search) ||
     p.tier.toLowerCase().includes(search)
   );
-  const newOrders = preOrders.filter(order => (order.status || "new") === "new");
+  const recentProducts = activeProducts.slice(0, 5);
+  const tierCounts = TIER_OPTIONS.map(option => ({
+    ...option,
+    count: activeProducts.filter(product => product.tier === option.value).length,
+  }));
+  const previewUrl = getPreviewUrl();
 
-  return (
-    <div style={{ background: "#f0ede8", minHeight: "100vh" }}>
-      <nav className="admin-nav">
-        <div className="nav-logo">Flora<span>mory</span>{" "}
-          <span style={{ fontSize: "0.7rem", opacity: 0.5, fontFamily: "'DM Sans'", fontWeight: 300, marginLeft: 6 }}>Admin Panel</span>
+  const tabs: { id: AdminTab; label: string; icon: ComponentType<{ size?: number }> }[] = [
+    { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
+    { id: "produk", label: "Produk", icon: Box },
+    { id: "qr", label: "Generator QR", icon: QrCode },
+    { id: "pesanan", label: "Pesanan", icon: ClipboardList },
+    { id: "pengaturan", label: "Pengaturan", icon: Settings },
+  ];
+
+  if (!authed) return <LoginGate onLogin={() => setAuthed(true)} />;
+
+  const renderProductForm = () => (
+    <div className="admin-panel-card">
+      <div className="admin-panel-head">
+        <div>
+          <h2>{editingId ? "Edit Produk" : "Tambah Produk"}</h2>
+          <p>Lengkapi data katalog, Memory Vault, dan foto sebelum membuat QR.</p>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-          <div className="admin-nav-right">QR Generator</div>
-          <button onClick={logout} style={{
-            background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)",
-            color: "rgba(255,255,255,0.5)", borderRadius: "20px", padding: "5px 14px",
-            fontSize: "0.72rem", cursor: "pointer", fontFamily: "'DM Sans', sans-serif",
-            letterSpacing: "0.05em", textTransform: "uppercase"
-          }}>Keluar</button>
+        {editingId && <span className="admin-pill">Edit #{editingId}</span>}
+      </div>
+
+      <div className="admin-form-row">
+        <div className="admin-form-group">
+          <label className="admin-form-label">ID Produk <span className="required-star">*</span></label>
+          <input className="admin-form-input" type="text" placeholder="Contoh: ROSA-001"
+            value={form.id} disabled={Boolean(editingId)} onChange={e => setForm(f => ({ ...f, id: e.target.value }))} />
+          <p className="form-hint">{editingId ? "ID dikunci saat edit agar QR lama tetap valid." : "Kode unik per produk."}</p>
         </div>
-      </nav>
-
-      <div className="admin-body">
-        {/* CONFIG CARD */}
-        <div className="guide-card" style={{ marginBottom: "1.5rem" }}>
-          <div className="guide-header">⚙ Konfigurasi</div>
-          <div className="guide-body">
-            <div className="admin-form-row">
-              <div className="admin-form-group" style={{ marginBottom: 0 }}>
-                <label className="admin-form-label">Base URL website</label>
-                <div className="settings-input-group">
-                  <input className="admin-form-input" type="text" placeholder="https://namadomain.replit.app"
-                    value={baseUrl} onChange={e => setBaseUrl(e.target.value)} />
-                  <button className="btn-save-config" onClick={useAutoUrl} title="Gunakan URL website saat ini">
-                    Auto
-                  </button>
-                  <button className="btn-save-config" onClick={saveConfig}>Simpan</button>
-                </div>
-                <div className={`config-saved${configSaved ? " show" : ""}`}>✓ Tersimpan</div>
-                <p className="form-hint">
-                  Klik <strong>Auto</strong> untuk menggunakan URL website ini secara otomatis, atau isi manual setelah deploy.
-                </p>
-              </div>
-              <div className="admin-form-group" style={{ marginBottom: 0 }}>
-                <label className="admin-form-label">Nomor WhatsApp</label>
-                <div className="settings-input-group">
-                  <input className="admin-form-input" type="text" placeholder="6281234567890"
-                    value={waNum} onChange={e => setWaNum(e.target.value)} />
-                  <button className="btn-save-config" onClick={saveConfig}>Simpan</button>
-                </div>
-                <p className="form-hint">Format: 628xxx (tanpa + atau spasi).</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="admin-grid">
-          {/* LEFT: FORM */}
-          <div>
-            <div className="card">
-              <div className="card-header">
-                <div className="card-num">1</div>
-                <h2>Data produk</h2>
-              </div>
-              <div className="card-body">
-                <div className="admin-form-row">
-                  <div className="admin-form-group">
-                    <label className="admin-form-label">ID Produk <span className="required-star">*</span></label>
-                    <input className="admin-form-input" type="text" placeholder="Contoh: ROSA-001"
-                      value={form.id} disabled={Boolean(editingId)} onChange={e => setForm(f => ({ ...f, id: e.target.value }))} />
-                    <p className="form-hint">{editingId ? "ID dikunci saat edit agar QR lama tetap valid." : "Kode unik per produk. Gunakan format: JENIS-NOMOR"}</p>
-                  </div>
-                  <div className="admin-form-group">
-                    <label className="admin-form-label">Lini Produk <span className="required-star">*</span></label>
-                    <select className="admin-form-select" value={form.tier} onChange={e => setForm(f => ({ ...f, tier: e.target.value }))}>
-                      <option value="">— Pilih tier —</option>
-                      {TIER_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                    </select>
-                  </div>
-                </div>
-                <div className="admin-form-group">
-                  <label className="admin-form-label">Nama Produk <span className="required-star">*</span></label>
-                  <input className="admin-form-input" type="text" placeholder="Contoh: Cincin Mawar Rosa Eternal"
-                    value={form.nama} onChange={e => setForm(f => ({ ...f, nama: e.target.value }))} />
-                </div>
-                <div className="admin-form-row">
-                  <div className="admin-form-group">
-                    <label className="admin-form-label">Harga <span className="required-star">*</span></label>
-                    <input className="admin-form-input" type="text" placeholder="Contoh: Rp 55.000"
-                      value={form.harga} onChange={e => setForm(f => ({ ...f, harga: e.target.value }))} />
-                  </div>
-                  <div className="admin-form-group">
-                    <label className="admin-form-label">Jenis Bunga</label>
-                    <input className="admin-form-input" type="text" placeholder="Contoh: Rosa damascena"
-                      value={form.bunga} onChange={e => setForm(f => ({ ...f, bunga: e.target.value }))} />
-                  </div>
-                </div>
-                <div className="admin-form-group">
-                  <label className="admin-form-label">Deskripsi Produk</label>
-                  <textarea className="admin-form-textarea" placeholder="Ceritakan tentang produk ini..."
-                    value={form.deskripsi} onChange={e => setForm(f => ({ ...f, deskripsi: e.target.value }))} />
-                </div>
-                <div className="admin-form-row">
-                  <div className="admin-form-group">
-                    <label className="admin-form-label">Bahan</label>
-                    <input className="admin-form-input" type="text" placeholder="Contoh: Epoxy resin + stainless steel"
-                      value={form.bahan} onChange={e => setForm(f => ({ ...f, bahan: e.target.value }))} />
-                  </div>
-                  <div className="admin-form-group">
-                    <label className="admin-form-label">Ukuran</label>
-                    <input className="admin-form-input" type="text" placeholder="Contoh: Diameter 17mm"
-                      value={form.ukuran} onChange={e => setForm(f => ({ ...f, ukuran: e.target.value }))} />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="card">
-              <div className="card-header">
-                <div className="card-num">2</div>
-                <h2>Memory Vault — pesan personal</h2>
-              </div>
-              <div className="card-body">
-                <div className="admin-form-row">
-                  <div className="admin-form-group">
-                    <label className="admin-form-label">Nama Pembeli / Penerima</label>
-                    <input className="admin-form-input" type="text" placeholder="Contoh: Nabila Putri"
-                      value={form.namaPembeli} onChange={e => setForm(f => ({ ...f, namaPembeli: e.target.value }))} />
-                  </div>
-                  <div className="admin-form-group">
-                    <label className="admin-form-label">Dari (pengirim)</label>
-                    <input className="admin-form-input" type="text" placeholder="Contoh: Keluarga Putri"
-                      value={form.dari} onChange={e => setForm(f => ({ ...f, dari: e.target.value }))} />
-                  </div>
-                </div>
-                <div className="admin-form-group">
-                  <label className="admin-form-label">Pesan Personal</label>
-                  <textarea className="admin-form-textarea" style={{ minHeight: "100px" }}
-                    placeholder="Tulis pesan yang akan muncul saat penerima scan QR produk ini..."
-                    value={form.pesan} onChange={e => setForm(f => ({ ...f, pesan: e.target.value }))} />
-                  <p className="form-hint">Kosongkan jika tidak ada pesan personal.</p>
-                </div>
-                <div className="admin-form-group">
-                  <label className="admin-form-label">URL Foto Produk</label>
-                  <input className="admin-form-input" type="text" placeholder="https://drive.google.com/uc?id=..."
-                    value={form.fotoProduk} onChange={e => setForm(f => ({ ...f, fotoProduk: e.target.value }))} />
-                  <p className="form-hint">Untuk katalog dan tampilan produk di halaman utama. Simpan di kolom <code>foto_produk</code>.</p>
-                </div>
-                <div className="admin-form-group">
-                  <label className="admin-form-label">URL Foto QR</label>
-                  <input className="admin-form-input" type="text" placeholder="https://drive.google.com/uc?id=..."
-                    value={form.fotoQr} onChange={e => setForm(f => ({ ...f, fotoQr: e.target.value }))} />
-                  <p className="form-hint">Untuk halaman yang terbuka setelah QR discan. Simpan di kolom <code>foto_QR</code>.</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="url-preview">
-              <strong>URL QR Code:</strong><br />
-              {previewUrl
-                ? <strong style={{ color: "var(--sage)" }}>{previewUrl}</strong>
-                : <span>— isi ID Produk untuk melihat URL —</span>}
-            </div>
-
-            <button className="btn-generate" onClick={saveProductAndGenerateQR} disabled={!canGenerate || savingProduct}>
-              {savingProduct ? "Menyimpan Produk..." : editingId ? "Update Produk + Generate QR →" : "Simpan Produk + Generate QR →"}
-            </button>
-            <button className="btn-secondary-admin" onClick={generateQR} disabled={!canGenerate || savingProduct}>
-              Generate QR Saja
-            </button>
-            <button className="btn-reset" onClick={resetForm}>Bersihkan form</button>
-          </div>
-
-          {/* RIGHT: QR + GUIDE */}
-          <div>
-            <div className="card manage-card">
-              <div className="card-header">
-                <div className="card-num">{activeProducts.length}</div>
-                <h2>Kelola produk</h2>
-              </div>
-              <div className="card-body">
-                <div className="manage-toolbar">
-                  <input
-                    className="admin-form-input"
-                    type="search"
-                    placeholder="Cari ID, nama, atau tier"
-                    value={productSearch}
-                    onChange={e => setProductSearch(e.target.value)}
-                  />
-                  <button className="btn-save-config" onClick={loadProducts} disabled={loadingProducts}>
-                    {loadingProducts ? "..." : "Refresh"}
-                  </button>
-                </div>
-
-                {loadingProducts ? (
-                  <div className="manage-empty">Memuat produk...</div>
-                ) : filteredProducts.length === 0 ? (
-                  <div className="manage-empty">
-                    {activeProducts.length === 0 ? "Belum ada produk aktif." : "Produk tidak ditemukan."}
-                  </div>
-                ) : (
-                  <div className="product-admin-list">
-                    {filteredProducts.map(product => {
-                      const productUrl = `${(localStorage.getItem(BASE_URL_KEY) || baseUrl).trim().replace(/\/$/, "")}/produk?id=${product.id}`;
-                      return (
-                        <div className={`product-admin-item${editingId === product.id ? " editing" : ""}`} key={product.id}>
-                          <div className="product-admin-main">
-                            <div className="product-admin-name">{product.nama_produk || product.id}</div>
-                            <div className="product-admin-meta">#{product.id} · {product.tier} · {product.harga || "Tanpa harga"}</div>
-                          </div>
-                          <div className="product-admin-actions">
-                            <button onClick={() => editProduct(product)}>Edit</button>
-                            <a href={productUrl} target="_blank" rel="noopener noreferrer">Cek</a>
-                            <button className="danger" onClick={() => archiveProduct(product)}>Hapus</button>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-
-                <div className="manage-summary">
-                  <span>{activeProducts.length} aktif</span>
-                  <span>{archivedProducts.length} terhapus</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="card manage-card">
-              <div className="card-header">
-                <div className="card-num">{newOrders.length}</div>
-                <h2>Pre-order masuk</h2>
-              </div>
-              <div className="card-body">
-                <div className="manage-toolbar">
-                  <div className="manage-empty" style={{ padding: "8px 10px", textAlign: "left" }}>
-                    Data dari form pemesanan pelanggan
-                  </div>
-                  <button className="btn-save-config" onClick={loadPreOrders} disabled={loadingOrders}>
-                    {loadingOrders ? "..." : "Refresh"}
-                  </button>
-                </div>
-
-                {loadingOrders ? (
-                  <div className="manage-empty">Memuat pre-order...</div>
-                ) : preOrders.length === 0 ? (
-                  <div className="manage-empty">Belum ada pre-order.</div>
-                ) : (
-                  <div className="product-admin-list">
-                    {preOrders.slice(0, 8).map(order => (
-                      <div className={`product-admin-item${(order.status || "new") === "new" ? " editing" : ""}`} key={order.id || `${order.whatsapp}-${order.created_at}`}>
-                        <div className="product-admin-main">
-                          <div className="product-admin-name">{order.customer_name || "Tanpa nama"}</div>
-                          <div className="product-admin-meta">
-                            {order.whatsapp || "Tanpa WA"} · {order.product_name || order.product_id || "Produk belum dipilih"}
-                          </div>
-                          {(order.recipient_name || order.personal_message) && (
-                            <div className="product-admin-note">
-                              Untuk {order.recipient_name || "penerima"}: {order.personal_message || order.custom_request}
-                            </div>
-                          )}
-                        </div>
-                        <div className="product-admin-actions">
-                          <button onClick={() => useOrderMemory(order)}>Pakai</button>
-                          <a href={`https://wa.me/${order.whatsapp}`} target="_blank" rel="noopener noreferrer">WA</a>
-                          <button onClick={() => setOrderStatus(order, (order.status || "new") === "new" ? "contacted" : "new")}>
-                            {(order.status || "new") === "new" ? "Kontak" : "Baru"}
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {qrVisible && (
-              <div className="card" style={{ marginBottom: "1.5rem" }}>
-                <div className="card-header">
-                  <div className="card-num">✓</div>
-                  <h2>QR Code siap diprint</h2>
-                </div>
-                <div className="card-body">
-                  <div className="qr-result-box">
-                    <div ref={qrRef} style={{ display: "inline-block", marginBottom: 12 }}>
-                      <QRCode
-                        value={generatedUrl}
-                        size={200}
-                        fgColor="#2d2820"
-                        bgColor="#faf7f2"
-                        level="M"
-                      />
-                    </div>
-                    <div className="qr-product-name-label">{form.nama || form.id}</div>
-                    <div className="qr-product-id-label">#{form.id}</div>
-                  </div>
-                  <div className="qr-url-box">{generatedUrl}</div>
-                  <div className="qr-actions">
-                    <button className="btn-download" onClick={downloadQR}>⬇ Download PNG</button>
-                    <button className="btn-copy-url" onClick={copyUrl}>⎘ Salin URL</button>
-                  </div>
-                  <p style={{ fontSize: "0.75rem", color: "var(--text-muted)", lineHeight: 1.5, textAlign: "center" }}>
-                    Print QR ini dan tempel sebagai stiker pada produk. Ukuran minimal stiker: 2×2 cm.
-                  </p>
-                </div>
-              </div>
-            )}
-
-            <div className="guide-card">
-              <div className="guide-header">Operasional website</div>
-              <div className="guide-body">
-                {[
-                  { n: 1, t: <>Data utama produk disimpan di <strong>Supabase</strong>. Halaman utama dan QR hanya menampilkan produk dengan status aktif.</> },
-                  { n: 2, t: <>Gunakan tombol <strong>Simpan/Update Produk + Generate QR</strong> agar data produk dan QR selalu memakai ID yang sama.</> },
-                  { n: 3, t: <>Kolom wajib: <code className="step-code">id, nama_produk, tier, harga</code></> },
-                  { n: 4, t: <>Hapus produk dari admin akan mengarsipkan produk, sehingga tidak muncul di publik tetapi masih bisa dicek di Supabase.</> },
-                  { n: 5, t: <>Sebelum cetak QR, klik <strong>Cek</strong> pada daftar produk untuk memastikan halaman detail terbuka dengan benar.</> },
-                ].map(({ n, t }) => (
-                  <div className="guide-step" key={n}>
-                    <div className="step-num">{n}</div>
-                    <div className="step-text">{t}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="guide-card">
-              <div className="guide-header">Struktur data Supabase</div>
-              <div className="guide-body" style={{ padding: 0 }}>
-                <table className="col-table">
-                  <thead>
-                    <tr><th>Kolom</th><th>Keterangan</th><th>Wajib?</th></tr>
-                  </thead>
-                  <tbody>
-                    {[
-                      ["id", "Kode unik produk (ROSA-001)", true],
-                      ["nama_produk", "Nama lengkap produk", true],
-                      ["tier", "lite / signature / home", true],
-                      ["harga", "Contoh: Rp 55.000", true],
-                      ["bunga", "Nama spesies bunga", false],
-                      ["deskripsi", "Deskripsi produk panjang", false],
-                      ["bahan", "Material produk", false],
-                      ["ukuran", "Dimensi produk", false],
-                      ["nama_pembeli", "Nama penerima hadiah", false],
-                      ["dari", "Nama pengirim", false],
-                      ["pesan_personal", "Isi Memory Vault", false],
-                      ["foto_produk", "Link foto untuk katalog/halaman utama", false],
-                      ["foto_QR", "Link foto untuk halaman scan QR", false],
-                    ].map(([col, desc, req]) => (
-                      <tr key={col as string}>
-                        <td>{col as string}</td>
-                        <td>{desc as string}</td>
-                        <td className="required-col">{req ? "✓" : ""}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
+        <div className="admin-form-group">
+          <label className="admin-form-label">Lini Produk <span className="required-star">*</span></label>
+          <select className="admin-form-select" value={form.tier} onChange={e => setForm(f => ({ ...f, tier: e.target.value }))}>
+            <option value="">Pilih tier</option>
+            {TIER_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+          </select>
         </div>
       </div>
+
+      <div className="admin-form-group">
+        <label className="admin-form-label">Nama Produk <span className="required-star">*</span></label>
+        <input className="admin-form-input" type="text" placeholder="Contoh: Cincin Mawar Rosa Eternal"
+          value={form.nama} onChange={e => setForm(f => ({ ...f, nama: e.target.value }))} />
+      </div>
+
+      <div className="admin-form-row">
+        <div className="admin-form-group">
+          <label className="admin-form-label">Harga <span className="required-star">*</span></label>
+          <input className="admin-form-input" type="text" placeholder="Contoh: Rp55.000"
+            value={form.harga} onChange={e => setForm(f => ({ ...f, harga: e.target.value }))} />
+        </div>
+        <div className="admin-form-group">
+          <label className="admin-form-label">Jenis Bunga</label>
+          <input className="admin-form-input" type="text" placeholder="Contoh: Melati"
+            value={form.bunga} onChange={e => setForm(f => ({ ...f, bunga: e.target.value }))} />
+        </div>
+      </div>
+
+      <div className="admin-form-group">
+        <label className="admin-form-label">Deskripsi Produk</label>
+        <textarea className="admin-form-textarea" placeholder="Ceritakan tentang produk ini..."
+          value={form.deskripsi} onChange={e => setForm(f => ({ ...f, deskripsi: e.target.value }))} />
+      </div>
+
+      <div className="admin-form-row">
+        <div className="admin-form-group">
+          <label className="admin-form-label">Bahan</label>
+          <input className="admin-form-input" type="text" placeholder="Epoxy resin + stainless steel"
+            value={form.bahan} onChange={e => setForm(f => ({ ...f, bahan: e.target.value }))} />
+        </div>
+        <div className="admin-form-group">
+          <label className="admin-form-label">Ukuran</label>
+          <input className="admin-form-input" type="text" placeholder="Diameter 17mm"
+            value={form.ukuran} onChange={e => setForm(f => ({ ...f, ukuran: e.target.value }))} />
+        </div>
+      </div>
+
+      <div className="admin-subsection-title">Memory Vault</div>
+      <div className="admin-form-row">
+        <div className="admin-form-group">
+          <label className="admin-form-label">Nama Penerima</label>
+          <input className="admin-form-input" type="text" placeholder="Contoh: Nabila Putri"
+            value={form.namaPembeli} onChange={e => setForm(f => ({ ...f, namaPembeli: e.target.value }))} />
+        </div>
+        <div className="admin-form-group">
+          <label className="admin-form-label">Dari / Pengirim</label>
+          <input className="admin-form-input" type="text" placeholder="Contoh: Keluarga Putri"
+            value={form.dari} onChange={e => setForm(f => ({ ...f, dari: e.target.value }))} />
+        </div>
+      </div>
+      <div className="admin-form-group">
+        <label className="admin-form-label">Pesan Personal</label>
+        <textarea className="admin-form-textarea" placeholder="Pesan yang muncul saat penerima scan QR..."
+          value={form.pesan} onChange={e => setForm(f => ({ ...f, pesan: e.target.value }))} />
+      </div>
+
+      <div className="admin-subsection-title">Foto</div>
+      <div className="admin-form-group">
+        <label className="admin-form-label">URL Foto Produk</label>
+        <input className="admin-form-input" type="text" placeholder="https://..."
+          value={form.fotoProduk} onChange={e => setForm(f => ({ ...f, fotoProduk: e.target.value }))} />
+      </div>
+      <div className="admin-form-group">
+        <label className="admin-form-label">URL Foto QR</label>
+        <input className="admin-form-input" type="text" placeholder="https://..."
+          value={form.fotoQr} onChange={e => setForm(f => ({ ...f, fotoQr: e.target.value }))} />
+      </div>
+
+      <div className="admin-form-actions">
+        <button className="btn-generate" onClick={saveProductAndGenerateQR} disabled={savingProduct}>
+          {savingProduct ? "Menyimpan..." : editingId ? "Update Produk" : "Simpan Produk"}
+        </button>
+        <button className="btn-secondary-admin" onClick={generateQR}>Generate QR</button>
+        <button className="btn-reset" onClick={resetForm}>Bersihkan</button>
+      </div>
+    </div>
+  );
+
+  const renderProductList = () => (
+    <div className="admin-panel-card">
+      <div className="admin-panel-head">
+        <div>
+          <h2>Daftar Produk</h2>
+          <p>{activeProducts.length} aktif, {archivedProducts.length} terarsip.</p>
+        </div>
+        <button className="admin-outline-btn" onClick={loadProducts} disabled={loadingProducts}>
+          <RefreshCw size={16} /> Refresh
+        </button>
+      </div>
+      <input
+        className="admin-form-input"
+        type="search"
+        placeholder="Cari ID, nama, atau tier"
+        value={productSearch}
+        onChange={e => setProductSearch(e.target.value)}
+      />
+      <div className="admin-list">
+        {loadingProducts ? (
+          <div className="manage-empty">Memuat produk...</div>
+        ) : filteredProducts.length === 0 ? (
+          <div className="manage-empty">Belum ada produk aktif.</div>
+        ) : filteredProducts.map(product => {
+          const productUrl = `${(localStorage.getItem(BASE_URL_KEY) || baseUrl).trim().replace(/\/$/, "")}/produk?id=${product.id}`;
+          return (
+            <div className={`admin-list-item${editingId === product.id ? " active" : ""}`} key={product.id}>
+              <div>
+                <strong>{product.nama_produk || product.id}</strong>
+                <span>#{product.id} / {product.tier} / {product.harga || "Tanpa harga"}</span>
+              </div>
+              <div className="admin-list-actions">
+                <button onClick={() => editProduct(product)}>Edit</button>
+                <a href={productUrl} target="_blank" rel="noopener noreferrer">Cek</a>
+                <button className="danger" onClick={() => archiveProduct(product)}>Hapus</button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+
+  const renderOrders = () => (
+    <div className="admin-panel-card">
+      <div className="admin-panel-head">
+        <div>
+          <h2>Pesanan Pre-order</h2>
+          <p>{newOrders.length} pesanan baru dari form pelanggan.</p>
+        </div>
+        <button className="admin-outline-btn" onClick={loadPreOrders} disabled={loadingOrders}>
+          <RefreshCw size={16} /> Refresh
+        </button>
+      </div>
+      <div className="admin-list">
+        {loadingOrders ? (
+          <div className="manage-empty">Memuat pre-order...</div>
+        ) : preOrders.length === 0 ? (
+          <div className="manage-empty">Belum ada pre-order.</div>
+        ) : preOrders.map(order => (
+          <div className={`admin-list-item${(order.status || "new") === "new" ? " active" : ""}`} key={order.id || `${order.whatsapp}-${order.created_at}`}>
+            <div>
+              <strong>{order.customer_name || "Tanpa nama"}</strong>
+              <span>{order.whatsapp || "Tanpa WA"} / {order.product_name || order.product_id || "Produk belum dipilih"}</span>
+              {(order.recipient_name || order.personal_message || order.custom_request) && (
+                <p className="admin-list-note">
+                  Untuk {order.recipient_name || "penerima"}: {order.personal_message || order.custom_request}
+                </p>
+              )}
+            </div>
+            <div className="admin-list-actions">
+              <button onClick={() => useOrderMemory(order)}>Pakai</button>
+              <a href={`https://wa.me/${order.whatsapp}`} target="_blank" rel="noopener noreferrer">WA</a>
+              <button onClick={() => setOrderStatus(order, (order.status || "new") === "new" ? "contacted" : "new")}>
+                {(order.status || "new") === "new" ? "Kontak" : "Baru"}
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+
+  const renderDashboard = () => (
+    <>
+      <section className="admin-stats-grid">
+        <div className="admin-stat-card"><span>{activeProducts.length}</span><p>Total produk</p></div>
+        {tierCounts.map(tier => (
+          <div className="admin-stat-card" key={tier.value}><span>{tier.count}</span><p>{tier.label}</p></div>
+        ))}
+        <div className="admin-stat-card"><span>{newOrders.length}</span><p>Pesanan baru</p></div>
+      </section>
+      <div className="admin-panel-card">
+        <div className="admin-panel-head">
+          <div>
+            <h2>Produk terbaru</h2>
+            <p>5 entri terakhir dari sumber data.</p>
+          </div>
+        </div>
+        <div className="admin-table-wrap">
+          <table className="admin-table">
+            <thead><tr><th>Nama Produk</th><th>Tier</th><th>Harga</th><th>Bunga</th></tr></thead>
+            <tbody>
+              {recentProducts.length === 0 ? (
+                <tr><td colSpan={4}>Belum ada produk aktif.</td></tr>
+              ) : recentProducts.map(product => (
+                <tr key={product.id}>
+                  <td>{product.nama_produk}</td>
+                  <td>{product.tier}</td>
+                  <td>{product.harga}</td>
+                  <td>{product.bunga || "-"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </>
+  );
+
+  const renderQr = () => (
+    <div className="admin-two-col">
+      <div className="admin-panel-card">
+        <div className="admin-panel-head">
+          <div>
+            <h2>Generator QR</h2>
+            <p>QR memakai ID produk dan Base URL aktif.</p>
+          </div>
+        </div>
+        <div className="url-preview">
+          <strong>URL QR Code:</strong><br />
+          {previewUrl ? <strong>{previewUrl}</strong> : <span>Isi ID produk untuk melihat URL.</span>}
+        </div>
+        <button className="btn-generate" onClick={generateQR}>Generate QR Code</button>
+        <button className="btn-secondary-admin" onClick={() => setActiveTab("produk")}>Edit Data Produk</button>
+      </div>
+      {qrVisible && (
+        <div className="admin-panel-card">
+          <div className="qr-result-box">
+            <div ref={qrRef} style={{ display: "inline-block", marginBottom: 12 }}>
+              <QRCode value={generatedUrl} size={200} fgColor="#2d2820" bgColor="#faf7f2" level="M" />
+            </div>
+            <div className="qr-product-name-label">{form.nama || form.id}</div>
+            <div className="qr-product-id-label">#{form.id}</div>
+          </div>
+          <div className="qr-url-box">{generatedUrl}</div>
+          <div className="qr-actions">
+            <button className="btn-download" onClick={downloadQR}>Download PNG</button>
+            <button className="btn-copy-url" onClick={copyUrl}>Salin URL</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+
+  const renderSettings = () => (
+    <div className="admin-two-col">
+      <div className="admin-panel-card">
+        <div className="admin-panel-head">
+          <div>
+            <h2>Pengaturan Website</h2>
+            <p>Base URL dipakai untuk QR, WhatsApp dipakai di halaman scan.</p>
+          </div>
+          {configSaved && <span className="admin-pill">Tersimpan</span>}
+        </div>
+        <div className="admin-form-group">
+          <label className="admin-form-label">Base URL website</label>
+          <div className="settings-input-group">
+            <input className="admin-form-input" type="text" placeholder="https://floramorystore.vercel.app"
+              value={baseUrl} onChange={e => setBaseUrl(e.target.value)} />
+            <button className="btn-save-config" onClick={useAutoUrl}>Auto</button>
+          </div>
+        </div>
+        <div className="admin-form-group">
+          <label className="admin-form-label">Nomor WhatsApp</label>
+          <input className="admin-form-input" type="text" placeholder="6281234567890"
+            value={waNum} onChange={e => setWaNum(e.target.value)} />
+        </div>
+        <button className="btn-generate" onClick={saveConfig}>Simpan Pengaturan</button>
+      </div>
+      <div className="admin-panel-card">
+        <div className="admin-panel-head">
+          <div>
+            <h2>Catatan Operasional</h2>
+            <p>Checklist singkat sebelum produk dicetak.</p>
+          </div>
+        </div>
+        <div className="admin-check-list">
+          <p>Produk aktif hanya muncul jika status Supabase adalah active.</p>
+          <p>Jangan cetak QR dari URL localhost.</p>
+          <p>Gunakan Supabase Storage untuk foto yang stabil.</p>
+          <p>Setelah mengubah environment Vercel, lakukan redeploy.</p>
+        </div>
+      </div>
+    </div>
+  );
+
+  const titleMap: Record<AdminTab, { title: string; desc: string }> = {
+    dashboard: { title: "Dashboard", desc: "Ringkasan katalog dan pesanan Floramory." },
+    produk: { title: "Produk", desc: "Tambah, edit, dan arsipkan produk katalog." },
+    qr: { title: "Generator QR", desc: "Buat QR Memory Vault dari produk yang sedang dipilih." },
+    pesanan: { title: "Pesanan", desc: "Kelola pre-order dan pakai data Memory Vault pelanggan." },
+    pengaturan: { title: "Pengaturan", desc: "Atur domain QR dan nomor WhatsApp aktif." },
+  };
+
+  const renderContent = () => {
+    if (activeTab === "dashboard") return renderDashboard();
+    if (activeTab === "produk") return <div className="admin-two-col wide-left">{renderProductForm()}{renderProductList()}</div>;
+    if (activeTab === "qr") return renderQr();
+    if (activeTab === "pesanan") return renderOrders();
+    return renderSettings();
+  };
+
+  return (
+    <div className="admin-shell">
+      <aside className="admin-sidebar">
+        <div className="admin-brand">
+          <div className="admin-brand-mark">F</div>
+          <div>
+            <strong>Floramory</strong>
+            <span>Admin Panel</span>
+          </div>
+        </div>
+        <nav className="admin-side-nav">
+          {tabs.map(tab => {
+            const Icon = tab.icon;
+            return (
+              <button
+                key={tab.id}
+                className={activeTab === tab.id ? "active" : ""}
+                onClick={() => setActiveTab(tab.id)}
+              >
+                <Icon size={20} />
+                {tab.label}
+              </button>
+            );
+          })}
+        </nav>
+        <div className="admin-sidebar-footer">
+          <p>Smart Eco-Preserved Artware</p>
+          <span>Sumber data: {hasSupabaseConfig() ? "Supabase" : "Fallback lokal"}</span>
+          <button onClick={logout}><LogOut size={16} /> Keluar</button>
+        </div>
+      </aside>
+
+      <main className="admin-main">
+        <header className="admin-main-header">
+          <div>
+            <h1>{titleMap[activeTab].title}</h1>
+            <p>{titleMap[activeTab].desc}</p>
+          </div>
+          <button className="admin-outline-btn" onClick={reloadAll} disabled={loadingProducts || loadingOrders}>
+            <RefreshCw size={16} />
+            Muat ulang data
+          </button>
+        </header>
+        {renderContent()}
+      </main>
 
       <div className={`admin-toast${toastVisible ? " show" : ""}`}>{toastMsg}</div>
     </div>
