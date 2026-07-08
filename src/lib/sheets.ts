@@ -20,6 +20,7 @@ export interface Product {
   foto_produk: string;
   foto_qr: string;
   foto_url: string;
+  status?: string;
 }
 
 function parseCSV(text: string): string[][] {
@@ -144,6 +145,26 @@ function normalizeProduct(obj: Partial<Product> & Record<string, unknown>): Prod
     foto_produk: String(obj.foto_produk || obj.foto_url || "").trim(),
     foto_qr: String(obj.foto_qr || obj.foto_QR || obj.foto_url || "").trim(),
     foto_url: String(obj.foto_url || obj.foto_produk || "").trim(),
+    status: String(obj.status || "active").trim(),
+  };
+}
+
+function productPayload(product: Product, status = product.status || "active") {
+  return {
+    id: product.id.trim(),
+    nama_produk: product.nama_produk.trim(),
+    tier: product.tier.trim().toLowerCase(),
+    harga: product.harga.trim(),
+    bunga: product.bunga.trim(),
+    deskripsi: product.deskripsi.trim(),
+    bahan: product.bahan.trim(),
+    ukuran: product.ukuran.trim(),
+    nama_pembeli: product.nama_pembeli.trim(),
+    dari: product.dari.trim(),
+    pesan_personal: product.pesan_personal.trim(),
+    foto_produk: product.foto_produk.trim(),
+    foto_qr: product.foto_qr.trim(),
+    status,
   };
 }
 
@@ -220,6 +241,28 @@ export async function fetchAllProducts(): Promise<Product[]> {
   return cachedProducts;
 }
 
+export async function fetchManagedProducts(): Promise<Product[]> {
+  if (!isSupabaseConfigured()) {
+    return fetchAllProducts();
+  }
+
+  const session = getStoredSession();
+  if (!session?.access_token) {
+    throw new Error("Login admin Supabase diperlukan untuk melihat daftar produk");
+  }
+
+  const res = await fetch(
+    `${SUPABASE_URL}/rest/v1/products?select=*&order=created_at.desc`,
+    { headers: supabaseHeaders(session.access_token) }
+  );
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || !Array.isArray(data)) {
+    throw new Error(data.message || data.details || "Gagal memuat daftar produk");
+  }
+
+  return data.map(normalizeProduct).filter((p: Product) => p.id);
+}
+
 export async function fetchProductById(id: string): Promise<Product | null> {
   const all = await fetchAllProducts();
   return (
@@ -234,18 +277,13 @@ export async function createProduct(product: Product): Promise<Product> {
       throw new Error("Login admin Supabase diperlukan untuk menyimpan produk");
     }
 
-    const payload = {
-      ...product,
-      foto_qr: product.foto_qr,
-      status: "active",
-    };
     const res = await fetch(`${SUPABASE_URL}/rest/v1/products`, {
       method: "POST",
       headers: {
         ...supabaseHeaders(session.access_token),
         Prefer: "return=representation",
       },
-      body: JSON.stringify(payload),
+      body: JSON.stringify(productPayload(product, "active")),
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
@@ -266,6 +304,61 @@ export async function createProduct(product: Product): Promise<Product> {
   }
   cachedProducts = null;
   return normalizeProduct(data.product || product);
+}
+
+export async function updateProduct(id: string, product: Product): Promise<Product> {
+  if (!isSupabaseConfigured()) {
+    throw new Error("Update produk hanya tersedia saat Supabase aktif");
+  }
+
+  const session = getStoredSession();
+  if (!session?.access_token) {
+    throw new Error("Login admin Supabase diperlukan untuk mengubah produk");
+  }
+
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/products?id=eq.${encodeURIComponent(id)}`, {
+    method: "PATCH",
+    headers: {
+      ...supabaseHeaders(session.access_token),
+      Prefer: "return=representation",
+    },
+    body: JSON.stringify({
+      ...productPayload(product, product.status || "active"),
+      id,
+      updated_at: new Date().toISOString(),
+    }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(data.message || data.details || "Gagal mengubah produk");
+  }
+  cachedProducts = null;
+  return normalizeProduct(Array.isArray(data) ? data[0] : data);
+}
+
+export async function deleteProduct(id: string): Promise<void> {
+  if (!isSupabaseConfigured()) {
+    throw new Error("Hapus produk hanya tersedia saat Supabase aktif");
+  }
+
+  const session = getStoredSession();
+  if (!session?.access_token) {
+    throw new Error("Login admin Supabase diperlukan untuk menghapus produk");
+  }
+
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/products?id=eq.${encodeURIComponent(id)}`, {
+    method: "PATCH",
+    headers: supabaseHeaders(session.access_token),
+    body: JSON.stringify({
+      status: "archived",
+      updated_at: new Date().toISOString(),
+    }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(data.message || data.details || "Gagal menghapus produk");
+  }
+  cachedProducts = null;
 }
 
 export function tierLabel(tier: string): string {

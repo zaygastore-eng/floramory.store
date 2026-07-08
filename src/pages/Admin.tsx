@@ -1,6 +1,16 @@
 import { useState, useEffect, useRef } from "react";
 import { QRCodeCanvas as QRCode } from "qrcode.react";
-import { createProduct, hasSupabaseConfig, hasSupabaseSession, signInAdmin, signOutAdmin, type Product } from "@/lib/sheets";
+import {
+  createProduct,
+  deleteProduct,
+  fetchManagedProducts,
+  hasSupabaseConfig,
+  hasSupabaseSession,
+  signInAdmin,
+  signOutAdmin,
+  updateProduct,
+  type Product,
+} from "@/lib/sheets";
 
 const BASE_URL_KEY = "fm_base_url";
 const WA_KEY = "fm_wa";
@@ -20,6 +30,24 @@ interface FormState {
 }
 
 const EMPTY: FormState = { id: "", tier: "", nama: "", harga: "", bunga: "", deskripsi: "", bahan: "", ukuran: "", namaPembeli: "", dari: "", pesan: "", fotoProduk: "", fotoQr: "" };
+
+function productToForm(product: Product): FormState {
+  return {
+    id: product.id,
+    tier: product.tier,
+    nama: product.nama_produk,
+    harga: product.harga,
+    bunga: product.bunga,
+    deskripsi: product.deskripsi,
+    bahan: product.bahan,
+    ukuran: product.ukuran,
+    namaPembeli: product.nama_pembeli,
+    dari: product.dari,
+    pesan: product.pesan_personal,
+    fotoProduk: product.foto_produk || product.foto_url,
+    fotoQr: product.foto_qr,
+  };
+}
 
 function getAutoBaseUrl(): string {
   const { protocol, host, pathname } = window.location;
@@ -125,6 +153,10 @@ export default function Admin() {
   const [generatedUrl, setGeneratedUrl] = useState("");
   const [qrVisible, setQrVisible] = useState(false);
   const [savingProduct, setSavingProduct] = useState(false);
+  const [managedProducts, setManagedProducts] = useState<Product[]>([]);
+  const [loadingProducts, setLoadingProducts] = useState(false);
+  const [editingId, setEditingId] = useState("");
+  const [productSearch, setProductSearch] = useState("");
   const [toastMsg, setToastMsg] = useState("");
   const [toastVisible, setToastVisible] = useState(false);
   const qrRef = useRef<HTMLDivElement>(null);
@@ -153,6 +185,22 @@ export default function Admin() {
     setToastVisible(true);
     setTimeout(() => setToastVisible(false), 2500);
   };
+
+  const loadProducts = async () => {
+    setLoadingProducts(true);
+    try {
+      const list = await fetchManagedProducts();
+      setManagedProducts(list);
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "Gagal memuat produk");
+    } finally {
+      setLoadingProducts(false);
+    }
+  };
+
+  useEffect(() => {
+    if (authed) void loadProducts();
+  }, [authed]);
 
   const saveConfig = () => {
     const clean = baseUrl.trim().replace(/\/$/, "");
@@ -212,9 +260,14 @@ export default function Admin() {
 
     setSavingProduct(true);
     try {
-      await createProduct(productFromForm());
+      if (editingId) {
+        await updateProduct(editingId, productFromForm());
+      } else {
+        await createProduct(productFromForm());
+      }
       generateQR();
-      showToast("Produk tersimpan dan QR siap diprint! ✓");
+      await loadProducts();
+      showToast(editingId ? "Produk diperbarui dan QR siap diprint! ✓" : "Produk tersimpan dan QR siap diprint! ✓");
     } catch (error) {
       showToast(error instanceof Error ? error.message : "Gagal menyimpan produk");
     } finally {
@@ -224,8 +277,32 @@ export default function Admin() {
 
   const resetForm = () => {
     setForm(EMPTY);
+    setEditingId("");
     setQrVisible(false);
     setGeneratedUrl("");
+  };
+
+  const editProduct = (product: Product) => {
+    setForm(productToForm(product));
+    setEditingId(product.id);
+    setQrVisible(false);
+    setGeneratedUrl("");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    showToast(`Mode edit: ${product.id}`);
+  };
+
+  const archiveProduct = async (product: Product) => {
+    const ok = window.confirm(`Hapus produk ${product.id}? Produk akan disembunyikan dari halaman utama dan QR.`);
+    if (!ok) return;
+
+    try {
+      await deleteProduct(product.id);
+      if (editingId === product.id) resetForm();
+      await loadProducts();
+      showToast("Produk berhasil dihapus dari tampilan publik");
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "Gagal menghapus produk");
+    }
   };
 
   const logout = () => {
@@ -272,6 +349,15 @@ export default function Admin() {
   if (!authed) return <LoginGate onLogin={() => setAuthed(true)} />;
 
   const previewUrl = getPreviewUrl();
+  const activeProducts = managedProducts.filter(p => (p.status || "active") === "active");
+  const archivedProducts = managedProducts.filter(p => p.status === "archived");
+  const search = productSearch.trim().toLowerCase();
+  const filteredProducts = activeProducts.filter(p =>
+    !search ||
+    p.id.toLowerCase().includes(search) ||
+    p.nama_produk.toLowerCase().includes(search) ||
+    p.tier.toLowerCase().includes(search)
+  );
 
   return (
     <div style={{ background: "#f0ede8", minHeight: "100vh" }}>
@@ -337,8 +423,8 @@ export default function Admin() {
                   <div className="admin-form-group">
                     <label className="admin-form-label">ID Produk <span className="required-star">*</span></label>
                     <input className="admin-form-input" type="text" placeholder="Contoh: ROSA-001"
-                      value={form.id} onChange={e => setForm(f => ({ ...f, id: e.target.value }))} />
-                    <p className="form-hint">Kode unik per produk. Gunakan format: JENIS-NOMOR</p>
+                      value={form.id} disabled={Boolean(editingId)} onChange={e => setForm(f => ({ ...f, id: e.target.value }))} />
+                    <p className="form-hint">{editingId ? "ID dikunci saat edit agar QR lama tetap valid." : "Kode unik per produk. Gunakan format: JENIS-NOMOR"}</p>
                   </div>
                   <div className="admin-form-group">
                     <label className="admin-form-label">Lini Produk <span className="required-star">*</span></label>
@@ -433,7 +519,7 @@ export default function Admin() {
             </div>
 
             <button className="btn-generate" onClick={saveProductAndGenerateQR} disabled={!canGenerate || savingProduct}>
-              {savingProduct ? "Menyimpan Produk..." : "Simpan Produk + Generate QR →"}
+              {savingProduct ? "Menyimpan Produk..." : editingId ? "Update Produk + Generate QR →" : "Simpan Produk + Generate QR →"}
             </button>
             <button className="btn-secondary-admin" onClick={generateQR} disabled={!canGenerate || savingProduct}>
               Generate QR Saja
@@ -443,6 +529,59 @@ export default function Admin() {
 
           {/* RIGHT: QR + GUIDE */}
           <div>
+            <div className="card manage-card">
+              <div className="card-header">
+                <div className="card-num">{activeProducts.length}</div>
+                <h2>Kelola produk</h2>
+              </div>
+              <div className="card-body">
+                <div className="manage-toolbar">
+                  <input
+                    className="admin-form-input"
+                    type="search"
+                    placeholder="Cari ID, nama, atau tier"
+                    value={productSearch}
+                    onChange={e => setProductSearch(e.target.value)}
+                  />
+                  <button className="btn-save-config" onClick={loadProducts} disabled={loadingProducts}>
+                    {loadingProducts ? "..." : "Refresh"}
+                  </button>
+                </div>
+
+                {loadingProducts ? (
+                  <div className="manage-empty">Memuat produk...</div>
+                ) : filteredProducts.length === 0 ? (
+                  <div className="manage-empty">
+                    {activeProducts.length === 0 ? "Belum ada produk aktif." : "Produk tidak ditemukan."}
+                  </div>
+                ) : (
+                  <div className="product-admin-list">
+                    {filteredProducts.map(product => {
+                      const productUrl = `${(localStorage.getItem(BASE_URL_KEY) || baseUrl).trim().replace(/\/$/, "")}/produk?id=${product.id}`;
+                      return (
+                        <div className={`product-admin-item${editingId === product.id ? " editing" : ""}`} key={product.id}>
+                          <div className="product-admin-main">
+                            <div className="product-admin-name">{product.nama_produk || product.id}</div>
+                            <div className="product-admin-meta">#{product.id} · {product.tier} · {product.harga || "Tanpa harga"}</div>
+                          </div>
+                          <div className="product-admin-actions">
+                            <button onClick={() => editProduct(product)}>Edit</button>
+                            <a href={productUrl} target="_blank" rel="noopener noreferrer">Cek</a>
+                            <button className="danger" onClick={() => archiveProduct(product)}>Hapus</button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                <div className="manage-summary">
+                  <span>{activeProducts.length} aktif</span>
+                  <span>{archivedProducts.length} terhapus</span>
+                </div>
+              </div>
+            </div>
+
             {qrVisible && (
               <div className="card" style={{ marginBottom: "1.5rem" }}>
                 <div className="card-header">
@@ -476,14 +615,14 @@ export default function Admin() {
             )}
 
             <div className="guide-card">
-              <div className="guide-header">📊 Cara pakai Google Sheets</div>
+              <div className="guide-header">Operasional website</div>
               <div className="guide-body">
                 {[
-                  { n: 1, t: <>Data dibaca lewat backend Floramory dan fallback ke Google Sheets CSV jika backend tidak tersedia.</> },
-                  { n: 2, t: <>Tambah produk dari admin akan dikirim ke backend. Aktifkan <strong>SHEETS_WRITE_URL</strong> agar backend bisa menulis ke Google Sheets.</> },
+                  { n: 1, t: <>Data utama produk disimpan di <strong>Supabase</strong>. Halaman utama dan QR hanya menampilkan produk dengan status aktif.</> },
+                  { n: 2, t: <>Gunakan tombol <strong>Simpan/Update Produk + Generate QR</strong> agar data produk dan QR selalu memakai ID yang sama.</> },
                   { n: 3, t: <>Kolom wajib: <code className="step-code">id, nama_produk, tier, harga</code></> },
-                  { n: 4, t: <>Hapus produk: hapus baris di Sheets. Tidak perlu update kode.</> },
-                  { n: 5, t: <>Generate QR di sini → print stiker → tempel ke produk. URL QR otomatis memakai ID produk yang sama.</> },
+                  { n: 4, t: <>Hapus produk dari admin akan mengarsipkan produk, sehingga tidak muncul di publik tetapi masih bisa dicek di Supabase.</> },
+                  { n: 5, t: <>Sebelum cetak QR, klik <strong>Cek</strong> pada daftar produk untuk memastikan halaman detail terbuka dengan benar.</> },
                 ].map(({ n, t }) => (
                   <div className="guide-step" key={n}>
                     <div className="step-num">{n}</div>
@@ -494,7 +633,7 @@ export default function Admin() {
             </div>
 
             <div className="guide-card">
-              <div className="guide-header">📋 Struktur kolom Google Sheets</div>
+              <div className="guide-header">Struktur data Supabase</div>
               <div className="guide-body" style={{ padding: 0 }}>
                 <table className="col-table">
                   <thead>
