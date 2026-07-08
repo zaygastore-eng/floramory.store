@@ -19,7 +19,7 @@ SET tier = CASE
   WHEN lower(trim(coalesce(tier, ''))) = 'home' THEN 'masterpiece'
   WHEN lower(trim(coalesce(tier, ''))) = 'signature' THEN 'signature'
   WHEN tier IS NULL OR trim(coalesce(tier, '')) = '' THEN 'classic'
-  ELSE lower(trim(coalesce(tier, '')))
+  ELSE 'classic'
 END
 WHERE lower(trim(coalesce(tier, ''))) NOT IN ('classic', 'signature', 'masterpiece');
 
