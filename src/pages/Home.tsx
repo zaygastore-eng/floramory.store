@@ -250,9 +250,9 @@ export default function Home() {
         <div className="vault-inner">
           <div>
             <div className="vault-eyebrow">
-              <span style={{ display: "block", width: 24, height: 1, background: "rgba(200,219,197,0.5)" }} />
+              <span style={{ display: "block", width: 24, height: 1, background: "rgba(183,201,223,0.55)" }} />
               Fitur Utama
-              <span style={{ display: "block", width: 24, height: 1, background: "rgba(200,219,197,0.5)" }} />
+              <span style={{ display: "block", width: 24, height: 1, background: "rgba(183,201,223,0.55)" }} />
             </div>
             <h2 className="vault-title">Smart-Scan<br /><em>Memory Vault</em></h2>
             <p className="vault-desc">Produk fisik yang hidup — kenangan digital yang tak pernah pudar. Setiap kali Anda atau penerima hadiah memindai QR-nya, momen berharga itu hadir kembali.</p>
@@ -426,7 +426,7 @@ export default function Home() {
           <li><a href="#memory-vault">Memory Vault</a></li>
           <li><a href="#tentang">Tentang</a></li>
           <li><a href="#pesan">Pesan</a></li>
-          <li><a href={`${BASE_PATH}/admin`} style={{ color: "rgba(200,219,197,0.4)" }}>Admin</a></li>
+          <li><a href={`${BASE_PATH}/admin`} style={{ color: "rgba(183,201,223,0.55)" }}>Admin</a></li>
         </ul>
         <div className="footer-divider" />
         <div className="footer-copy">© 2026 Floramory · Semua hak dilindungi</div>

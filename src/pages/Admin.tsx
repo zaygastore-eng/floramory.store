@@ -541,23 +541,23 @@ export default function Admin() {
     printCanvas.width = 300;
     printCanvas.height = 340;
     const ctx = printCanvas.getContext("2d")!;
-    ctx.fillStyle = "#faf7f2";
+    ctx.fillStyle = "#fafbff";
     if (ctx.roundRect) {
       ctx.roundRect(0, 0, 300, 340, 16);
       ctx.fill();
     } else ctx.fillRect(0, 0, 300, 340);
     ctx.drawImage(canvas, 50, 30, 200, 200);
-    ctx.fillStyle = "#2d2820";
+    ctx.fillStyle = "#2f334f";
     ctx.font = "bold 16px serif";
     ctx.textAlign = "center";
     ctx.fillText("Floramory", 150, 256);
-    ctx.fillStyle = "#7a9b76";
+    ctx.fillStyle = "#697099";
     ctx.font = "11px sans-serif";
     ctx.fillText("Memory Vault", 150, 274);
-    ctx.fillStyle = "#7a6e65";
+    ctx.fillStyle = "#697099";
     ctx.font = "10px monospace";
     ctx.fillText("#" + (form.id || "-"), 150, 294);
-    ctx.fillStyle = "#c8dbc5";
+    ctx.fillStyle = "#b7c9df";
     ctx.font = "9px sans-serif";
     ctx.fillText("Scan untuk info produk & pesan personal", 150, 316);
     const link = document.createElement("a");
@@ -718,7 +718,7 @@ export default function Admin() {
       {qrVisible && (
         <div className="admin-inline-qr">
           <div ref={qrRef}>
-            <QRCode value={generatedUrl} size={168} fgColor="#2d2820" bgColor="#faf7f2" level="M" />
+            <QRCode value={generatedUrl} size={168} fgColor="#2f334f" bgColor="#fafbff" level="M" />
           </div>
           <div>
             <strong>{form.nama || form.id}</strong>

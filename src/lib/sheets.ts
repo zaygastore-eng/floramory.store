@@ -645,11 +645,11 @@ export function tierEmoji(tier: string): string {
 
 export function tierBg(tier: string): string {
   const bgs: Record<string, string> = {
-    classic: "#eef4ed",
-    signature: "#fdf0ee",
-    masterpiece: "#fef7e6",
+    classic: "#edf3fb",
+    signature: "#f4f7fc",
+    masterpiece: "#fff5c7",
   };
-  return bgs[normalizeTierValue(tier)] || "#eef4ed";
+  return bgs[normalizeTierValue(tier)] || "#edf3fb";
 }
 
 export function tierBadgeClass(tier: string): string {
