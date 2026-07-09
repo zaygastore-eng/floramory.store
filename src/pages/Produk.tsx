@@ -105,12 +105,11 @@ export default function Produk() {
               aria-expanded={isVaultOpen}
               onClick={() => setIsVaultOpen((open) => !open)}
             >
-              <div className="vault-icon">FM</div>
+              <div className="vault-icon">💌</div>
               <div className="vault-toggle-copy">
                 <div className="vault-title-text">Memory Vault</div>
-                <div className="vault-subtitle">Untuk {product.nama_pembeli || "Penerima Hadiah"}</div>
+                <div className="vault-subtitle">Pesan personal untuk pemilik produk ini</div>
               </div>
-              <span className="vault-open-label">{isVaultOpen ? "Tutup" : "Buka"}</span>
             </button>
 
             {isVaultOpen && (
