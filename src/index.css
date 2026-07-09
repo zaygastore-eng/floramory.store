@@ -623,10 +623,28 @@ body {
   border-radius: 0;
   box-shadow: none;
   margin: 0;
-  padding: 1.1rem 1.15rem 1rem;
+  padding: 0;
   background: transparent;
 }
 .greeting-card .memory-vault::before { display: none; }
+.vault-toggle {
+  width: 100%;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  background: transparent;
+  padding: 1rem 1.15rem;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  text-align: left;
+  font-family: 'DM Sans', sans-serif;
+}
+.vault-toggle:focus-visible {
+  outline: 2px solid var(--sage-light);
+  outline-offset: -2px;
+}
 .greeting-card .vault-icon {
   width: 34px;
   height: 34px;
@@ -636,11 +654,25 @@ body {
   letter-spacing: 0.08em;
   color: var(--sage);
 }
+.vault-toggle-copy { min-width: 0; }
 .greeting-card .vault-title-text { font-size: 0.92rem; }
 .greeting-card .vault-subtitle { font-size: 0.76rem; }
+.vault-open-label {
+  border: 1px solid var(--sage-light);
+  border-radius: 999px;
+  color: var(--sage);
+  background: var(--sage-pale);
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  line-height: 1;
+  padding: 7px 10px;
+  text-transform: uppercase;
+}
 .greeting-card .vault-message {
   font-size: clamp(1rem, 4.4vw, 1.22rem);
   line-height: 1.55;
+  margin: 1rem 1.15rem 1.15rem;
   padding: 0.9rem;
   max-height: 220px;
   overflow: auto;
@@ -648,6 +680,10 @@ body {
 .greeting-card .vault-from {
   font-size: 0.76rem;
   margin-top: 10px;
+}
+.greeting-card .no-message {
+  margin: 0;
+  padding: 1rem 1.15rem 1.15rem;
 }
 .greeting-card-footer {
   display: flex;

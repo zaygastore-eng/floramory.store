@@ -10,6 +10,7 @@ export default function Produk() {
   const [toastMsg, setToastMsg] = useState("");
   const [toastVisible, setToastVisible] = useState(false);
   const [waNumber, setWaNumber] = useState(WA_NUMBER);
+  const [isVaultOpen, setIsVaultOpen] = useState(false);
 
   const showToast = (msg: string) => {
     setToastMsg(msg);
@@ -63,6 +64,7 @@ export default function Produk() {
   const heroBg = tierBg(tier);
   const qrImage = product.foto_qr || product.foto_produk || product.foto_url;
   const hasQrImage = qrImage.startsWith("http");
+  const hasPersonalMessage = Boolean(product.pesan_personal && product.pesan_personal.trim());
 
   const waMsg = encodeURIComponent(
     `Halo Floramory! 🌸\n\nSaya tertarik dengan produk:\n*${product.nama_produk}* (${product.id})\nHarga: ${product.harga}\n\nApakah masih tersedia? Saya ingin tanya lebih lanjut.`
@@ -97,20 +99,29 @@ export default function Produk() {
           </div>
 
           <div className="memory-vault">
-            <div className="vault-header">
+            <button
+              className="vault-toggle"
+              type="button"
+              aria-expanded={isVaultOpen}
+              onClick={() => setIsVaultOpen((open) => !open)}
+            >
               <div className="vault-icon">FM</div>
-              <div>
-                <div className="vault-title-text">Kartu Ucapan</div>
+              <div className="vault-toggle-copy">
+                <div className="vault-title-text">Memory Vault</div>
                 <div className="vault-subtitle">Untuk {product.nama_pembeli || "Penerima Hadiah"}</div>
               </div>
-            </div>
-            {product.pesan_personal && product.pesan_personal.trim() ? (
-              <div className="vault-message">
-                "{product.pesan_personal}"
-                <div className="vault-from">Dari {product.dari || "Floramory"}</div>
-              </div>
-            ) : (
-              <p className="no-message">Tidak ada pesan personal untuk produk ini.</p>
+              <span className="vault-open-label">{isVaultOpen ? "Tutup" : "Buka"}</span>
+            </button>
+
+            {isVaultOpen && (
+              hasPersonalMessage ? (
+                <div className="vault-message">
+                  "{product.pesan_personal}"
+                  <div className="vault-from">Dari {product.dari || "Floramory"}</div>
+                </div>
+              ) : (
+                <p className="no-message">Tidak ada pesan personal untuk produk ini.</p>
+              )
             )}
           </div>
 
