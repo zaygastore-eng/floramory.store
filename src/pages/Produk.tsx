@@ -68,12 +68,6 @@ export default function Produk() {
     `Halo Floramory! 🌸\n\nSaya tertarik dengan produk:\n*${product.nama_produk}* (${product.id})\nHarga: ${product.harga}\n\nApakah masih tersedia? Saya ingin tanya lebih lanjut.`
   );
 
-  const chips: [string, string][] = [];
-  if (product.bahan) chips.push(["Bahan", product.bahan]);
-  if (product.ukuran) chips.push(["Ukuran", product.ukuran]);
-  if (product.tier) chips.push(["Lini produk", tierLabel(tier)]);
-  if (product.id) chips.push(["Serial produk", product.id]);
-
   const shareProduct = async () => {
     const url = window.location.href;
     if (navigator.share) {
@@ -92,88 +86,41 @@ export default function Produk() {
         <span className="header-badge">{tierLabel(tier)}</span>
       </header>
 
-      <section className="memory-hero" style={{ background: heroBg }}>
-        <div className="memory-hero-inner">
-          <div className="memory-eyebrow">Memory Vault</div>
-          <h1 className="memory-title">Untuk {product.nama_pembeli || "Penerima Hadiah"}</h1>
-          <p className="memory-subtitle">
-            Ada pesan personal dari {product.dari || "pengirim"} yang tersimpan bersama hadiah ini.
-          </p>
-          <div className="memory-product-chip">
-            <span>{emoji}</span>
+      <main className="qr-card-stage" style={{ background: heroBg }}>
+        <article className="greeting-card">
+          <div className="greeting-image-wrap">
+            {hasQrImage ? (
+              <img className="greeting-image" src={qrImage} alt={product.nama_produk} />
+            ) : (
+              <div className="greeting-image-placeholder">{emoji}</div>
+            )}
+          </div>
+
+          <div className="memory-vault">
+            <div className="vault-header">
+              <div className="vault-icon">FM</div>
+              <div>
+                <div className="vault-title-text">Kartu Ucapan</div>
+                <div className="vault-subtitle">Untuk {product.nama_pembeli || "Penerima Hadiah"}</div>
+              </div>
+            </div>
+            {product.pesan_personal && product.pesan_personal.trim() ? (
+              <div className="vault-message">
+                "{product.pesan_personal}"
+                <div className="vault-from">Dari {product.dari || "Floramory"}</div>
+              </div>
+            ) : (
+              <p className="no-message">Tidak ada pesan personal untuk produk ini.</p>
+            )}
+          </div>
+
+          <div className="greeting-card-footer">
+            <span>{product.bunga || "Preserved Flower"}</span>
             <span>{product.nama_produk || "Floramory Gift"}</span>
           </div>
-        </div>
-      </section>
+        </article>
+      </main>
 
-      <div className="product-hero" style={{ background: heroBg }}>
-        {hasQrImage && (
-          <img src={qrImage} alt={product.nama_produk} />
-        )}
-        {!hasQrImage && <div className="hero-emoji">{emoji}</div>}
-        <div className="tier-ribbon">{tierLabel(tier)}</div>
-        <span className="serial-tag">#{product.id || "—"}</span>
-        <div className="hero-overlay" />
-      </div>
-
-      <div className="produk-body">
-        <div className="produk-name">{product.nama_produk || "—"}</div>
-        <div className="produk-price">{product.harga || "—"}</div>
-        <div className="divider" />
-
-        <div className="botanical-tag">✦ {product.bunga || "Preserved Flower"}</div>
-        <span className="section-label">Tentang produk ini</span>
-        <p className="description-text">{product.deskripsi || "—"}</p>
-
-        {chips.length > 0 && (
-          <div className="detail-grid">
-            {chips.map(([label, val]) => (
-              <div className="detail-chip" key={label}>
-                <div className="chip-label">{label}</div>
-                <div className="chip-value">{val}</div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        <div className="memory-vault">
-          <div className="vault-header">
-            <div className="vault-icon">💌</div>
-            <div>
-              <div className="vault-title-text">Memory Vault</div>
-              <div className="vault-subtitle">Pesan personal untuk pemilik produk ini</div>
-            </div>
-          </div>
-          {product.pesan_personal && product.pesan_personal.trim() ? (
-            <div className="vault-message">
-              "{product.pesan_personal}"
-              <div className="vault-from">— {product.dari || "Floramory"}, untuk {product.nama_pembeli || "Anda"}</div>
-            </div>
-          ) : (
-            <p className="no-message">Tidak ada pesan personal untuk produk ini.</p>
-          )}
-        </div>
-
-        <div className="care-card">
-          <div className="care-title">🌿 Panduan perawatan</div>
-          <ul className="care-tips">
-            {[
-              "Jauhkan dari paparan sinar matahari langsung untuk menjaga kejernihan resin",
-              "Bersihkan dengan kain lembut kering, jangan rendam dalam air",
-              "Simpan di tempat sejuk dan kering saat tidak digunakan",
-              "Hindari benturan keras agar resin tidak retak",
-              "QR Code di stiker dapat di-scan kapan saja — isinya bisa diperbarui",
-            ].map((tip, i) => (
-              <li key={i}><span className="care-dot">✦</span>{tip}</li>
-            ))}
-          </ul>
-        </div>
-
-        <footer className="page-footer">
-          <div className="footer-logo-sm">Flora<span>mory</span></div>
-          <p className="footer-note">Smart Eco-Preserved Artware · FST Universitas Airlangga</p>
-        </footer>
-      </div>
 
       <div className="cta-section">
         <a className="btn-wa" href={`https://wa.me/${waNumber}?text=${waMsg}`} target="_blank" rel="noopener noreferrer">
