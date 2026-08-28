@@ -4,12 +4,10 @@ import { existsSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const rootDir = path.resolve(__dirname, "..");
-const publicDir = path.join(rootDir, "dist", "public");
+const backendDir = path.dirname(fileURLToPath(import.meta.url));
 
 async function loadEnvFile() {
-  const envPath = path.join(rootDir, ".env");
+  const envPath = path.join(backendDir, ".env");
   if (!existsSync(envPath)) return;
 
   const text = await readFile(envPath, "utf8");
@@ -94,10 +92,16 @@ function parseCSV(text) {
 }
 
 function normalizeProduct(obj) {
+  const tierValue = String(obj.tier || "classic").trim().toLowerCase();
+  const tierMap = {
+    lite: "classic",
+    home: "masterpiece",
+  };
+
   return {
     id: String(obj.id || "").trim(),
     nama_produk: String(obj.nama_produk || obj.nama || "").trim(),
-    tier: String(obj.tier || "lite").trim().toLowerCase(),
+    tier: tierMap[tierValue] || tierValue,
     harga: String(obj.harga || "").trim(),
     bunga: String(obj.bunga || "").trim(),
     deskripsi: String(obj.deskripsi || "").trim(),
@@ -108,7 +112,6 @@ function normalizeProduct(obj) {
     pesan_personal: String(obj.pesan_personal || obj.pesan || "").trim(),
     foto_produk: String(obj.foto_produk || obj.foto_url || obj.foto || "").trim(),
     foto_qr: String(obj.foto_qr || obj.foto_QR || obj.foto_url || "").trim(),
-    foto_QR: String(obj.foto_QR || obj.foto_qr || obj.foto_url || "").trim(),
     foto_url: String(obj.foto_url || obj.foto_produk || obj.foto || "").trim(),
   };
 }
@@ -127,7 +130,7 @@ function productsFromCSV(text) {
       });
       return normalizeProduct(obj);
     })
-    .filter((product) => product.id);
+    .filter((product) => product.id && product.nama_produk);
 }
 
 async function fetchProducts({ force = false } = {}) {
@@ -169,8 +172,8 @@ function validateProduct(product) {
   if (missing.length) {
     return `Kolom wajib belum lengkap: ${missing.join(", ")}`;
   }
-  if (!["lite", "signature", "home"].includes(product.tier)) {
-    return "Tier harus salah satu dari: lite, signature, home";
+  if (!["classic", "signature", "masterpiece"].includes(product.tier)) {
+    return "Tier harus salah satu dari: classic, signature, masterpiece";
   }
   return null;
 }
@@ -237,35 +240,6 @@ async function createProduct(req, res) {
   sendJson(res, 201, { ok: true, product });
 }
 
-const mimeTypes = {
-  ".html": "text/html; charset=utf-8",
-  ".js": "text/javascript; charset=utf-8",
-  ".css": "text/css; charset=utf-8",
-  ".svg": "image/svg+xml",
-  ".jpg": "image/jpeg",
-  ".jpeg": "image/jpeg",
-  ".png": "image/png",
-  ".ico": "image/x-icon",
-};
-
-async function serveStatic(req, res) {
-  const url = new URL(req.url || "/", `http://${req.headers.host || "localhost"}`);
-  const cleanPath = decodeURIComponent(url.pathname).replace(/^\/+/, "");
-  const requested = path.normalize(cleanPath || "index.html");
-  const filePath = path.join(publicDir, requested);
-  const safePath = filePath.startsWith(publicDir) ? filePath : path.join(publicDir, "index.html");
-  const finalPath = existsSync(safePath) ? safePath : path.join(publicDir, "index.html");
-  const ext = path.extname(finalPath);
-
-  try {
-    const file = await readFile(finalPath);
-    res.writeHead(200, { "Content-Type": mimeTypes[ext] || "application/octet-stream" });
-    res.end(file);
-  } catch {
-    sendJson(res, 404, { error: "Build frontend belum tersedia. Jalankan npm run build terlebih dahulu." });
-  }
-}
-
 const server = createServer(async (req, res) => {
   try {
     const url = new URL(req.url || "/", `http://${req.headers.host || "localhost"}`);
@@ -297,17 +271,12 @@ const server = createServer(async (req, res) => {
       return;
     }
 
-    if (url.pathname.startsWith("/api/")) {
-      sendJson(res, 404, { error: "Endpoint API tidak ditemukan" });
-      return;
-    }
-
-    await serveStatic(req, res);
+    sendJson(res, 404, { error: "Endpoint tidak ditemukan. Backend ini hanya melayani /api/*." });
   } catch (error) {
     sendJson(res, 500, { error: error instanceof Error ? error.message : "Terjadi kesalahan server" });
   }
 });
 
 server.listen(PORT, "0.0.0.0", () => {
-  console.log(`Floramory backend running on http://localhost:${PORT}`);
+  console.log(`Floramory backend (API only) running on http://localhost:${PORT}`);
 });

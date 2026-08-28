@@ -35,6 +35,7 @@ Notes & safety
 - The migration updates existing rows in-place; the backup table is a snapshot of `public.products` before changes.
 - Make sure no other systems rely on the old tier values before switching the constraint.
 - If your application still maps UI values to legacy DB values (the app contains such mapping), coordinate deployment so the app and DB change together to avoid mismatches.
+- The current app code now also includes a fallback retry using legacy tier labels if the Supabase constraint still expects `lite`/`home` while migrating.
 
 Questions or help
 -----------------

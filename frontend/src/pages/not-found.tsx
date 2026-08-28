@@ -1,3 +1,6 @@
+import BrandLogo from "@/components/BrandLogo";
+import { pageUrl } from "@/lib/site";
+
 export default function NotFound() {
   return (
     <div className="error-screen">
@@ -5,7 +8,7 @@ export default function NotFound() {
       <div className="error-title">Halaman tidak ditemukan</div>
       <p className="error-msg">Halaman yang Anda cari tidak ada.</p>
       <br />
-      <a href="/" style={{ fontSize: "0.85rem", color: "var(--sage)", textDecoration: "none" }}>
+      <a href={pageUrl("/")} className="error-link">
         ← Kembali ke beranda
       </a>
     </div>

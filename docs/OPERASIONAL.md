@@ -1,8 +1,40 @@
 # Operasional Floramory
 
+## Struktur Monorepo
+
+Proyek dipisah menjadi dua package dalam satu workspace (pnpm):
+
+```text
+floramory/
+├── package.json          # workspace root (script delegasi: dev, build, start)
+├── pnpm-workspace.yaml   # mencakup frontend & backend
+├── frontend/             # React + Vite (src, public, dist build)
+│   ├── .env.local        # variabel VITE_* (dibaca Vite)
+│   └── package.json      # dependency frontend
+├── backend/              # Node API murni (hanya /api/*)
+│   ├── .env              # variabel SHEETS_* / ADMIN_API_TOKEN / PORT
+│   ├── index.mjs         # server HTTP API
+│   └── db/migrations/    # SQL migrasi
+└── docs/
+```
+
+Perintah:
+
+```text
+pnpm install            # install workspace di root
+pnpm dev                # jalankan frontend (Vite) di port 3000
+pnpm dev:api            # jalankan backend (API) di port 3001
+pnpm build              # build frontend -> frontend/dist
+pnpm start              # jalankan backend API production
+```
+
+Frontend memanggil backend lewat proxy `/api` (saat dev menuju `http://localhost:3001`).
+Untuk production terpisah, set `VITE_API_BASE_URL` di `frontend/.env.local`.
+
 ## Environment Vercel
 
-Tambahkan variable berikut di Vercel Project Settings -> Environment Variables:
+Frontend dideploy sebagai static site (Spa). Tambahkan variable berikut di
+Vercel Project Settings -> Environment Variables:
 
 ```text
 VITE_SUPABASE_URL=https://fcevjiflawxmzrccramo.supabase.co
@@ -10,7 +42,8 @@ VITE_SUPABASE_ANON_KEY=isi_anon_public_key
 VITE_WA_NUMBER=6281234567890
 ```
 
-Redeploy project setelah environment variable diubah.
+Redeploy project setelah environment variable diubah. Konfigurasi build ada di
+`vercel.json` (buildCommand memakai pnpm workspace, outputDirectory `frontend/dist`).
 
 ## Supabase
 

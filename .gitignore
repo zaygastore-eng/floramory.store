@@ -1,7 +1,8 @@
 node_modules
 .pnpm-store
-dist
+frontend/dist
 .env
 .env.local
 .tsbuildinfo
 *.log
+vite-local.*.log

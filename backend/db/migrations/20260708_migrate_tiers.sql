@@ -23,6 +23,15 @@ SET tier = CASE
   ELSE lower(trim(coalesce(tier, '')))
 END;
 
+-- 2a) Force lower-case for all allowed tier values as well
+UPDATE public.products
+SET tier = lower(trim(coalesce(tier, '')))
+WHERE lower(trim(coalesce(tier, ''))) IN ('classic', 'signature', 'masterpiece');
+
+-- 2b) Final sanity check before changing the constraint
+--    Inspect any invalid tier values first.
+SELECT tier, count(*) FROM public.products GROUP BY tier ORDER BY tier;
+
 -- 3) Verify counts per tier (optional quick check)
 -- SELECT tier, count(*) FROM public.products GROUP BY tier ORDER BY tier;
 

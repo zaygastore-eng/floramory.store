@@ -15,11 +15,11 @@ paths = [ "/" ]
 localPort = 23869
 
 [services.development]
-run = "pnpm --filter @workspace/floramory run dev"
+run = "pnpm --filter @floramory/frontend run dev"
 
 [services.production]
-build = [ "pnpm", "--filter", "@workspace/floramory", "run", "build" ]
-publicDir = "artifacts/floramory/dist/public"
+build = [ "pnpm", "--filter", "@floramory/frontend", "run", "build" ]
+publicDir = "artifacts/floramory/frontend/dist"
 serve = "static"
 
 [[services.production.rewrites]]

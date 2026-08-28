@@ -1,3 +1,5 @@
+import { normalizeWhatsApp } from "@/lib/site";
+
 const SHEETS_CSV_URL =
   "https://docs.google.com/spreadsheets/d/e/2PACX-1vRjLp_qo1CZVcWWq7CMkstImftaN5DeI6wZpZ3TDlge8_DtDTtF3qjj4DkJn7era5lJQYqggbBzIT8G/pub?output=csv";
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "";
@@ -163,7 +165,9 @@ export function hasSupabaseConfig(): boolean {
 }
 
 export function hasSupabaseSession(): boolean {
-  return Boolean(getStoredSession()?.access_token);
+  const session = getStoredSession();
+  if (!session?.access_token) return false;
+  return !isSessionExpired(session);
 }
 
 export async function signInAdmin(email: string, password: string): Promise<void> {
@@ -318,7 +322,7 @@ async function fetchProductsFromApi(): Promise<Product[] | null> {
     if (!res.ok) return null;
     const data = await res.json();
     if (!Array.isArray(data.products)) return null;
-    return data.products.map(normalizeProduct).filter((p: Product) => p.id);
+    return data.products.map(normalizeProduct).filter((p: Product) => p.id && p.nama_produk);
   } catch {
     return null;
   }
@@ -335,7 +339,7 @@ async function fetchProductsFromSupabase(): Promise<Product[] | null> {
     if (!res.ok) return null;
     const data = await res.json();
     if (!Array.isArray(data)) return null;
-    return data.map(normalizeProduct).filter((p: Product) => p.id);
+return data.map(normalizeProduct).filter((p: Product) => p.id && p.nama_produk);
   } catch {
     return null;
   }
@@ -347,14 +351,14 @@ export async function fetchAllProducts(): Promise<Product[]> {
   }
 
   const supabaseProducts = await fetchProductsFromSupabase();
-  if (supabaseProducts) {
+  if (supabaseProducts && supabaseProducts.length > 0) {
     cachedProducts = supabaseProducts;
     cacheTime = Date.now();
     return cachedProducts;
   }
 
   const apiProducts = await fetchProductsFromApi();
-  if (apiProducts) {
+  if (apiProducts && apiProducts.length > 0) {
     cachedProducts = apiProducts;
     cacheTime = Date.now();
     return cachedProducts;
@@ -380,7 +384,7 @@ export async function fetchAllProducts(): Promise<Product[]> {
     return normalizeProduct(obj);
   });
 
-  cachedProducts = products.filter((p) => p.id);
+  cachedProducts = products.filter((p) => p.id && p.nama_produk);
   cacheTime = Date.now();
   return cachedProducts;
 }
@@ -404,7 +408,7 @@ export async function fetchManagedProducts(): Promise<Product[]> {
     throw new Error(data.message || data.details || "Gagal memuat daftar produk");
   }
 
-  return data.map(normalizeProduct).filter((p: Product) => p.id);
+  return data.map(normalizeProduct).filter((p: Product) => p.id && p.nama_produk);
 }
 
 export async function fetchProductById(id: string): Promise<Product | null> {
@@ -556,7 +560,7 @@ export async function createPreOrder(order: PreOrder): Promise<PreOrder> {
     },
     body: JSON.stringify({
       customer_name: order.customer_name.trim(),
-      whatsapp: order.whatsapp.trim(),
+      whatsapp: normalizeWhatsApp(order.whatsapp),
       product_id: order.product_id.trim(),
       product_name: order.product_name.trim(),
       custom_request: order.custom_request.trim(),

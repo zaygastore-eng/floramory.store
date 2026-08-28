@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
+import BrandLogo from "@/components/BrandLogo";
 import { createPreOrder, fetchAllProducts, tierLabel, tierEmoji, tierBadgeClass, type Product } from "@/lib/sheets";
-
-const BASE_PATH = import.meta.env.BASE_URL.replace(/\/$/, "");
+import { pageUrl, normalizeWhatsApp } from "@/lib/site";
 
 function ProductCard({ product, onClick }: { product: Product; onClick: () => void }) {
   const tier = product.tier.toLowerCase();
@@ -13,10 +13,10 @@ function ProductCard({ product, onClick }: { product: Product; onClick: () => vo
   const desc = product.deskripsi ? product.deskripsi.slice(0, 80) + (product.deskripsi.length > 80 ? "…" : "") : "";
 
   return (
-    <div className="product-card" onClick={onClick}>
+    <button type="button" className="product-card" onClick={onClick}>
       <div className="product-img">
         {hasProductImage && (
-          <img src={productImage} alt={product.nama_produk} />
+          <img src={productImage} alt="" />
         )}
         {!hasProductImage && (
           <>
@@ -26,7 +26,7 @@ function ProductCard({ product, onClick }: { product: Product; onClick: () => vo
         )}
         <span className={`product-badge ${badgeClass}`}>{badge}</span>
         <div className="product-qr-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="18" height="18">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="18" height="18" aria-hidden="true">
             <rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" />
             <rect x="3" y="14" width="7" height="7" />
             <path d="M14 14h2v2h-2zM18 14h2v2h-2zM14 18h2v2h-2zM18 18h2v2h-2z" />
@@ -41,11 +41,19 @@ function ProductCard({ product, onClick }: { product: Product; onClick: () => vo
           <span className="product-btn">Detail</span>
         </div>
       </div>
-    </div>
+    </button>
   );
 }
 
-function ProductModal({ product, onClose }: { product: Product; onClose: () => void }) {
+function ProductModal({
+  product,
+  onClose,
+  onOrder,
+}: {
+  product: Product;
+  onClose: () => void;
+  onOrder: (product: Product) => void;
+}) {
   const tier = product.tier.toLowerCase();
   const emoji = tierEmoji(tier);
   const productImage = product.foto_produk || product.foto_url;
@@ -57,21 +65,35 @@ function ProductModal({ product, onClose }: { product: Product; onClose: () => v
   if (product.tier) chips.push(["Lini produk", tierLabel(tier)]);
   if (product.id) chips.push(["Serial produk", product.id]);
 
-  const produkUrl = `${BASE_PATH}/produk?id=${product.id}`;
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [onClose]);
 
   return (
-    <div className="modal-overlay open" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="modal">
+    <div
+      className="modal-overlay open"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div className="modal" role="dialog" aria-modal="true" aria-labelledby="product-modal-title">
         <div className="modal-hero">
           {hasProductImage && (
-            <img src={productImage} alt={product.nama_produk} />
+            <img src={productImage} alt="" />
           )}
           {!hasProductImage && <span className="emoji-fallback">{emoji}</span>}
-          <button className="modal-close" onClick={onClose}>✕</button>
+          <button type="button" className="modal-close" onClick={onClose} aria-label="Tutup">✕</button>
         </div>
         <div className="modal-body">
           <span className="modal-tier">{tierLabel(tier)}</span>
-          <div className="modal-name">{product.nama_produk}</div>
+          <div className="modal-name" id="product-modal-title">{product.nama_produk}</div>
           <div className="modal-price">{product.harga}</div>
           <p className="modal-desc">{product.deskripsi}</p>
 
@@ -88,7 +110,7 @@ function ProductModal({ product, onClose }: { product: Product; onClose: () => v
 
           <div className="modal-qr">
             <div className="modal-qr-box">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="36" height="36">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="36" height="36" aria-hidden="true">
                 <rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" />
                 <rect x="3" y="14" width="7" height="7" />
                 <path d="M14 14h2v2h-2zM18 14h2v2h-2zM14 18h2v2h-2zM18 18h2v2h-2z" />
@@ -100,8 +122,17 @@ function ProductModal({ product, onClose }: { product: Product; onClose: () => v
             </div>
           </div>
           <div className="modal-actions">
-            <a href="#pesan" className="btn-primary" onClick={onClose}>Pesan Sekarang</a>
-            <button className="btn-secondary" onClick={onClose}>Tutup</button>
+            <a
+              href="#pesan"
+              className="btn-primary"
+              onClick={() => {
+                onOrder(product);
+                onClose();
+              }}
+            >
+              Pesan Sekarang
+            </a>
+            <button type="button" className="btn-secondary" onClick={onClose}>Tutup</button>
           </div>
         </div>
       </div>
@@ -114,6 +145,7 @@ export default function Home() {
   const [loadingProducts, setLoadingProducts] = useState(true);
   const [filter, setFilter] = useState("all");
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
   const [toastVisible, setToastVisible] = useState(false);
   const [toastMsg, setToastMsg] = useState("✦ Pre-order Anda telah terkirim! Kami akan menghubungi via WhatsApp segera.");
   const [orderSubmitting, setOrderSubmitting] = useState(false);
@@ -134,12 +166,35 @@ export default function Home() {
       .finally(() => setLoadingProducts(false));
   }, []);
 
+  useEffect(() => {
+    if (!toastVisible) return;
+    const timer = window.setTimeout(() => setToastVisible(false), 3500);
+    return () => window.clearTimeout(timer);
+  }, [toastVisible, toastMsg]);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMenuOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [menuOpen]);
+
   const filtered = filter === "all" ? products : products.filter(p => p.tier.toLowerCase() === filter);
 
   const showToast = (msg: string) => {
     setToastMsg(msg);
     setToastVisible(true);
-    setTimeout(() => setToastVisible(false), 3500);
+  };
+
+  const closeMenu = () => setMenuOpen(false);
+
+  const orderProduct = (product: Product) => {
+    setOrderForm(f => ({ ...f, produk: product.id }));
+    window.setTimeout(() => {
+      document.getElementById("pesan")?.scrollIntoView({ behavior: "smooth" });
+    }, 50);
   };
 
   const submitOrder = async (e: React.FormEvent) => {
@@ -149,12 +204,18 @@ export default function Home() {
       return;
     }
 
+    const wa = normalizeWhatsApp(orderForm.wa);
+    if (wa.length < 10) {
+      showToast("Nomor WhatsApp tidak valid. Gunakan format 08xx atau 62xx.");
+      return;
+    }
+
     const selected = products.find(p => p.id === orderForm.produk);
     setOrderSubmitting(true);
     try {
       await createPreOrder({
         customer_name: orderForm.nama,
-        whatsapp: orderForm.wa,
+        whatsapp: wa,
         product_id: orderForm.produk,
         product_name: selected?.nama_produk || orderForm.produk,
         custom_request: orderForm.pesan,
@@ -173,14 +234,27 @@ export default function Home() {
 
   return (
     <>
-      {/* NAV */}
       <nav className="fm-nav">
-        <a className="nav-logo" href="#">Flora<span>mory</span></a>
-        <ul className="nav-links">
-          <li><a href="#produk">Produk</a></li>
-          <li><a href="#memory-vault">Memory Vault</a></li>
-          <li><a href="#tentang">Tentang</a></li>
-          <li><a href="#pesan">Pesan</a></li>
+        <a className="nav-logo logo-link" href={pageUrl("/")} aria-label="Floramory">
+          <BrandLogo />
+        </a>
+        <button
+          type="button"
+          className="nav-menu-btn"
+          aria-label={menuOpen ? "Tutup menu" : "Buka menu"}
+          aria-expanded={menuOpen}
+          aria-controls="nav-links"
+          onClick={() => setMenuOpen(open => !open)}
+        >
+          <span />
+          <span />
+          <span />
+        </button>
+        <ul className={`nav-links${menuOpen ? " open" : ""}`} id="nav-links">
+          <li><a href="#produk" onClick={closeMenu}>Produk</a></li>
+          <li><a href="#memory-vault" onClick={closeMenu}>Memory Vault</a></li>
+          <li><a href="#tentang" onClick={closeMenu}>Tentang</a></li>
+          <li><a href="#pesan" onClick={closeMenu}>Pesan</a></li>
         </ul>
         <span className="nav-badge">Smart QR ✦ Eco</span>
       </nav>
@@ -196,7 +270,7 @@ export default function Home() {
           </p>
           <a className="hero-cta" href="#produk">
             Jelajahi Koleksi
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16" aria-hidden="true">
               <path d="M5 12h14M12 5l7 7-7 7" />
             </svg>
           </a>
@@ -204,7 +278,6 @@ export default function Home() {
       </section>
 
       <main className="home-sections">
-      {/* PRODUCTS */}
       <section className="fm-section products-section" id="produk">
         <div className="catalog-section">
           <div className="catalog-header">
@@ -219,20 +292,20 @@ export default function Home() {
               { val: "signature", label: "Floramory Signature" },
               { val: "masterpiece", label: "Floramory Masterpiece" },
             ].map(tab => (
-              <button key={tab.val} className={`tier-tab${filter === tab.val ? " active" : ""}`}
+              <button key={tab.val} type="button" className={`tier-tab${filter === tab.val ? " active" : ""}`}
                 onClick={() => setFilter(tab.val)}>{tab.label}</button>
             ))}
           </div>
 
           {loadingProducts ? (
             <div className="catalog-loading">
-              Memuat produk dari Google Sheets
+              Memuat produk dari katalog
               <span className="loading-dots"><span /><span /><span /></span>
             </div>
           ) : filtered.length === 0 ? (
             <div className="catalog-loading">
               {products.length === 0
-                ? "Belum ada produk di spreadsheet. Tambahkan data di Google Sheets Anda."
+                ? "Belum ada produk di katalog. Tambahkan data di admin."
                 : "Tidak ada produk di kategori ini."}
             </div>
           ) : (
@@ -245,14 +318,13 @@ export default function Home() {
         </div>
       </section>
 
-      {/* MEMORY VAULT SECTION */}
       <section className="fm-section vault-section" id="memory-vault">
         <div className="vault-inner">
           <div>
             <div className="vault-eyebrow">
-              <span style={{ display: "block", width: 24, height: 1, background: "rgba(183,201,223,0.55)" }} />
+              <span className="vault-eyebrow-line" />
               Fitur Utama
-              <span style={{ display: "block", width: 24, height: 1, background: "rgba(183,201,223,0.55)" }} />
+              <span className="vault-eyebrow-line" />
             </div>
             <h2 className="vault-title">Smart-Scan<br /><em>Memory Vault</em></h2>
             <p className="vault-desc">Produk fisik yang hidup — kenangan digital yang tak pernah pudar. Setiap kali Anda atau penerima hadiah memindai QR-nya, momen berharga itu hadir kembali.</p>
@@ -279,15 +351,14 @@ export default function Home() {
               <div className="vault-card"><div>🌿</div><p>Ensiklopedia botani spesies bunga</p></div>
               <div className="vault-card"><div>💌</div><p>Pesan teks emosional & ucapan</p></div>
               <div className="vault-card featured">
-                <div style={{ fontSize: "2rem" }}>🔄</div>
-                <p><strong style={{ color: "#fff", display: "block", marginBottom: 4 }}>QR Dinamis</strong>Perbarui isi memori digital Anda kapan saja tanpa ganti produk fisik</p>
+                <div className="vault-featured-icon">🔄</div>
+                <p><strong className="vault-featured-strong">QR Dinamis</strong>Perbarui isi memori digital Anda kapan saja tanpa ganti produk fisik</p>
               </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* ABOUT */}
       <section className="fm-section about-section" id="tentang">
         <div className="about-inner">
           <div>
@@ -313,7 +384,7 @@ export default function Home() {
               {[
                 { num: "0", label: "Limbah botani — sumber bunga dari florist lokal Surabaya" },
                 { num: "3–5", label: "Hari dehidrasi kilat dengan silica gel laboratorium" },
-                { num: "60%", label: "Margin keuntungan kotor lini Signature" },
+                { num: "Handmade", label: "Setiap produk dibuat kustom sesuai momen Anda" },
                 { num: "∞", label: "Kenangan digital yang dapat diperbarui seumur hidup" },
               ].map(({ num, label }) => (
                 <div className="stat-card" key={num}>
@@ -330,81 +401,64 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ORDER */}
       <section className="fm-section order-section" id="pesan">
         <div className="order-inner">
-          <span className="section-eyebrow" style={{ textAlign: "center", display: "block" }}>Pre-Order Sekarang</span>
-          <h2 className="section-title" style={{ textAlign: "center" }}>Abadikan <em>Momenmu</em></h2>
-          <p className="section-desc" style={{ textAlign: "center", margin: "0 auto" }}>Pesan sekarang dengan sistem Pre-Order. DP 50% untuk mulai produksi kustom Anda.</p>
+          <span className="section-eyebrow order-center">Pre-Order Sekarang</span>
+          <h2 className="section-title order-center">Abadikan <em>Momenmu</em></h2>
+          <p className="section-desc order-center order-desc">Pesan sekarang dengan sistem Pre-Order. DP 50% untuk mulai produksi kustom Anda.</p>
           <form className="order-form-card" onSubmit={submitOrder}>
             <div className="form-row">
               <div className="form-group">
-                <label className="form-label">Nama Lengkap</label>
-                <input className="form-input" type="text" placeholder="Nama Anda"
+                <label className="form-label" htmlFor="order-nama">Nama Lengkap</label>
+                <input id="order-nama" className="form-input" type="text" placeholder="Nama Anda" required
                   value={orderForm.nama} onChange={e => setOrderForm(f => ({ ...f, nama: e.target.value }))} />
               </div>
               <div className="form-group">
-                <label className="form-label">No. WhatsApp</label>
-                <input className="form-input" type="tel" placeholder="08xx-xxxx-xxxx"
+                <label className="form-label" htmlFor="order-wa">No. WhatsApp</label>
+                <input id="order-wa" className="form-input" type="tel" placeholder="08xx-xxxx-xxxx" required
                   value={orderForm.wa} onChange={e => setOrderForm(f => ({ ...f, wa: e.target.value }))} />
               </div>
             </div>
             <div className="form-group">
-              <label className="form-label">Pilih Produk</label>
-              <select className="form-select" value={orderForm.produk} onChange={e => setOrderForm(f => ({ ...f, produk: e.target.value }))}>
+              <label className="form-label" htmlFor="order-produk">Pilih Produk</label>
+              <select id="order-produk" className="form-select" value={orderForm.produk} onChange={e => setOrderForm(f => ({ ...f, produk: e.target.value }))}>
                 <option value="">— Pilih lini produk —</option>
                 {products.length > 0 ? (
-                  <>
-                    {["classic", "signature", "masterpiece"].map(tier => {
-                      const tierProds = products.filter(p => p.tier.toLowerCase() === tier);
-                      if (!tierProds.length) return null;
-                      return (
-                        <optgroup key={tier} label={tierLabel(tier)}>
-                          {tierProds.map(p => <option key={p.id} value={p.id}>{p.nama_produk} — {p.harga}</option>)}
-                        </optgroup>
-                      );
-                    })}
-                  </>
+                  ["classic", "signature", "masterpiece"].map(tier => {
+                    const tierProds = products.filter(p => p.tier.toLowerCase() === tier);
+                    if (!tierProds.length) return null;
+                    return (
+                      <optgroup key={tier} label={tierLabel(tier)}>
+                        {tierProds.map(p => <option key={p.id} value={p.id}>{p.nama_produk} — {p.harga}</option>)}
+                      </optgroup>
+                    );
+                  })
                 ) : (
-                  <>
-                    <optgroup label="Floramory Classic (Rp 30.000 – 85.000)">
-                      <option>Cincin Preserved Flower</option>
-                      <option>Anting Botani</option>
-                      <option>Gantungan Kunci Resin</option>
-                    </optgroup>
-                    <optgroup label="Floramory Signature (Rp 135.000 – 450.000+)">
-                      <option>Plakat Wisuda Kustom</option>
-                      <option>Full Set Aksesori Premium</option>
-                    </optgroup>
-                    <optgroup label="Floramory Masterpiece (Rp 135.000 – 450.000+)">
-                      <option>Lampu Tidur Botani</option>
-                      <option>Figura Dinding Preserved Flower</option>
-                    </optgroup>
-                  </>
+                  <option value="" disabled>Katalog belum tersedia</option>
                 )}
               </select>
             </div>
             <div className="form-group">
-              <label className="form-label">Kustomisasi & Pesan Memori</label>
-              <textarea className="form-textarea"
+              <label className="form-label" htmlFor="order-pesan">Kustomisasi & Pesan Memori</label>
+              <textarea id="order-pesan" className="form-textarea"
                 placeholder="Ceritakan momen yang ingin diabadikan, pilihan bunga, warna, dan isi Memory Vault (foto/pesan) yang ingin Anda sertakan..."
                 value={orderForm.pesan} onChange={e => setOrderForm(f => ({ ...f, pesan: e.target.value }))} />
             </div>
             <div className="form-row">
               <div className="form-group">
-                <label className="form-label">Nama Penerima Memory Vault</label>
-                <input className="form-input" type="text" placeholder="Contoh: Nabila Putri"
+                <label className="form-label" htmlFor="order-penerima">Nama Penerima Memory Vault</label>
+                <input id="order-penerima" className="form-input" type="text" placeholder="Contoh: Nabila Putri"
                   value={orderForm.namaPenerima} onChange={e => setOrderForm(f => ({ ...f, namaPenerima: e.target.value }))} />
               </div>
               <div className="form-group">
-                <label className="form-label">Dari / Pengirim</label>
-                <input className="form-input" type="text" placeholder="Contoh: Keluarga Putri"
+                <label className="form-label" htmlFor="order-dari">Dari / Pengirim</label>
+                <input id="order-dari" className="form-input" type="text" placeholder="Contoh: Keluarga Putri"
                   value={orderForm.dari} onChange={e => setOrderForm(f => ({ ...f, dari: e.target.value }))} />
               </div>
             </div>
             <div className="form-group">
-              <label className="form-label">Pesan Personal Untuk QR</label>
-              <textarea className="form-textarea"
+              <label className="form-label" htmlFor="order-personal">Pesan Personal Untuk QR</label>
+              <textarea id="order-personal" className="form-textarea"
                 placeholder="Pesan ini bisa ditampilkan saat penerima scan QR produk..."
                 value={orderForm.pesanPersonal} onChange={e => setOrderForm(f => ({ ...f, pesanPersonal: e.target.value }))} />
             </div>
@@ -417,29 +471,31 @@ export default function Home() {
       </section>
       </main>
 
-      {/* FOOTER */}
       <footer className="fm-footer">
-        <div className="footer-logo">Flora<span>mory</span></div>
+        <div className="footer-logo" aria-label="Floramory">
+          <BrandLogo className="brand-logo-img footer-logo-img" />
+        </div>
         <div className="footer-tagline">Smart Eco-Preserved Artware · Est. 2026</div>
         <ul className="footer-links">
           <li><a href="#produk">Produk</a></li>
           <li><a href="#memory-vault">Memory Vault</a></li>
           <li><a href="#tentang">Tentang</a></li>
           <li><a href="#pesan">Pesan</a></li>
-          <li><a href={`${BASE_PATH}/admin`} style={{ color: "rgba(183,201,223,0.55)" }}>Admin</a></li>
         </ul>
         <div className="footer-divider" />
         <div className="footer-copy">© 2026 Floramory · Semua hak dilindungi</div>
         <div className="footer-unair">FST Young Entrepreneur · Universitas Airlangga, Surabaya</div>
       </footer>
 
-      {/* MODAL */}
       {selectedProduct && (
-        <ProductModal product={selectedProduct} onClose={() => setSelectedProduct(null)} />
+        <ProductModal
+          product={selectedProduct}
+          onClose={() => setSelectedProduct(null)}
+          onOrder={orderProduct}
+        />
       )}
 
-      {/* TOAST */}
-      <div className={`fm-toast${toastVisible ? " show" : ""}`}>
+      <div className={`fm-toast${toastVisible ? " show" : ""}`} role="status">
         {toastMsg}
       </div>
     </>

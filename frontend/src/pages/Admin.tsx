@@ -28,6 +28,8 @@ import {
   type PreOrder,
   type Product,
 } from "@/lib/sheets";
+import BrandLogo from "@/components/BrandLogo";
+import { normalizeWhatsApp } from "@/lib/site";
 
 const BASE_URL_KEY = "fm_base_url";
 const WA_KEY = "fm_wa";
@@ -251,7 +253,9 @@ function LoginGate({ onLogin }: { onLogin: () => void }) {
   return (
     <div className="login-screen">
       <div className={`login-card${shake ? " shake" : ""}`}>
-        <div className="login-logo">Flora<span>mory</span></div>
+        <div className="login-logo" aria-label="Floramory">
+          <BrandLogo className="brand-logo-img login-logo-img" />
+        </div>
         <div className="login-subtitle">Admin Panel</div>
         <div className="login-icon">Admin</div>
         <form onSubmit={submit} style={{ width: "100%" }}>
@@ -288,7 +292,7 @@ function LoginGate({ onLogin }: { onLogin: () => void }) {
         <p className="login-hint">
           {useSupabaseAuth
             ? "Gunakan akun admin yang dibuat di Supabase Authentication."
-            : <>Password default: <code>floramory2026</code></>}
+            : "Masukkan password admin yang sudah dikonfigurasi."}
         </p>
       </div>
     </div>
@@ -390,7 +394,7 @@ export default function Admin() {
     localStorage.setItem(BASE_URL_KEY, clean);
     localStorage.setItem(WA_KEY, waNum.trim());
     try {
-      await updateWhatsAppNumber(waNum);
+      await updateWhatsAppNumber(normalizeWhatsApp(waNum) || waNum);
       setConfigSaved(true);
       setTimeout(() => setConfigSaved(false), 2000);
       showToast("Konfigurasi tersimpan");
@@ -547,17 +551,17 @@ export default function Admin() {
       ctx.fill();
     } else ctx.fillRect(0, 0, 300, 340);
     ctx.drawImage(canvas, 50, 30, 200, 200);
-    ctx.fillStyle = "#2f334f";
+    ctx.fillStyle = "#111111";
     ctx.font = "bold 16px serif";
     ctx.textAlign = "center";
     ctx.fillText("Floramory", 150, 256);
-    ctx.fillStyle = "#697099";
+    ctx.fillStyle = "#111111";
     ctx.font = "11px sans-serif";
     ctx.fillText("Memory Vault", 150, 274);
-    ctx.fillStyle = "#697099";
+    ctx.fillStyle = "#111111";
     ctx.font = "10px monospace";
     ctx.fillText("#" + (form.id || "-"), 150, 294);
-    ctx.fillStyle = "#b7c9df";
+    ctx.fillStyle = "#111111";
     ctx.font = "9px sans-serif";
     ctx.fillText("Scan untuk info produk & pesan personal", 150, 316);
     const link = document.createElement("a");
@@ -695,6 +699,24 @@ export default function Admin() {
         </div>
       </div>
 
+      <div className="admin-subsection-title">Memory Vault</div>
+      <div className="admin-form-row">
+        <div className="admin-form-group">
+          <label className="admin-form-label">Nama Penerima</label>
+          <input className="admin-form-input" type="text" placeholder="Nama di kartu QR"
+            value={form.namaPembeli} onChange={e => setForm(f => ({ ...f, namaPembeli: e.target.value }))} />
+        </div>
+        <div className="admin-form-group">
+          <label className="admin-form-label">Dari / Pengirim</label>
+          <input className="admin-form-input" type="text" placeholder="Contoh: Keluarga Putri"
+            value={form.dari} onChange={e => setForm(f => ({ ...f, dari: e.target.value }))} />
+        </div>
+      </div>
+      <div className="admin-form-group">
+        <label className="admin-form-label">Pesan Personal</label>
+        <textarea className="admin-form-textarea" placeholder="Pesan yang tampil saat QR dipindai"
+          value={form.pesan} onChange={e => setForm(f => ({ ...f, pesan: e.target.value }))} />
+      </div>
 
       <div className="admin-subsection-title">Foto</div>
       <div className="admin-form-group">
@@ -709,16 +731,16 @@ export default function Admin() {
       </div>
 
       <div className="admin-form-actions">
-        <button className="btn-generate" onClick={saveProductAndGenerateQR} disabled={savingProduct}>
+        <button type="button" className="btn-generate" onClick={saveProductAndGenerateQR} disabled={savingProduct}>
           {savingProduct ? "Menyimpan..." : editingId ? "Update Produk" : "Simpan Produk"}
         </button>
-        <button className="btn-secondary-admin" onClick={generateQR}>Generate QR</button>
-        <button className="btn-reset" onClick={resetForm}>Bersihkan</button>
+        <button type="button" className="btn-secondary-admin" onClick={generateQR}>Generate QR</button>
+        <button type="button" className="btn-reset" onClick={resetForm}>Bersihkan</button>
       </div>
       {qrVisible && (
         <div className="admin-inline-qr">
           <div ref={qrRef}>
-            <QRCode value={generatedUrl} size={168} fgColor="#2f334f" bgColor="#fafbff" level="M" />
+            <QRCode value={generatedUrl} size={168} fgColor="#111111" bgColor="#fafbff" level="M" />
           </div>
           <div>
             <strong>{form.nama || form.id}</strong>
@@ -805,7 +827,7 @@ export default function Admin() {
             </div>
             <div className="admin-list-actions">
               <button onClick={() => useOrderMemory(order)}>Pakai</button>
-              <a href={`https://wa.me/${order.whatsapp}`} target="_blank" rel="noopener noreferrer">WA</a>
+              <a href={`https://wa.me/${normalizeWhatsApp(order.whatsapp)}`} target="_blank" rel="noopener noreferrer">WA</a>
               <button onClick={() => setOrderStatus(order, (order.status || "new") === "new" ? "contacted" : "new")}>
                 {(order.status || "new") === "new" ? "Kontak" : "Baru"}
               </button>
@@ -965,7 +987,9 @@ export default function Admin() {
         <div className="admin-brand">
           <div className="admin-brand-mark">F</div>
           <div>
-            <strong>Floramory</strong>
+            <strong aria-label="Floramory">
+              <BrandLogo className="brand-logo-img admin-brand-logo-img" />
+            </strong>
             <span>Admin Panel</span>
           </div>
         </div>
@@ -997,10 +1021,16 @@ export default function Admin() {
             <h1>{titleMap[activeTab].title}</h1>
             <p>{titleMap[activeTab].desc}</p>
           </div>
-          <button className="admin-outline-btn" onClick={reloadAll} disabled={loadingProducts || loadingOrders}>
-            <RefreshCw size={16} />
-            Muat ulang data
-          </button>
+          <div className="admin-header-actions">
+            <button type="button" className="admin-outline-btn" onClick={reloadAll} disabled={loadingProducts || loadingOrders}>
+              <RefreshCw size={16} />
+              Muat ulang data
+            </button>
+            <button type="button" className="admin-outline-btn admin-header-logout" onClick={logout}>
+              <LogOut size={16} />
+              Keluar
+            </button>
+          </div>
         </header>
         {renderContent()}
       </main>
