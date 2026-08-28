@@ -2,19 +2,19 @@
 
 ## Struktur Monorepo
 
-Proyek dipisah menjadi dua package dalam satu workspace (pnpm):
+Proyek memakai pnpm workspace. Supabase adalah satu-satunya penyimpan data;
+tidak ada server Node terpisah.
 
 ```text
 FLORAMORY REALL/          # root workspace (repo)
-├── package.json          # workspace root (script delegasi: dev, build, start)
-├── pnpm-workspace.yaml   # mencakup frontend & backend
-├── frontend/             # React + Vite (src, public, dist build)
+├── package.json          # workspace root (script delegasi: dev, build, serve)
+├── pnpm-workspace.yaml   # mencakup frontend
+├── frontend/             # React + Vite (src, public, dist build) -> Supabase langsung
 │   ├── .env.local        # variabel VITE_* (dibaca Vite)
 │   └── package.json      # dependency frontend
-└── backend/              # Node API murni (hanya /api/*)
-    ├── .env              # variabel SHEETS_* / ADMIN_API_TOKEN / PORT
-    ├── index.mjs         # server HTTP API
-    ├── db/migrations/    # SQL migrasi
+└── backend/              # lapisan data Supabase (bukan server Node)
+    ├── .env.example      # panduan variabel Supabase untuk frontend
+    ├── db/migrations/    # SQL skema Supabase (satu-satunya sumber skema)
     └── docs/             # dokumentasi operasional
 ```
 
@@ -23,13 +23,13 @@ Perintah:
 ```text
 pnpm install            # install workspace di root
 pnpm dev                # jalankan frontend (Vite) di port 3000
-pnpm dev:api            # jalankan backend (API) di port 3001
 pnpm build              # build frontend -> frontend/dist
-pnpm start              # jalankan backend API production
+pnpm serve              # preview hasil build
 ```
 
-Frontend memanggil backend lewat proxy `/api` (saat dev menuju `http://localhost:3001`).
-Untuk production terpisah, set `VITE_API_BASE_URL` di `frontend/.env.local`.
+Frontend memanggil Supabase secara langsung (REST via anon key) di
+`frontend/src/lib/sheets.ts`. Tidak ada backend API lokal maupun fallback
+Google Sheets.
 
 ## Environment Vercel
 
@@ -46,6 +46,18 @@ Redeploy project setelah environment variable diubah. Konfigurasi build ada di
 `vercel.json` (buildCommand memakai pnpm workspace, outputDirectory `frontend/dist`).
 
 ## Supabase
+
+Supabase adalah satu-satunya sumber data. Skema lengkap (tabel + RLS + policy +
+grant + constraint tier + seed) tersedia di
+`backend/db/migrations/0001_schema.sql` — satu-satunya sumber skema.
+
+### Setup awal (dijalankan sekali)
+
+1. Jalankan `backend/db/migrations/0001_schema.sql` di Supabase SQL Editor.
+2. Buat 1 akun admin di Supabase Authentication -> Users (email + sandi).
+3. Set `VITE_SUPABASE_URL` dan `VITE_SUPABASE_ANON_KEY` di `frontend/.env.local`
+   (dan di Vercel Environment Variables untuk production).
+4. Redeploy frontend, lalu buka `/admin` dan masuk dengan akun admin.
 
 Tabel utama:
 

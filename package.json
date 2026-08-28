@@ -3,14 +3,11 @@
   "version": "0.0.0",
   "private": true,
   "workspaces": [
-    "frontend",
-    "backend"
+    "frontend"
   ],
   "scripts": {
     "dev": "pnpm --filter @floramory/frontend run dev",
-    "dev:api": "pnpm --filter @floramory/backend run dev",
     "build": "pnpm --filter @floramory/frontend run build",
-    "start": "pnpm --filter @floramory/backend run start",
     "serve": "pnpm --filter @floramory/frontend run serve",
     "typecheck": "pnpm --filter @floramory/frontend run typecheck"
   }

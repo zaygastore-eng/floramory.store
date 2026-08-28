@@ -1,8 +1,5 @@
 import { normalizeWhatsApp } from "@/lib/site";
 
-const SHEETS_CSV_URL =
-  "https://docs.google.com/spreadsheets/d/e/2PACX-1vRjLp_qo1CZVcWWq7CMkstImftaN5DeI6wZpZ3TDlge8_DtDTtF3qjj4DkJn7era5lJQYqggbBzIT8G/pub?output=csv";
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "";
 const SUPABASE_URL = String(import.meta.env.VITE_SUPABASE_URL || "").replace(/\/$/, "");
 const SUPABASE_ANON_KEY = String(import.meta.env.VITE_SUPABASE_ANON_KEY || "");
 const SUPABASE_AUTH_KEY = "fm_supabase_auth";
@@ -38,41 +35,6 @@ export interface PreOrder {
   personal_message: string;
   status?: string;
   created_at?: string;
-}
-
-function parseCSV(text: string): string[][] {
-  const rows: string[][] = [];
-  let row: string[] = [];
-  let cell = "";
-  let inQuote = false;
-
-  for (let i = 0; i < text.length; i++) {
-    const c = text[i];
-    if (c === '"') {
-      if (inQuote && text[i + 1] === '"') {
-        cell += '"';
-        i++;
-      } else {
-        inQuote = !inQuote;
-      }
-    } else if (c === "," && !inQuote) {
-      row.push(cell);
-      cell = "";
-    } else if ((c === "\n" || c === "\r") && !inQuote) {
-      if (c === "\r" && text[i + 1] === "\n") i++;
-      row.push(cell);
-      cell = "";
-      if (row.some((x) => x !== "")) rows.push(row);
-      row = [];
-    } else {
-      cell += c;
-    }
-  }
-  if (cell || row.length) {
-    row.push(cell);
-    if (row.some((x) => x !== "")) rows.push(row);
-  }
-  return rows;
 }
 
 let cachedProducts: Product[] | null = null;
@@ -316,18 +278,6 @@ function normalizePreOrder(obj: Partial<PreOrder> & Record<string, unknown>): Pr
   };
 }
 
-async function fetchProductsFromApi(): Promise<Product[] | null> {
-  try {
-    const res = await fetch(`${API_BASE_URL}/api/products`);
-    if (!res.ok) return null;
-    const data = await res.json();
-    if (!Array.isArray(data.products)) return null;
-    return data.products.map(normalizeProduct).filter((p: Product) => p.id && p.nama_produk);
-  } catch {
-    return null;
-  }
-}
-
 async function fetchProductsFromSupabase(): Promise<Product[] | null> {
   if (!isSupabaseConfigured()) return null;
 
@@ -339,7 +289,7 @@ async function fetchProductsFromSupabase(): Promise<Product[] | null> {
     if (!res.ok) return null;
     const data = await res.json();
     if (!Array.isArray(data)) return null;
-return data.map(normalizeProduct).filter((p: Product) => p.id && p.nama_produk);
+    return data.map(normalizeProduct).filter((p: Product) => p.id && p.nama_produk);
   } catch {
     return null;
   }
@@ -357,36 +307,7 @@ export async function fetchAllProducts(): Promise<Product[]> {
     return cachedProducts;
   }
 
-  const apiProducts = await fetchProductsFromApi();
-  if (apiProducts && apiProducts.length > 0) {
-    cachedProducts = apiProducts;
-    cacheTime = Date.now();
-    return cachedProducts;
-  }
-
-  const res = await fetch(SHEETS_CSV_URL);
-  if (!res.ok) throw new Error("Gagal mengambil data dari Google Sheets");
-  const text = await res.text();
-  const rows = parseCSV(text);
-  if (rows.length < 2) return [];
-
-  const headers = rows[0].map((h) =>
-    h
-      .trim()
-      .toLowerCase()
-      .replace(/\s+/g, "_")
-  );
-  const products: Product[] = rows.slice(1).map((row) => {
-    const obj: Record<string, string> = {};
-    headers.forEach((h, i) => {
-      obj[h] = (row[i] || "").trim();
-    });
-    return normalizeProduct(obj);
-  });
-
-  cachedProducts = products.filter((p) => p.id && p.nama_produk);
-  cacheTime = Date.now();
-  return cachedProducts;
+  return cachedProducts || [];
 }
 
 export async function fetchManagedProducts(): Promise<Product[]> {
@@ -419,56 +340,46 @@ export async function fetchProductById(id: string): Promise<Product | null> {
 }
 
 export async function createProduct(product: Product): Promise<Product> {
-  if (isSupabaseConfigured()) {
-    const session = await getValidSession();
-    if (!session?.access_token) {
-      throw new Error("Sesi admin Supabase sudah kadaluarsa. Silakan login kembali.");
-    }
-
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/products`, {
-      method: "POST",
-      headers: {
-        ...supabaseHeaders(session.access_token),
-        Prefer: "return=representation",
-      },
-      body: JSON.stringify(productPayload(product, "active")),
-    });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      const errorText = String(data.message || data.details || "");
-      if (isTierConstraintError(errorText)) {
-        const retry = await fetch(`${SUPABASE_URL}/rest/v1/products`, {
-          method: "POST",
-          headers: {
-            ...supabaseHeaders(session.access_token),
-            Prefer: "return=representation",
-          },
-          body: JSON.stringify(productPayload(product, "active", true)),
-        });
-        const retryData = await retry.json().catch(() => ({}));
-        if (retry.ok) {
-          cachedProducts = null;
-          return normalizeProduct(Array.isArray(retryData) ? retryData[0] : retryData);
-        }
-        throw new Error(retryData.message || retryData.details || errorText || "Gagal menyimpan produk ke Supabase");
-      }
-      throw new Error(errorText || "Gagal menyimpan produk ke Supabase");
-    }
-    cachedProducts = null;
-    return normalizeProduct(Array.isArray(data) ? data[0] : data);
+  if (!isSupabaseConfigured()) {
+    throw new Error("Simpan produk hanya tersedia saat Supabase aktif");
   }
 
-  const res = await fetch(`${API_BASE_URL}/api/products`, {
+  const session = await getValidSession();
+  if (!session?.access_token) {
+    throw new Error("Sesi admin Supabase sudah kadaluarsa. Silakan login kembali.");
+  }
+
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/products`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(product),
+    headers: {
+      ...supabaseHeaders(session.access_token),
+      Prefer: "return=representation",
+    },
+    body: JSON.stringify(productPayload(product, "active")),
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
-    throw new Error(data.error || "Gagal menyimpan produk");
+    const errorText = String(data.message || data.details || "");
+    if (isTierConstraintError(errorText)) {
+      const retry = await fetch(`${SUPABASE_URL}/rest/v1/products`, {
+        method: "POST",
+        headers: {
+          ...supabaseHeaders(session.access_token),
+          Prefer: "return=representation",
+        },
+        body: JSON.stringify(productPayload(product, "active", true)),
+      });
+      const retryData = await retry.json().catch(() => ({}));
+      if (retry.ok) {
+        cachedProducts = null;
+        return normalizeProduct(Array.isArray(retryData) ? retryData[0] : retryData);
+      }
+      throw new Error(retryData.message || retryData.details || errorText || "Gagal menyimpan produk ke Supabase");
+    }
+    throw new Error(errorText || "Gagal menyimpan produk ke Supabase");
   }
   cachedProducts = null;
-  return normalizeProduct(data.product || product);
+  return normalizeProduct(Array.isArray(data) ? data[0] : data);
 }
 
 export async function updateProduct(id: string, product: Product): Promise<Product> {

@@ -8,8 +8,6 @@ importers:
 
   .: {}
 
-  backend: {}
-
   frontend:
     dependencies:
       qrcode.react:

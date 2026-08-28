@@ -33,9 +33,7 @@ import { normalizeWhatsApp } from "@/lib/site";
 
 const BASE_URL_KEY = "fm_base_url";
 const WA_KEY = "fm_wa";
-const AUTH_KEY = "fm_admin_auth";
 const SQL_DRAFT_KEY = "fm_sql_draft";
-const ADMIN_PASSWORD = "floramory2026";
 
 const TIER_OPTIONS = [
   { value: "classic", label: "Floramory Classic" },
@@ -210,7 +208,7 @@ function countSqlStatements(sql: string): number {
 }
 
 function LoginGate({ onLogin }: { onLogin: () => void }) {
-  const useSupabaseAuth = hasSupabaseConfig();
+  const supabaseReady = hasSupabaseConfig();
   const [email, setEmail] = useState("");
   const [pw, setPw] = useState("");
   const [error, setError] = useState(false);
@@ -221,34 +219,40 @@ function LoginGate({ onLogin }: { onLogin: () => void }) {
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (useSupabaseAuth) {
-      setLoading(true);
-      try {
-        await signInAdmin(email.trim(), pw);
-        onLogin();
-      } catch (err) {
-        setError(true);
-        setErrorMsg(err instanceof Error ? err.message : "Login Supabase gagal");
-        setShake(true);
-        setTimeout(() => setShake(false), 600);
-      } finally {
-        setLoading(false);
-      }
-      return;
-    }
-
-    if (pw === ADMIN_PASSWORD) {
-      sessionStorage.setItem(AUTH_KEY, "1");
+    setLoading(true);
+    try {
+      await signInAdmin(email.trim(), pw);
       onLogin();
-    } else {
+    } catch (err) {
       setError(true);
-      setErrorMsg("Password salah. Coba lagi.");
+      setErrorMsg(err instanceof Error ? err.message : "Login Supabase gagal");
       setShake(true);
       setTimeout(() => setShake(false), 600);
-      setTimeout(() => setError(false), 3000);
-      setPw("");
+    } finally {
+      setLoading(false);
     }
   };
+
+  if (!supabaseReady) {
+    return (
+      <div className="login-screen">
+        <div className="login-card">
+          <div className="login-logo" aria-label="Floramory">
+            <BrandLogo className="brand-logo-img login-logo-img" />
+          </div>
+          <div className="login-subtitle">Admin Panel</div>
+          <div className="login-icon">Admin</div>
+          <p style={{ textAlign: "center", marginTop: 16, lineHeight: 1.6 }}>
+            Supabase belum dikonfigurasi.
+            <br />
+            Isi <code>VITE_SUPABASE_URL</code> dan{" "}
+            <code>VITE_SUPABASE_ANON_KEY</code> lalu buat akun admin di Supabase
+            Authentication untuk masuk.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="login-screen">
@@ -259,26 +263,23 @@ function LoginGate({ onLogin }: { onLogin: () => void }) {
         <div className="login-subtitle">Admin Panel</div>
         <div className="login-icon">Admin</div>
         <form onSubmit={submit} style={{ width: "100%" }}>
-          {useSupabaseAuth && (
-            <div className="login-input-wrap" style={{ marginBottom: 10 }}>
-              <input
-                className={`login-input${error ? " login-input-error" : ""}`}
-                type="email"
-                placeholder="Email admin Supabase"
-                value={email}
-                onChange={e => { setEmail(e.target.value); setError(false); }}
-                autoFocus
-              />
-            </div>
-          )}
+          <div className="login-input-wrap" style={{ marginBottom: 10 }}>
+            <input
+              className={`login-input${error ? " login-input-error" : ""}`}
+              type="email"
+              placeholder="Email admin Supabase"
+              value={email}
+              onChange={e => { setEmail(e.target.value); setError(false); }}
+              autoFocus
+            />
+          </div>
           <div className="login-input-wrap">
             <input
               className={`login-input${error ? " login-input-error" : ""}`}
               type={show ? "text" : "password"}
-              placeholder={useSupabaseAuth ? "Password Supabase" : "Masukkan password admin"}
+              placeholder="Password Supabase"
               value={pw}
               onChange={e => { setPw(e.target.value); setError(false); }}
-              autoFocus={!useSupabaseAuth}
             />
             <button type="button" className="login-eye" onClick={() => setShow(s => !s)}>
               {show ? "Hide" : "Show"}
@@ -290,9 +291,7 @@ function LoginGate({ onLogin }: { onLogin: () => void }) {
           </button>
         </form>
         <p className="login-hint">
-          {useSupabaseAuth
-            ? "Gunakan akun admin yang dibuat di Supabase Authentication."
-            : "Masukkan password admin yang sudah dikonfigurasi."}
+          Gunakan akun admin yang dibuat di Supabase Authentication.
         </p>
       </div>
     </div>
@@ -321,11 +320,7 @@ export default function Admin() {
   const qrRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (hasSupabaseConfig()) {
-      if (hasSupabaseSession()) setAuthed(true);
-      return;
-    }
-    if (sessionStorage.getItem(AUTH_KEY) === "1") setAuthed(true);
+    if (hasSupabaseConfig() && hasSupabaseSession()) setAuthed(true);
   }, []);
 
   useEffect(() => {
@@ -525,7 +520,6 @@ export default function Admin() {
   };
 
   const logout = () => {
-    sessionStorage.removeItem(AUTH_KEY);
     signOutAdmin();
     setAuthed(false);
   };
@@ -1010,7 +1004,7 @@ export default function Admin() {
         </nav>
         <div className="admin-sidebar-footer">
           <p>Smart Eco-Preserved Artware</p>
-          <span>Sumber data: {hasSupabaseConfig() ? "Supabase" : "Fallback lokal"}</span>
+          <span>Sumber data: Supabase</span>
           <button onClick={logout}><LogOut size={16} /> Keluar</button>
         </div>
       </aside>

@@ -1,10 +1,19 @@
 Migration README
-=================
+================
 
-File: `db/migrations/20260708_migrate_tiers.sql`
+Files
+-----
+- `0001_schema.sql`                -> skema Supabase lengkap (tabel, RLS, policy, grant, constraint tier, seed).
+- `20260708_migrate_tiers.sql`     -> migrasi nilai `tier` dari label lama (`lite`/`home`) ke baru (`classic`/`masterpiece`).
 
-Purpose
--------
+Urutan
+------
+- Setup baru: jalankan `0001_schema.sql` di Supabase SQL editor.
+- Upgrade dari DB lama: jalankan `0001_schema.sql` dulu (membuat/menormalkan schema),
+  kemudian `20260708_migrate_tiers.sql` untuk menyesuaikan data `tier` lama.
+
+Purpose (20260708_migrate_tiers.sql)
+------------------------------------
 Migrate product `tier` values from legacy labels (`lite`, `signature`, `home`) to the new labels used in the UI (`classic`, `signature`, `masterpiece`) and update the `products_tier_check` constraint accordingly.
 
 How to run (Supabase SQL editor)
@@ -35,7 +44,7 @@ Notes & safety
 - The migration updates existing rows in-place; the backup table is a snapshot of `public.products` before changes.
 - Make sure no other systems rely on the old tier values before switching the constraint.
 - If your application still maps UI values to legacy DB values (the app contains such mapping), coordinate deployment so the app and DB change together to avoid mismatches.
-- The current app code now also includes a fallback retry using legacy tier labels if the Supabase constraint still expects `lite`/`home` while migrating.
+- The app (frontend/src/lib/sheets.ts) expects the new tier labels (`classic`/`signature`/`masterpiece`) as enforced by `0001_schema.sql`. It keeps a small retry safety net if a constraint error occurs, but the schema constraint is the source of truth.
 
 Questions or help
 -----------------
