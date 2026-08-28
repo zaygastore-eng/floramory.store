@@ -2,7 +2,7 @@ kind = "web"
 previewPath = "/"
 title = "Floramory"
 version = "1.0.0"
-id = "artifacts/floramory"
+id = "floramory"
 router = "path"
 
 [[integratedSkills]]
@@ -19,7 +19,7 @@ run = "pnpm --filter @floramory/frontend run dev"
 
 [services.production]
 build = [ "pnpm", "--filter", "@floramory/frontend", "run", "build" ]
-publicDir = "artifacts/floramory/frontend/dist"
+publicDir = "frontend/dist"
 serve = "static"
 
 [[services.production.rewrites]]
