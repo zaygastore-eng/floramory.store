@@ -5,17 +5,17 @@
 Proyek dipisah menjadi dua package dalam satu workspace (pnpm):
 
 ```text
-floramory/
+FLORAMORY REALL/          # root workspace (repo)
 ├── package.json          # workspace root (script delegasi: dev, build, start)
 ├── pnpm-workspace.yaml   # mencakup frontend & backend
 ├── frontend/             # React + Vite (src, public, dist build)
 │   ├── .env.local        # variabel VITE_* (dibaca Vite)
 │   └── package.json      # dependency frontend
-├── backend/              # Node API murni (hanya /api/*)
-│   ├── .env              # variabel SHEETS_* / ADMIN_API_TOKEN / PORT
-│   ├── index.mjs         # server HTTP API
-│   └── db/migrations/    # SQL migrasi
-└── docs/
+└── backend/              # Node API murni (hanya /api/*)
+    ├── .env              # variabel SHEETS_* / ADMIN_API_TOKEN / PORT
+    ├── index.mjs         # server HTTP API
+    ├── db/migrations/    # SQL migrasi
+    └── docs/             # dokumentasi operasional
 ```
 
 Perintah:
