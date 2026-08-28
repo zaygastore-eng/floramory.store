@@ -188,7 +188,7 @@ function productToForm(product: Product): FormState {
     namaPembeli: product.nama_pembeli,
     dari: product.dari,
     pesan: product.pesan_personal,
-    fotoProduk: product.foto_produk || product.foto_url,
+    fotoProduk: product.foto_produk,
     fotoQr: product.foto_qr,
   };
 }
@@ -425,7 +425,6 @@ export default function Admin() {
     pesan_personal: form.pesan,
     foto_produk: form.fotoProduk,
     foto_qr: form.fotoQr,
-    foto_url: form.fotoProduk,
   });
 
   const generateQR = () => {

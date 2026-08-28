@@ -71,7 +71,7 @@ export default function Produk() {
   const tier = product.tier.toLowerCase();
   const emoji = tierEmoji(tier);
   const heroBg = tierBg(tier);
-  const qrImage = product.foto_qr || product.foto_produk || product.foto_url;
+  const qrImage = product.foto_qr || product.foto_produk;
   const hasQrImage = qrImage.startsWith("http");
   const hasPersonalMessage = Boolean(product.pesan_personal && product.pesan_personal.trim());
   const waDigits = normalizeWhatsApp(waNumber) || WA_FALLBACK;
@@ -117,7 +117,7 @@ export default function Produk() {
         <article className="greeting-card">
           <div className="greeting-image-wrap">
             {hasQrImage ? (
-              <img className="greeting-image" src={qrImage} alt={product.nama_produk} />
+              <img className="greeting-image" src={qrImage} alt={product.nama_produk} decoding="async" fetchPriority="high" />
             ) : (
               <div className="greeting-image-placeholder">{emoji}</div>
             )}

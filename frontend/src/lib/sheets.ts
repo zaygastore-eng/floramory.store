@@ -19,7 +19,6 @@ export interface Product {
   pesan_personal: string;
   foto_produk: string;
   foto_qr: string;
-  foto_url: string;
   status?: string;
 }
 
@@ -236,9 +235,8 @@ function normalizeProduct(obj: Partial<Product> & Record<string, unknown>): Prod
     nama_pembeli: String(obj.nama_pembeli || "").trim(),
     dari: String(obj.dari || "").trim(),
     pesan_personal: String(obj.pesan_personal || "").trim(),
-    foto_produk: String(obj.foto_produk || obj.foto_url || "").trim(),
-    foto_qr: String(obj.foto_qr || obj.foto_QR || obj.foto_url || "").trim(),
-    foto_url: String(obj.foto_url || obj.foto_produk || "").trim(),
+    foto_produk: String(obj.foto_produk || "").trim(),
+    foto_qr: String(obj.foto_qr || obj.foto_QR || "").trim(),
     status: String(obj.status || "active").trim(),
   };
 }
@@ -283,7 +281,7 @@ async function fetchProductsFromSupabase(): Promise<Product[] | null> {
 
   try {
     const res = await fetch(
-      `${SUPABASE_URL}/rest/v1/products?select=*&status=eq.active&order=created_at.desc`,
+      `${SUPABASE_URL}/rest/v1/products?select=id,nama_produk,tier,harga,bunga,deskripsi,bahan,ukuran,nama_pembeli,dari,pesan_personal,foto_produk,foto_qr,status&status=eq.active&order=created_at.desc`,
       { headers: supabaseHeaders() }
     );
     if (!res.ok) return null;
@@ -333,10 +331,22 @@ export async function fetchManagedProducts(): Promise<Product[]> {
 }
 
 export async function fetchProductById(id: string): Promise<Product | null> {
-  const all = await fetchAllProducts();
-  return (
-    all.find((p) => p.id.toUpperCase() === id.toUpperCase()) ?? null
-  );
+  if (!id || !isSupabaseConfigured()) return null;
+
+  try {
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/products?id=eq.${encodeURIComponent(id)}&status=eq.active&select=id,nama_produk,tier,harga,bunga,deskripsi,bahan,ukuran,nama_pembeli,dari,pesan_personal,foto_produk,foto_qr,status&limit=1`,
+      { headers: supabaseHeaders() }
+    );
+    if (!res.ok) return null;
+    const data = await res.json();
+    const row = Array.isArray(data) ? data[0] : data;
+    if (!row) return null;
+    const normalized = normalizeProduct(row);
+    return normalized.id ? normalized : null;
+  } catch {
+    return null;
+  }
 }
 
 export async function createProduct(product: Product): Promise<Product> {

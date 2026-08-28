@@ -8,7 +8,7 @@ function ProductCard({ product, onClick }: { product: Product; onClick: () => vo
   const emoji = tierEmoji(tier);
   const badgeClass = tierBadgeClass(tier);
   const badge = tierLabel(tier);
-  const productImage = product.foto_produk || product.foto_url;
+  const productImage = product.foto_produk;
   const hasProductImage = productImage.startsWith("http");
   const desc = product.deskripsi ? product.deskripsi.slice(0, 80) + (product.deskripsi.length > 80 ? "…" : "") : "";
 
@@ -16,7 +16,7 @@ function ProductCard({ product, onClick }: { product: Product; onClick: () => vo
     <button type="button" className="product-card" onClick={onClick}>
       <div className="product-img">
         {hasProductImage && (
-          <img src={productImage} alt="" />
+          <img src={productImage} alt={product.nama_produk} loading="lazy" decoding="async" width="600" height="600" />
         )}
         {!hasProductImage && (
           <>
@@ -56,7 +56,7 @@ function ProductModal({
 }) {
   const tier = product.tier.toLowerCase();
   const emoji = tierEmoji(tier);
-  const productImage = product.foto_produk || product.foto_url;
+  const productImage = product.foto_produk;
   const hasProductImage = productImage.startsWith("http");
 
   const chips: [string, string][] = [];
@@ -86,7 +86,7 @@ function ProductModal({
       <div className="modal" role="dialog" aria-modal="true" aria-labelledby="product-modal-title">
         <div className="modal-hero">
           {hasProductImage && (
-            <img src={productImage} alt="" />
+            <img src={productImage} alt={product.nama_produk} decoding="async" width="800" height="800" />
           )}
           {!hasProductImage && <span className="emoji-fallback">{emoji}</span>}
           <button type="button" className="modal-close" onClick={onClose} aria-label="Tutup">✕</button>

@@ -3,14 +3,15 @@ Migration README
 
 Files
 -----
-- `0001_schema.sql`                -> skema Supabase lengkap (tabel, RLS, policy, grant, constraint tier, seed).
-- `20260708_migrate_tiers.sql`     -> migrasi nilai `tier` dari label lama (`lite`/`home`) ke baru (`classic`/`masterpiece`).
+- `0001_schema.sql`        -> skema Supabase lengkap (tabel, RLS, policy, grant, constraint tier, seed).
+- `0002_indexes.sql`       -> indeks performa untuk query yang paling sering dipakai.
+- `20260708_migrate_tiers.sql` -> migrasi nilai `tier` dari label lama (`lite`/`home`) ke baru (`classic`/`masterpiece`).
 
 Urutan
 ------
-- Setup baru: jalankan `0001_schema.sql` di Supabase SQL editor.
+- Setup baru: jalankan `0001_schema.sql`, lalu `0002_indexes.sql` di Supabase SQL editor.
 - Upgrade dari DB lama: jalankan `0001_schema.sql` dulu (membuat/menormalkan schema),
-  kemudian `20260708_migrate_tiers.sql` untuk menyesuaikan data `tier` lama.
+  kemudian `20260708_migrate_tiers.sql` untuk menyesuaikan data `tier` lama, lalu `0002_indexes.sql`.
 
 Purpose (20260708_migrate_tiers.sql)
 ------------------------------------
