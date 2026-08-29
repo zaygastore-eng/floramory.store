@@ -1,5 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import BrandLogo from "@/components/BrandLogo";
+import ProductImage from "@/components/ProductImage";
 import { createPreOrder, fetchAllProducts, tierLabel, tierEmoji, tierBadgeClass, type Product } from "@/lib/sheets";
 import { pageUrl, normalizeWhatsApp } from "@/lib/site";
 
@@ -9,21 +10,25 @@ function ProductCard({ product, onClick }: { product: Product; onClick: () => vo
   const badgeClass = tierBadgeClass(tier);
   const badge = tierLabel(tier);
   const productImage = product.foto_produk;
-  const hasProductImage = productImage.startsWith("http");
   const desc = product.deskripsi ? product.deskripsi.slice(0, 80) + (product.deskripsi.length > 80 ? "…" : "") : "";
 
   return (
     <button type="button" className="product-card" onClick={onClick}>
       <div className="product-img">
-        {hasProductImage && (
-          <img src={productImage} alt={product.nama_produk} loading="lazy" decoding="async" width="600" height="600" />
-        )}
-        {!hasProductImage && (
-          <>
-            <div className="flower-bg">{emoji}</div>
-            <div className="flower-main">{emoji}</div>
-          </>
-        )}
+        <ProductImage
+          src={productImage}
+          size="thumb"
+          alt={product.nama_produk}
+          width={600}
+          height={600}
+          loading="lazy"
+          fallback={
+            <>
+              <div className="flower-bg">{emoji}</div>
+              <div className="flower-main">{emoji}</div>
+            </>
+          }
+        />
         <span className={`product-badge ${badgeClass}`}>{badge}</span>
         <div className="product-qr-icon">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="18" height="18" aria-hidden="true">
@@ -57,7 +62,6 @@ function ProductModal({
   const tier = product.tier.toLowerCase();
   const emoji = tierEmoji(tier);
   const productImage = product.foto_produk;
-  const hasProductImage = productImage.startsWith("http");
 
   const chips: [string, string][] = [];
   if (product.bahan) chips.push(["Bahan", product.bahan]);
@@ -85,10 +89,14 @@ function ProductModal({
     >
       <div className="modal" role="dialog" aria-modal="true" aria-labelledby="product-modal-title">
         <div className="modal-hero">
-          {hasProductImage && (
-            <img src={productImage} alt={product.nama_produk} decoding="async" width="800" height="800" />
-          )}
-          {!hasProductImage && <span className="emoji-fallback">{emoji}</span>}
+          <ProductImage
+            src={productImage}
+            size="large"
+            alt={product.nama_produk}
+            width={800}
+            height={800}
+            fallback={<span className="emoji-fallback">{emoji}</span>}
+          />
           <button type="button" className="modal-close" onClick={onClose} aria-label="Tutup">✕</button>
         </div>
         <div className="modal-body">
@@ -157,7 +165,9 @@ export default function Home() {
     namaPenerima: "",
     dari: "",
     pesanPersonal: "",
+    website: "",
   });
+  const formStartRef = useRef(Date.now());
 
   useEffect(() => {
     fetchAllProducts()
@@ -213,17 +223,23 @@ export default function Home() {
     const selected = products.find(p => p.id === orderForm.produk);
     setOrderSubmitting(true);
     try {
-      await createPreOrder({
-        customer_name: orderForm.nama,
-        whatsapp: wa,
-        product_id: orderForm.produk,
-        product_name: selected?.nama_produk || orderForm.produk,
-        custom_request: orderForm.pesan,
-        recipient_name: orderForm.namaPenerima,
-        sender_name: orderForm.dari,
-        personal_message: orderForm.pesanPersonal,
-      });
-      setOrderForm({ nama: "", wa: "", pesan: "", produk: "", namaPenerima: "", dari: "", pesanPersonal: "" });
+      await createPreOrder(
+        {
+          customer_name: orderForm.nama,
+          whatsapp: wa,
+          product_id: orderForm.produk,
+          product_name: selected?.nama_produk || orderForm.produk,
+          custom_request: orderForm.pesan,
+          recipient_name: orderForm.namaPenerima,
+          sender_name: orderForm.dari,
+          personal_message: orderForm.pesanPersonal,
+        },
+        {
+          honeypot: orderForm.website,
+          fillMs: Date.now() - formStartRef.current,
+        }
+      );
+      setOrderForm({ nama: "", wa: "", pesan: "", produk: "", namaPenerima: "", dari: "", pesanPersonal: "", website: "" });
       showToast("✦ Pre-order Anda tersimpan! Tim kami akan menghubungi via WhatsApp segera.");
     } catch (error) {
       showToast(error instanceof Error ? error.message : "Gagal mengirim pre-order. Silakan coba lagi.");
@@ -410,12 +426,12 @@ export default function Home() {
             <div className="form-row">
               <div className="form-group">
                 <label className="form-label" htmlFor="order-nama">Nama Lengkap</label>
-                <input id="order-nama" className="form-input" type="text" placeholder="Nama Anda" required
+                <input id="order-nama" className="form-input" type="text" placeholder="Nama Anda" required maxLength={120}
                   value={orderForm.nama} onChange={e => setOrderForm(f => ({ ...f, nama: e.target.value }))} />
               </div>
               <div className="form-group">
                 <label className="form-label" htmlFor="order-wa">No. WhatsApp</label>
-                <input id="order-wa" className="form-input" type="tel" placeholder="08xx-xxxx-xxxx" required
+                <input id="order-wa" className="form-input" type="tel" placeholder="08xx-xxxx-xxxx" required maxLength={20}
                   value={orderForm.wa} onChange={e => setOrderForm(f => ({ ...f, wa: e.target.value }))} />
               </div>
             </div>
@@ -440,27 +456,32 @@ export default function Home() {
             </div>
             <div className="form-group">
               <label className="form-label" htmlFor="order-pesan">Kustomisasi & Pesan Memori</label>
-              <textarea id="order-pesan" className="form-textarea"
+              <textarea id="order-pesan" className="form-textarea" maxLength={2000}
                 placeholder="Ceritakan momen yang ingin diabadikan, pilihan bunga, warna, dan isi Memory Vault (foto/pesan) yang ingin Anda sertakan..."
                 value={orderForm.pesan} onChange={e => setOrderForm(f => ({ ...f, pesan: e.target.value }))} />
             </div>
             <div className="form-row">
               <div className="form-group">
                 <label className="form-label" htmlFor="order-penerima">Nama Penerima Memory Vault</label>
-                <input id="order-penerima" className="form-input" type="text" placeholder="Contoh: Nabila Putri"
+                <input id="order-penerima" className="form-input" type="text" placeholder="Contoh: Nabila Putri" maxLength={120}
                   value={orderForm.namaPenerima} onChange={e => setOrderForm(f => ({ ...f, namaPenerima: e.target.value }))} />
               </div>
               <div className="form-group">
                 <label className="form-label" htmlFor="order-dari">Dari / Pengirim</label>
-                <input id="order-dari" className="form-input" type="text" placeholder="Contoh: Keluarga Putri"
+                <input id="order-dari" className="form-input" type="text" placeholder="Contoh: Keluarga Putri" maxLength={120}
                   value={orderForm.dari} onChange={e => setOrderForm(f => ({ ...f, dari: e.target.value }))} />
               </div>
             </div>
             <div className="form-group">
               <label className="form-label" htmlFor="order-personal">Pesan Personal Untuk QR</label>
-              <textarea id="order-personal" className="form-textarea"
+              <textarea id="order-personal" className="form-textarea" maxLength={2000}
                 placeholder="Pesan ini bisa ditampilkan saat penerima scan QR produk..."
                 value={orderForm.pesanPersonal} onChange={e => setOrderForm(f => ({ ...f, pesanPersonal: e.target.value }))} />
+            </div>
+            <div className="form-honeypot" aria-hidden="true">
+              <label className="form-label" htmlFor="order-website">Website (jangan diisi)</label>
+              <input id="order-website" className="form-input" type="text" tabIndex={-1} autoComplete="off"
+                value={orderForm.website} onChange={e => setOrderForm(f => ({ ...f, website: e.target.value }))} />
             </div>
             <button type="submit" className="form-submit" disabled={orderSubmitting}>
               {orderSubmitting ? "Mengirim..." : "Kirim Pre-Order →"}

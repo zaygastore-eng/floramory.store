@@ -16,19 +16,23 @@ import {
   createProduct,
   deleteProduct,
   fetchManagedProducts,
+  fetchNewPreOrderCount,
   fetchPreOrders,
   fetchWhatsAppNumber,
   hasSupabaseConfig,
-  hasSupabaseSession,
   signInAdmin,
   signOutAdmin,
+  statusAdminSession,
   updatePreOrderStatus,
   updateWhatsAppNumber,
   updateProduct,
+  uploadProductImage,
   type PreOrder,
   type Product,
+  type ProductImageField,
 } from "@/lib/sheets";
 import BrandLogo from "@/components/BrandLogo";
+import { isSupabaseStorageUrl, productImageUrl, validateImageUrl } from "@/lib/images";
 import { normalizeWhatsApp } from "@/lib/site";
 
 const BASE_URL_KEY = "fm_base_url";
@@ -86,9 +90,27 @@ create table if not exists public.app_settings (
   updated_at timestamptz not null default now()
 );
 
+create table if not exists public.admin_users (
+  id uuid primary key references auth.users(id) on delete cascade,
+  created_at timestamptz not null default now()
+);
+
+create or replace function public.is_admin()
+returns boolean
+language sql
+security definer
+set search_path = public
+stable
+as $$
+  select exists (
+    select 1 from public.admin_users where id = auth.uid()
+  );
+$$;
+
 alter table public.products enable row level security;
 alter table public.preorder_orders enable row level security;
 alter table public.app_settings enable row level security;
+alter table public.admin_users enable row level security;
 
 drop policy if exists "Public can read active products" on public.products;
 drop policy if exists "Authenticated admin can manage products" on public.products;
@@ -103,24 +125,26 @@ create policy "Authenticated admin can manage products"
 on public.products
 for all
 to authenticated
-using (true)
-with check (true);
+using (public.is_admin())
+with check (public.is_admin());
 
+-- preorder_orders: PRIVASI. anon tanpa akses; authenticated HANYA
+-- select/update dan dibatasi policy is_admin() -> user biasa yang
+-- login tidak bisa membaca kontak/pesan pribadi (whatsapp, dll).
+-- INSERT hanya lewat Edge Function \`send-preorder\` (service_role).
 drop policy if exists "Public can create preorder" on public.preorder_orders;
 drop policy if exists "Authenticated admin can manage preorder" on public.preorder_orders;
 
-create policy "Public can create preorder"
-on public.preorder_orders
-for insert
-to anon, authenticated
-with check (true);
+grant select, update on public.preorder_orders to authenticated;
+revoke insert, delete on public.preorder_orders from authenticated;
+revoke all on public.preorder_orders from anon;
 
 create policy "Authenticated admin can manage preorder"
 on public.preorder_orders
 for all
 to authenticated
-using (true)
-with check (true);
+using (public.is_admin())
+with check (public.is_admin());
 
 drop policy if exists "Public can read app settings" on public.app_settings;
 drop policy if exists "Authenticated admin can manage app settings" on public.app_settings;
@@ -129,19 +153,49 @@ create policy "Public can read app settings"
 on public.app_settings
 for select
 to anon, authenticated
-using (true);
+using (key in ('wa_number'));
 
 create policy "Authenticated admin can manage app settings"
 on public.app_settings
 for all
 to authenticated
-using (true)
-with check (true);
+using (public.is_admin())
+with check (public.is_admin());
 
 grant usage on schema public to anon, authenticated;
+
+-- products: publik baca katalog aktif; tulis hanya authenticated + RLS is_admin()
 grant select on public.products to anon, authenticated;
-grant insert on public.preorder_orders to anon, authenticated;
-grant select on public.app_settings to anon, authenticated;`;
+grant select, insert, update on public.products to authenticated;
+
+-- app_settings: publik baca (nomor WA kontak); tulis hanya admin
+grant select on public.app_settings to anon, authenticated;
+grant select, insert, update on public.app_settings to authenticated;
+
+-- preorder_orders: PRIVASI - grant select/update di bagian policy di atas
+
+-- Setelah menjalankan SQL di atas, daftarkan akun admin (wajib, lewat SQL Editor):
+-- insert into public.admin_users (id)
+-- select id from auth.users where email = 'EMAIL_ADMIN_KAMU';
+
+-- Foto: aktifkan Supabase Storage bucket product-images + policy (sekali saja):
+-- insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+-- values ('product-images', 'product-images', true, 5242880,
+--         array['image/jpeg','image/png','image/webp','image/avif','image/gif'])
+-- on conflict (id) do update set public = true,
+--         file_size_limit = excluded.file_size_limit,
+--         allowed_mime_types = excluded.allowed_mime_types;
+--
+-- create policy "Public read product images" on storage.objects for select
+--   to anon, authenticated using (bucket_id = 'product-images');
+-- create policy "Admin upload product images" on storage.objects for insert
+--   to authenticated with check (bucket_id = 'product-images' and public.is_admin());
+-- create policy "Admin update product images" on storage.objects for update
+--   to authenticated using (bucket_id = 'product-images' and public.is_admin())
+--   with check (bucket_id = 'product-images' and public.is_admin());
+-- create policy "Admin delete product images" on storage.objects for delete
+--   to authenticated using (bucket_id = 'product-images' and public.is_admin());
+-- (Lengkap: lihat backend/db/migrations/0005_product_images_storage.sql)`;
 
 interface FormState {
   id: string;
@@ -308,19 +362,29 @@ export default function Admin() {
   const [generatedUrl, setGeneratedUrl] = useState("");
   const [qrVisible, setQrVisible] = useState(false);
   const [savingProduct, setSavingProduct] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState<ProductImageField | null>(null);
   const [managedProducts, setManagedProducts] = useState<Product[]>([]);
   const [loadingProducts, setLoadingProducts] = useState(false);
   const [preOrders, setPreOrders] = useState<PreOrder[]>([]);
   const [loadingOrders, setLoadingOrders] = useState(false);
+  const [preOrderOffset, setPreOrderOffset] = useState(0);
+  const [hasMorePreOrders, setHasMorePreOrders] = useState(false);
+  const [newOrderCount, setNewOrderCount] = useState(0);
   const [editingId, setEditingId] = useState("");
   const [productSearch, setProductSearch] = useState("");
   const [sqlDraft, setSqlDraft] = useState(DEFAULT_SQL);
   const [toastMsg, setToastMsg] = useState("");
   const [toastVisible, setToastVisible] = useState(false);
   const qrRef = useRef<HTMLDivElement>(null);
+  const produkUploadRef = useRef<HTMLInputElement>(null);
+  const qrUploadRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (hasSupabaseConfig() && hasSupabaseSession()) setAuthed(true);
+    if (!hasSupabaseConfig()) return;
+    statusAdminSession().then((status) => {
+      if (status.authenticated && status.isAdmin) setAuthed(true);
+      else void signOutAdmin();
+    });
   }, []);
 
   useEffect(() => {
@@ -368,9 +432,27 @@ export default function Admin() {
   const loadPreOrders = async () => {
     setLoadingOrders(true);
     try {
-      setPreOrders(await fetchPreOrders());
+      const page = await fetchPreOrders(0);
+      setPreOrders(page.orders);
+      setPreOrderOffset(page.orders.length);
+      setHasMorePreOrders(page.hasMore);
+      setNewOrderCount(await fetchNewPreOrderCount());
     } catch (error) {
       showToast(error instanceof Error ? error.message : "Gagal memuat pre-order");
+    } finally {
+      setLoadingOrders(false);
+    }
+  };
+
+  const loadMorePreOrders = async () => {
+    setLoadingOrders(true);
+    try {
+      const page = await fetchPreOrders(preOrderOffset);
+      setPreOrders(prev => [...prev, ...page.orders]);
+      setPreOrderOffset(preOrderOffset + page.orders.length);
+      setHasMorePreOrders(page.hasMore);
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "Gagal memuat pre-order lainnya");
     } finally {
       setLoadingOrders(false);
     }
@@ -448,6 +530,14 @@ export default function Admin() {
       return;
     }
 
+    // Validasi URL foto manual (opsional namun harus http/https kala diisi).
+    const fotoProdukError = validateImageUrl(form.fotoProduk);
+    const fotoQrError = validateImageUrl(form.fotoQr);
+    if (fotoProdukError || fotoQrError) {
+      showToast(fotoProdukError || fotoQrError || "");
+      return;
+    }
+
     setSavingProduct(true);
     try {
       if (editingId) await updateProduct(editingId, productFromForm());
@@ -471,6 +561,24 @@ export default function Admin() {
     setEditingId("");
     setQrVisible(false);
     setGeneratedUrl("");
+  };
+
+  // Unggah foto: dikompresi & di-resize ke WebP di browser (maks 5 MB),
+  // lalu dikirim lewat sesi admin (cookie) ke Supabase Storage.
+  // URL Storage yang dihasilkan otomatis di-optimasi CDN saat ditampilkan.
+  const handleImageUpload = async (field: ProductImageField, file: File) => {
+    if (uploadingImage) return;
+    const key = field === "produk" ? "fotoProduk" : "fotoQr";
+    setUploadingImage(field);
+    try {
+      const url = await uploadProductImage(form.id, field, file);
+      setForm(f => ({ ...f, [key]: url }));
+      showToast(field === "produk" ? "Foto produk terunggah (WebP, otomatis dioptimasi)" : "Foto QR terunggah (WebP, otomatis dioptimasi)");
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "Gagal mengunggah foto");
+    } finally {
+      setUploadingImage(null);
+    }
   };
 
   const editProduct = (product: Product) => {
@@ -518,8 +626,8 @@ export default function Admin() {
     }
   };
 
-  const logout = () => {
-    signOutAdmin();
+  const logout = async () => {
+    await signOutAdmin();
     setAuthed(false);
   };
 
@@ -593,10 +701,6 @@ export default function Admin() {
   const archivedProducts = useMemo(
     () => managedProducts.filter(p => p.status === "archived"),
     [managedProducts]
-  );
-  const newOrders = useMemo(
-    () => preOrders.filter(order => (order.status || "new") === "new"),
-    [preOrders]
   );
   const search = productSearch.trim().toLowerCase();
   const filteredProducts = activeProducts.filter(p =>
@@ -713,14 +817,90 @@ export default function Admin() {
 
       <div className="admin-subsection-title">Foto</div>
       <div className="admin-form-group">
-        <label className="admin-form-label">URL Foto Produk</label>
-        <input className="admin-form-input" type="text" placeholder="https://..."
-          value={form.fotoProduk} onChange={e => setForm(f => ({ ...f, fotoProduk: e.target.value }))} />
+        <label className="admin-form-label">Foto Produk</label>
+        <div className="admin-upload-row">
+          <input className="admin-form-input" type="text" placeholder="URL atau unggah otomatis"
+            value={form.fotoProduk} onChange={e => setForm(f => ({ ...f, fotoProduk: e.target.value }))} />
+          <button
+            type="button"
+            className="admin-upload-btn"
+            disabled={uploadingImage !== null || !form.id.trim()}
+            title={!form.id.trim() ? "Isi ID Produk dulu" : "Unggah & kompresi ke WebP (maks 5 MB)"}
+            onClick={() => produkUploadRef.current?.click()}
+          >
+            {uploadingImage === "produk" ? "Mengunggah..." : "Unggah & Optimasi"}
+          </button>
+          <input
+            ref={produkUploadRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp,image/avif,image/gif"
+            className="admin-upload-input"
+            onChange={e => {
+              const file = e.target.files?.[0];
+              if (file) void handleImageUpload("produk", file);
+              e.target.value = "";
+            }}
+          />
+        </div>
+        {form.fotoProduk.startsWith("http") && (
+          <img className="admin-upload-preview" src={productImageUrl(form.fotoProduk, "thumb")} alt="Pratinjau foto produk" />
+        )}
+        {(() => {
+          const err = form.fotoProduk.trim() ? validateImageUrl(form.fotoProduk) : null;
+          if (err) return <p className="form-hint form-hint-error">{err}</p>;
+          if (form.fotoProduk.trim() && !isSupabaseStorageUrl(form.fotoProduk)) {
+            return (
+              <p className="form-hint form-hint-warn">
+                URL eksternal tidak dioptimasi CDN. Sambungkan ke storage dengan "Unggah & Optimasi".
+              </p>
+            );
+          }
+          return null;
+        })()}
+        <p className="form-hint">Maks. 5 MB · otomatis dikompresi ke WebP · thumbnail 600px dibuat CDN untuk katalog.</p>
       </div>
       <div className="admin-form-group">
-        <label className="admin-form-label">URL Foto QR</label>
-        <input className="admin-form-input" type="text" placeholder="https://..."
-          value={form.fotoQr} onChange={e => setForm(f => ({ ...f, fotoQr: e.target.value }))} />
+        <label className="admin-form-label">Foto QR</label>
+        <div className="admin-upload-row">
+          <input className="admin-form-input" type="text" placeholder="URL atau unggah otomatis"
+            value={form.fotoQr} onChange={e => setForm(f => ({ ...f, fotoQr: e.target.value }))} />
+          <button
+            type="button"
+            className="admin-upload-btn"
+            disabled={uploadingImage !== null || !form.id.trim()}
+            title={!form.id.trim() ? "Isi ID Produk dulu" : "Unggah & kompresi ke WebP (maks 5 MB)"}
+            onClick={() => qrUploadRef.current?.click()}
+          >
+            {uploadingImage === "qr" ? "Mengunggah..." : "Unggah & Optimasi"}
+          </button>
+          <input
+            ref={qrUploadRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp,image/avif,image/gif"
+            className="admin-upload-input"
+            onChange={e => {
+              const file = e.target.files?.[0];
+              if (file) void handleImageUpload("qr", file);
+              e.target.value = "";
+            }}
+          />
+        </div>
+        {form.fotoQr.startsWith("http") && (
+          <img className="admin-upload-preview" src={productImageUrl(form.fotoQr, "thumb")} alt="Pratinjau foto QR" />
+        )}
+        {(() => {
+          const err = form.fotoQr.trim() ? validateImageUrl(form.fotoQr) : null;
+          if (err) return <p className="form-hint form-hint-error">{err}</p>;
+          if (form.fotoQr.trim() && !isSupabaseStorageUrl(form.fotoQr)) {
+            return (
+              <p className="form-hint form-hint-warn">
+                URL eksternal tidak dioptimasi CDN. Sambungkan ke storage dengan "Unggah & Optimasi".
+              </p>
+            );
+          }
+          return null;
+        })()}
+        <p className="form-hint">Maks. 5 MB · otomatis dikompresi ke WebP · tampil ukuran besar di halaman scan QR.</p>
       </div>
 
       <div className="admin-form-actions">
@@ -796,7 +976,7 @@ export default function Admin() {
       <div className="admin-panel-head">
         <div>
           <h2>Pesanan Pre-order</h2>
-          <p>{newOrders.length} pesanan baru dari form pelanggan.</p>
+          <p>{newOrderCount} pesanan baru dari form pelanggan.</p>
         </div>
         <button className="admin-outline-btn" onClick={loadPreOrders} disabled={loadingOrders}>
           <RefreshCw size={16} /> Refresh
@@ -828,6 +1008,13 @@ export default function Admin() {
           </div>
         ))}
       </div>
+      {hasMorePreOrders && (
+        <div className="admin-load-more">
+          <button className="admin-outline-btn" onClick={loadMorePreOrders} disabled={loadingOrders}>
+            Muat lebih banyak
+          </button>
+        </div>
+      )}
     </div>
   );
 
@@ -838,7 +1025,7 @@ export default function Admin() {
         {tierCounts.map(tier => (
           <div className="admin-stat-card" key={tier.value}><span>{tier.count}</span><p>{tier.label}</p></div>
         ))}
-        <div className="admin-stat-card"><span>{newOrders.length}</span><p>Pesanan baru</p></div>
+        <div className="admin-stat-card"><span>{newOrderCount}</span><p>Pesanan baru</p></div>
       </section>
       <div className="admin-panel-card">
         <div className="admin-panel-head">

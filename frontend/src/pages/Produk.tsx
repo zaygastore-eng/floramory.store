@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import BrandLogo from "@/components/BrandLogo";
+import ProductImage from "@/components/ProductImage";
 import { fetchProductById, fetchWhatsAppNumber, tierLabel, tierEmoji, tierBg, type Product } from "@/lib/sheets";
+import { applyProductMeta } from "@/lib/seo";
 import { pageUrl, normalizeWhatsApp } from "@/lib/site";
 
 const WA_FALLBACK = "6281234567890";
@@ -36,7 +38,17 @@ export default function Produk() {
 
     fetchProductById(id)
       .then((p) => {
-        if (!p) { setError(true); } else { setProduct(p); document.title = `${p.nama_produk} — Floramory`; }
+        if (!p) {
+          setError(true);
+        } else {
+          setProduct(p);
+          applyProductMeta({
+            id: p.id,
+            nama_produk: p.nama_produk,
+            deskripsi: p.deskripsi,
+            imageUrl: p.foto_qr || p.foto_produk,
+          });
+        }
       })
       .catch(() => setError(true))
       .finally(() => setLoading(false));
@@ -72,7 +84,6 @@ export default function Produk() {
   const emoji = tierEmoji(tier);
   const heroBg = tierBg(tier);
   const qrImage = product.foto_qr || product.foto_produk;
-  const hasQrImage = qrImage.startsWith("http");
   const hasPersonalMessage = Boolean(product.pesan_personal && product.pesan_personal.trim());
   const waDigits = normalizeWhatsApp(waNumber) || WA_FALLBACK;
 
@@ -116,11 +127,13 @@ export default function Produk() {
       <main className="qr-card-stage" style={{ background: heroBg }}>
         <article className="greeting-card">
           <div className="greeting-image-wrap">
-            {hasQrImage ? (
-              <img className="greeting-image" src={qrImage} alt={product.nama_produk} decoding="async" fetchPriority="high" />
-            ) : (
-              <div className="greeting-image-placeholder">{emoji}</div>
-            )}
+            <ProductImage
+              src={qrImage}
+              size="large"
+              alt={product.nama_produk}
+              className="greeting-image"
+              fallback={<div className="greeting-image-placeholder">{emoji}</div>}
+            />
           </div>
 
           <div className="memory-vault">
