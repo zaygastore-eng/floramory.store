@@ -189,7 +189,7 @@ alter table public.preorder_orders
 
 ## Edge Function — send-preorder
 
-Lokasi: `backend/functions/send-preorder/index.ts`.
+Lokasi: `supabase/functions/send-preorder/index.ts`.
 
 Fungsi ini satu-satunya jalur masuk pre-order (berjalan dengan
 `service_role`, jadi melewati RLS). Ia menerapkan lapisan proteksi anti-spam:
@@ -218,7 +218,7 @@ Env yang dipakai runtime (otomatis tersedia di Supabase):
 
 ## Edge Function — admin (sesi & operasi admin)
 
-Lokasi: `backend/functions/admin/index.ts`.
+Lokasi: `supabase/functions/admin/index.ts`.
 
 Melayani login, logout, cek status sesi, dan PROXY semua operasi admin
 ke PostgREST. Token Supabase **tidak pernah disimpan di `localStorage`**

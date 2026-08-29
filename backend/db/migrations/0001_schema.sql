@@ -9,7 +9,7 @@
 --
 -- KEAMANAN: sejak skema ini, publik TIDAK bisa menulis ke tabel
 -- preorder_orders langsung (anti-spam). Pre-order hanya masuk lewat
--- Supabase Edge Function `send-preorder` (backend/functions/), yang
+-- Supabase Edge Function `send-preorder` (supabase/functions/), yang
 -- berjalan dengan service_role dan menerapkan rate limit, proteksi
 -- bot (honeypot + time-trap), serta validasi server.
 -- ============================================================
@@ -226,7 +226,7 @@ on conflict (key) do nothing;
 -- Selesai. Langkah berikutnya (WAJIB):
 --   1) Jalankan backend/db/migrations/0004_preorder_edge_function.sql
 --      (rekomendasi) atau pastikan skema di atas sudah diterapkan.
---   2) Deploy Edge Function send-preorder (backend/functions/):
+--   2) Deploy Edge Function send-preorder (supabase/functions/):
 --        supabase functions deploy send-preorder
 --      Pastikan env SUPABASE_URL & SUPABASE_SERVICE_ROLE_KEY tersedia.
 --   3) Buat akun admin di Supabase Authentication (Users).

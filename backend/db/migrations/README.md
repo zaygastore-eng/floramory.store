@@ -21,7 +21,7 @@ Urutan
   `0001_schema.sql` versi baru. Menutup insert publik ke `preorder_orders` dan mencabut
   akses baca non-admin — setelah ini JANGAN jalankan ulang skema lama (0001 versi lama)
   karena akan membuka kembali jalur spam & kebocoran privasi. Deploy Edge Function
-  `send-preorder` (backend/functions/) setelahnya.
+  `send-preorder` (supabase/functions/) setelahnya.
 - Migrasi storage (`0005_product_images_storage.sql`): buat bucket `product-images` + RLS
   storage. Aman dijalankan kapan saja (idempotent). Setelahnya redepoy Edge Function `admin`
   agar upload foto dari panel admin bekerja (proxy storage + batas 6 MB). File FOTO lama

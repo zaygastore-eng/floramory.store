@@ -1,0 +1,5 @@
+# Supabase CLI config
+# Fungsi edge hidup di supabase/functions/<nama>/index.ts dan di-deploy ke
+# project cloud lewat `supabase functions deploy <nama> --project-ref ...`.
+# Jangan isi secret di sini (proyek ini tidak memakai Supabase lokal).
+project_id = "floramory"

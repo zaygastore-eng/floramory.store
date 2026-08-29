@@ -24,7 +24,7 @@
 --
 -- Cara pakai:
 --   1) Jalankan file ini di Supabase SQL Editor.
---   2) Deploy edge function send-preorder (lihat backend/functions/).
+--   2) Deploy edge function send-preorder (lihat supabase/functions/).
 --      Verifikasi env SUPABASE_URL & SUPABASE_SERVICE_ROLE_KEY
 --      tersedia (secara default otomatis disediakan).
 --   3) Redeploy frontend (createPreOrder kini memanggil fungsi).
