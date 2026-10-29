@@ -1,8 +1,9 @@
+import * as Sentry from "@sentry/react";
 import { normalizeWhatsApp } from "@/lib/site";
 
 const SUPABASE_URL = String(import.meta.env.VITE_SUPABASE_URL || "").replace(/\/$/, "");
 const SUPABASE_ANON_KEY = String(import.meta.env.VITE_SUPABASE_ANON_KEY || "");
-const FALLBACK_WA_NUMBER = String(import.meta.env.VITE_WA_NUMBER || "6281234567890");
+const FALLBACK_WA_NUMBER = String(import.meta.env.VITE_WA_NUMBER || "6285235242425");
 
 const FUNCTIONS_BASE_URL = String(import.meta.env.VITE_SUPABASE_FUNCTIONS_URL || "")
   .replace(/\/$/, "");
@@ -425,7 +426,10 @@ async function fetchProductsFromSupabase(): Promise<Product[] | null> {
     }
     // [] (katalog kosong) = sukse; null = gagal/error.
     return all;
-  } catch {
+  } catch (error) {
+    if (import.meta.env.PROD) {
+      Sentry.captureException(error);
+    }
     return null;
   }
 }
@@ -480,7 +484,7 @@ export async function fetchManagedProducts(): Promise<Product[]> {
 }
 
 export async function fetchProductById(id: string): Promise<Product | null> {
-  if (!id || !isSupabaseConfigured()) return null;
+  if (!id || id.length > 120 || !isSupabaseConfigured()) return null;
 
   try {
     const res = await fetch(

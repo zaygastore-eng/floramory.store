@@ -3,7 +3,8 @@ import BrandLogo from "@/components/BrandLogo";
 import ProductImage from "@/components/ProductImage";
 import { fetchProductById, fetchWhatsAppNumber, tierLabel, tierEmoji, tierBg, type Product } from "@/lib/sheets";
 import { applyProductMeta } from "@/lib/seo";
-import { pageUrl, normalizeWhatsApp } from "@/lib/site";
+import { pageUrl, normalizeWhatsApp, formatHarga } from "@/lib/site";
+import useToast from "@/hooks/useToast";
 
 const WA_FALLBACK = "6281234567890";
 
@@ -11,21 +12,9 @@ export default function Produk() {
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
-  const [toastMsg, setToastMsg] = useState("");
-  const [toastVisible, setToastVisible] = useState(false);
+  const { toastMsg, toastVisible, showToast } = useToast(2500);
   const [waNumber, setWaNumber] = useState(WA_FALLBACK);
   const [isVaultOpen, setIsVaultOpen] = useState(false);
-
-  const showToast = (msg: string) => {
-    setToastMsg(msg);
-    setToastVisible(true);
-  };
-
-  useEffect(() => {
-    if (!toastVisible) return;
-    const timer = window.setTimeout(() => setToastVisible(false), 2500);
-    return () => window.clearTimeout(timer);
-  }, [toastVisible, toastMsg]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -83,6 +72,7 @@ export default function Produk() {
   const tier = product.tier.toLowerCase();
   const emoji = tierEmoji(tier);
   const heroBg = tierBg(tier);
+  // An empty foto_qr is falsy, so QR pages use the product image instead.
   const qrImage = product.foto_qr || product.foto_produk;
   const hasPersonalMessage = Boolean(product.pesan_personal && product.pesan_personal.trim());
   const waDigits = normalizeWhatsApp(waNumber) || WA_FALLBACK;
@@ -94,7 +84,7 @@ export default function Produk() {
   if (product.id) chips.push(["Serial", product.id]);
 
   const waMsg = encodeURIComponent(
-    `Halo Floramory! 🌸\n\nSaya tertarik dengan produk:\n*${product.nama_produk}* (${product.id})\nHarga: ${product.harga}\n\nApakah masih tersedia? Saya ingin tanya lebih lanjut.`
+    `Halo Floramory! 🌸\n\nSaya tertarik dengan produk:\n*${product.nama_produk}* (${product.id})\nHarga: ${formatHarga(product.harga)}\n\nApakah masih tersedia? Saya ingin tanya lebih lanjut.`
   );
 
   const shareProduct = async () => {
@@ -167,7 +157,7 @@ export default function Produk() {
 
           <div className="greeting-details">
             <div className="greeting-name">{product.nama_produk}</div>
-            {product.harga && <div className="greeting-price">{product.harga}</div>}
+            {product.harga && <div className="greeting-price">{formatHarga(product.harga)}</div>}
             {product.deskripsi && <p className="greeting-desc">{product.deskripsi}</p>}
             {chips.length > 0 && (
               <div className="greeting-chips">

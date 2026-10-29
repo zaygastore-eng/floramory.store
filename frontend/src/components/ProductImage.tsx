@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { productImageUrl, type ProductImageSize } from "@/lib/images";
 
 interface ProductImageProps {
@@ -25,24 +25,27 @@ export default function ProductImage({
   loading,
   fallback,
 }: ProductImageProps) {
-  const [failed, setFailed] = useState(false);
+  const [loadedSrc, setLoadedSrc] = useState<string | null>(null);
+  const [failedSrc, setFailedSrc] = useState<string | null>(null);
 
-  useEffect(() => {
-    setFailed(false);
-  }, [src]);
-
-  if (!src.startsWith("http") || failed) return <>{fallback}</>;
+  if (!src.startsWith("http") || failedSrc === src) return <>{fallback}</>;
+  const imageSrc = productImageUrl(src, size);
+  const loaded = loadedSrc === imageSrc;
 
   return (
-    <img
-      className={className}
-      src={productImageUrl(src, size)}
-      alt={alt}
-      decoding="async"
-      loading={loading}
-      width={width}
-      height={height}
-      onError={() => setFailed(true)}
-    />
+    <>
+      {!loaded && <div className="img-skeleton" aria-hidden="true" />}
+      <img
+        className={className}
+        src={imageSrc}
+        alt={alt}
+        decoding="async"
+        loading={loading}
+        width={width}
+        height={height}
+        onLoad={() => setLoadedSrc(imageSrc)}
+        onError={() => setFailedSrc(src)}
+      />
+    </>
   );
 }

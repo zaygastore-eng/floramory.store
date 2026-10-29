@@ -2,7 +2,8 @@ import { useState, useEffect, useRef } from "react";
 import BrandLogo from "@/components/BrandLogo";
 import ProductImage from "@/components/ProductImage";
 import { createPreOrder, fetchAllProducts, tierLabel, tierEmoji, tierBadgeClass, type Product } from "@/lib/sheets";
-import { pageUrl, normalizeWhatsApp } from "@/lib/site";
+import { pageUrl, normalizeWhatsApp, formatHarga } from "@/lib/site";
+import useToast from "@/hooks/useToast";
 
 function ProductCard({ product, onClick }: { product: Product; onClick: () => void }) {
   const tier = product.tier.toLowerCase();
@@ -42,7 +43,7 @@ function ProductCard({ product, onClick }: { product: Product; onClick: () => vo
         <div className="product-name">{product.nama_produk}</div>
         {desc && <div className="product-desc">{desc}</div>}
         <div className="product-footer">
-          <span className="product-price">{product.harga}</span>
+          <span className="product-price">{formatHarga(product.harga)}</span>
           <span className="product-btn">Detail</span>
         </div>
       </div>
@@ -102,7 +103,7 @@ function ProductModal({
         <div className="modal-body">
           <span className="modal-tier">{tierLabel(tier)}</span>
           <div className="modal-name" id="product-modal-title">{product.nama_produk}</div>
-          <div className="modal-price">{product.harga}</div>
+          <div className="modal-price">{formatHarga(product.harga)}</div>
           <p className="modal-desc">{product.deskripsi}</p>
 
           {chips.length > 0 && (
@@ -154,9 +155,9 @@ export default function Home() {
   const [filter, setFilter] = useState("all");
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [toastVisible, setToastVisible] = useState(false);
-  const [toastMsg, setToastMsg] = useState("✦ Pre-order Anda telah terkirim! Kami akan menghubungi via WhatsApp segera.");
+  const { toastMsg, toastVisible, showToast } = useToast(3500);
   const [orderSubmitting, setOrderSubmitting] = useState(false);
+  const [prefilledProductName, setPrefilledProductName] = useState("");
   const [orderForm, setOrderForm] = useState({
     nama: "",
     wa: "",
@@ -177,12 +178,6 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    if (!toastVisible) return;
-    const timer = window.setTimeout(() => setToastVisible(false), 3500);
-    return () => window.clearTimeout(timer);
-  }, [toastVisible, toastMsg]);
-
-  useEffect(() => {
     if (!menuOpen) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") setMenuOpen(false);
@@ -193,15 +188,11 @@ export default function Home() {
 
   const filtered = filter === "all" ? products : products.filter(p => p.tier.toLowerCase() === filter);
 
-  const showToast = (msg: string) => {
-    setToastMsg(msg);
-    setToastVisible(true);
-  };
-
   const closeMenu = () => setMenuOpen(false);
 
   const orderProduct = (product: Product) => {
     setOrderForm(f => ({ ...f, produk: product.id }));
+    setPrefilledProductName(product.nama_produk);
     window.setTimeout(() => {
       document.getElementById("pesan")?.scrollIntoView({ behavior: "smooth" });
     }, 50);
@@ -239,7 +230,9 @@ export default function Home() {
           fillMs: Date.now() - formStartRef.current,
         }
       );
+      formStartRef.current = Date.now();
       setOrderForm({ nama: "", wa: "", pesan: "", produk: "", namaPenerima: "", dari: "", pesanPersonal: "", website: "" });
+      setPrefilledProductName("");
       showToast("✦ Pre-order Anda tersimpan! Tim kami akan menghubungi via WhatsApp segera.");
     } catch (error) {
       showToast(error instanceof Error ? error.message : "Gagal mengirim pre-order. Silakan coba lagi.");
@@ -437,7 +430,10 @@ export default function Home() {
             </div>
             <div className="form-group">
               <label className="form-label" htmlFor="order-produk">Pilih Produk</label>
-              <select id="order-produk" className="form-select" value={orderForm.produk} onChange={e => setOrderForm(f => ({ ...f, produk: e.target.value }))}>
+              <select id="order-produk" className="form-select" value={orderForm.produk} onChange={e => {
+                setOrderForm(f => ({ ...f, produk: e.target.value }));
+                setPrefilledProductName("");
+              }}>
                 <option value="">— Pilih lini produk —</option>
                 {products.length > 0 ? (
                   ["classic", "signature", "masterpiece"].map(tier => {
@@ -445,7 +441,7 @@ export default function Home() {
                     if (!tierProds.length) return null;
                     return (
                       <optgroup key={tier} label={tierLabel(tier)}>
-                        {tierProds.map(p => <option key={p.id} value={p.id}>{p.nama_produk} — {p.harga}</option>)}
+                        {tierProds.map(p => <option key={p.id} value={p.id}>{p.nama_produk} — {formatHarga(p.harga)}</option>)}
                       </optgroup>
                     );
                   })
@@ -453,6 +449,11 @@ export default function Home() {
                   <option value="" disabled>Katalog belum tersedia</option>
                 )}
               </select>
+              {prefilledProductName && (
+                <span className="form-prefill-indicator" role="status">
+                  Terpilih dari produk: {prefilledProductName}
+                </span>
+              )}
             </div>
             <div className="form-group">
               <label className="form-label" htmlFor="order-pesan">Kustomisasi & Pesan Memori</label>
@@ -479,7 +480,6 @@ export default function Home() {
                 value={orderForm.pesanPersonal} onChange={e => setOrderForm(f => ({ ...f, pesanPersonal: e.target.value }))} />
             </div>
             <div className="form-honeypot" aria-hidden="true">
-              <label className="form-label" htmlFor="order-website">Website (jangan diisi)</label>
               <input id="order-website" className="form-input" type="text" tabIndex={-1} autoComplete="off"
                 value={orderForm.website} onChange={e => setOrderForm(f => ({ ...f, website: e.target.value }))} />
             </div>

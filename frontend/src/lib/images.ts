@@ -7,6 +7,7 @@
 export type ProductImageSize = "thumb" | "large";
 
 const STORAGE_PUBLIC_PATTERN = /\/storage\/v1\/object\/public\//;
+const PRODUCT_IMAGES_PUBLIC_PATTERN = /\/storage\/v1\/object\/public\/product-images\//;
 
 export function isSupabaseStorageUrl(url: string): boolean {
   return STORAGE_PUBLIC_PATTERN.test(url);
@@ -40,7 +41,7 @@ export function validateImageUrl(raw: string): string | null {
 // Branding lebar tetap di HTML attribute sebagai petunjuk layout.
 // CDN hanya mengirim versi yang dipotong/diubah sesuai konteks.
 export function productImageUrl(url: string, size: ProductImageSize = "thumb"): string {
-  if (!url || !isSupabaseStorageUrl(url)) return url;
+  if (!url || !PRODUCT_IMAGES_PUBLIC_PATTERN.test(url)) return url;
   // URL yang sudah memuat parameter transform (atau sudah di-optimasi)
   // dikembalikan apa adanya, hindari parameter ganda.
   if (/([?&])width=/.test(url)) return url;

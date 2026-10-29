@@ -33,7 +33,7 @@ import {
 } from "@/lib/sheets";
 import BrandLogo from "@/components/BrandLogo";
 import { isSupabaseStorageUrl, productImageUrl, validateImageUrl } from "@/lib/images";
-import { normalizeWhatsApp } from "@/lib/site";
+import { formatHarga, normalizeWhatsApp } from "@/lib/site";
 import { getSupabaseClient } from "@/lib/supabase";
 
 const BASE_URL_KEY = "fm_base_url";
@@ -290,7 +290,7 @@ function LoginGate({ onLogin }: { onLogin: () => void }) {
 
   if (!supabaseReady) {
     return (
-      <div className="login-screen">
+      <div className="login-screen admin-login-screen">
         <div className="login-card">
           <div className="login-logo" aria-label="Floramory">
             <BrandLogo className="brand-logo-img login-logo-img" />
@@ -310,7 +310,7 @@ function LoginGate({ onLogin }: { onLogin: () => void }) {
   }
 
   return (
-    <div className="login-screen">
+    <div className="login-screen admin-login-screen">
       <div className={`login-card${shake ? " shake" : ""}`}>
         <div className="login-logo" aria-label="Floramory">
           <BrandLogo className="brand-logo-img login-logo-img" />
@@ -381,6 +381,28 @@ export default function Admin() {
   const qrRef = useRef<HTMLDivElement>(null);
   const produkUploadRef = useRef<HTMLInputElement>(null);
   const qrUploadRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    let meta = document.querySelector<HTMLMetaElement>('meta[name="robots"]');
+    if (!meta) {
+      meta = document.createElement("meta");
+      meta.name = "robots";
+      document.head.appendChild(meta);
+    }
+    meta.setAttribute("content", "noindex, nofollow");
+
+    return () => {
+      meta?.setAttribute("content", "index, follow");
+    };
+  }, []);
+
+  useEffect(() => {
+    const prev = document.title;
+    document.title = "Admin — Floramory";
+    return () => {
+      document.title = prev;
+    };
+  }, []);
 
   useEffect(() => {
     if (!hasSupabaseConfig()) return;
@@ -720,6 +742,42 @@ export default function Admin() {
     showToast("File SQL berhasil didownload");
   };
 
+  const exportPreOrders = () => {
+    const columns: (keyof PreOrder)[] = [
+      "id",
+      "customer_name",
+      "whatsapp",
+      "product_name",
+      "status",
+      "created_at",
+      "custom_request",
+    ];
+    const escapeCsv = (value: string | undefined) => {
+      const text = value || "";
+      const safeText = /^[\t\r ]*[=+\-@]/.test(text) ? `'${text}` : text;
+      return `"${safeText.replace(/"/g, '""')}"`;
+    };
+    const csv = [
+      columns.join(","),
+      ...preOrders.map(order => columns.map(column => escapeCsv(order[column])).join(",")),
+    ].join("\r\n");
+    const blob = new Blob([`\uFEFF${csv}`], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    const now = new Date();
+    const date = [
+      now.getFullYear(),
+      String(now.getMonth() + 1).padStart(2, "0"),
+      String(now.getDate()).padStart(2, "0"),
+    ].join("-");
+    link.href = url;
+    link.download = `floramory-orders-${date}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  };
+
   const resetSqlDraft = () => {
     const ok = window.confirm("Reset isi SQL editor ke template awal?");
     if (!ok) return;
@@ -791,22 +849,16 @@ export default function Admin() {
         </div>
       </div>
 
-      <div className="admin-form-group">
-        <label className="admin-form-label">Nama Produk <span className="required-star">*</span></label>
-        <input className="admin-form-input" type="text" placeholder="Contoh: Cincin Mawar Rosa Eternal"
-          value={form.nama} onChange={e => setForm(f => ({ ...f, nama: e.target.value }))} />
-      </div>
-
       <div className="admin-form-row">
+        <div className="admin-form-group">
+          <label className="admin-form-label">Nama Produk <span className="required-star">*</span></label>
+          <input className="admin-form-input" type="text" placeholder="Contoh: Cincin Mawar Rosa Eternal"
+            value={form.nama} onChange={e => setForm(f => ({ ...f, nama: e.target.value }))} />
+        </div>
         <div className="admin-form-group">
           <label className="admin-form-label">Harga <span className="required-star">*</span></label>
           <input className="admin-form-input" type="text" placeholder="Contoh: Rp55.000"
             value={form.harga} onChange={e => setForm(f => ({ ...f, harga: e.target.value }))} />
-        </div>
-        <div className="admin-form-group">
-          <label className="admin-form-label">Jenis Bunga</label>
-          <input className="admin-form-input" type="text" placeholder="Contoh: Melati"
-            value={form.bunga} onChange={e => setForm(f => ({ ...f, bunga: e.target.value }))} />
         </div>
       </div>
 
@@ -814,6 +866,12 @@ export default function Admin() {
         <label className="admin-form-label">Deskripsi Produk</label>
         <textarea className="admin-form-textarea" placeholder="Ceritakan tentang produk ini..."
           value={form.deskripsi} onChange={e => setForm(f => ({ ...f, deskripsi: e.target.value }))} />
+      </div>
+
+      <div className="admin-form-group">
+        <label className="admin-form-label">Jenis Bunga</label>
+        <input className="admin-form-input" type="text" placeholder="Contoh: Melati"
+          value={form.bunga} onChange={e => setForm(f => ({ ...f, bunga: e.target.value }))} />
       </div>
 
       <div className="admin-form-row">
@@ -987,11 +1045,11 @@ export default function Admin() {
         ) : filteredProducts.map(product => {
           const productUrl = `${(localStorage.getItem(BASE_URL_KEY) || baseUrl).trim().replace(/\/$/, "")}/produk?id=${product.id}`;
           return (
-            <div className={`admin-list-item${editingId === product.id ? " active" : ""}`} key={product.id}>
-              <div>
+            <div className={`admin-list-item admin-product-row${editingId === product.id ? " active" : ""}`} key={product.id}>
+              <div className="admin-list-main">
                 <strong>{product.nama_produk || product.id}</strong>
-                <span>#{product.id} / {product.tier} / {product.harga || "Tanpa harga"}</span>
               </div>
+              <span className="admin-product-meta">#{product.id} / {product.tier} / {formatHarga(product.harga) || "Tanpa harga"}</span>
               <div className="admin-list-actions">
                 <button onClick={() => editProduct(product)}>Edit</button>
                 <a href={productUrl} target="_blank" rel="noopener noreferrer">Cek</a>
@@ -1011,9 +1069,14 @@ export default function Admin() {
           <h2>Pesanan Pre-order</h2>
           <p>{newOrderCount} pesanan baru dari form pelanggan.</p>
         </div>
-        <button className="admin-outline-btn" onClick={loadPreOrders} disabled={loadingOrders}>
-          <RefreshCw size={16} /> Refresh
-        </button>
+        <div className="admin-panel-head-actions">
+          <button className="admin-outline-btn" onClick={exportPreOrders}>
+            <Download size={16} /> Export CSV
+          </button>
+          <button className="admin-outline-btn" onClick={loadPreOrders} disabled={loadingOrders}>
+            <RefreshCw size={16} /> Refresh
+          </button>
+        </div>
       </div>
       <div className="admin-list">
         {loadingOrders ? (
@@ -1021,20 +1084,28 @@ export default function Admin() {
         ) : preOrders.length === 0 ? (
           <div className="manage-empty">Belum ada pre-order.</div>
         ) : preOrders.map(order => (
-          <div className={`admin-list-item${(order.status || "new") === "new" ? " active" : ""}`} key={order.id || `${order.whatsapp}-${order.created_at}`}>
-            <div>
-              <strong>{order.customer_name || "Tanpa nama"}</strong>
-              <span>{order.whatsapp || "Tanpa WA"} / {order.product_name || order.product_id || "Produk belum dipilih"}</span>
+          <div className={`admin-list-item admin-order-row${(order.status || "new") === "new" ? " active" : ""}`} key={order.id || `${order.whatsapp}-${order.created_at}`}>
+            <div className="admin-order-main">
+              <div className="admin-order-primary">
+                <strong>{order.customer_name || "Tanpa nama"}</strong>
+                <span className="admin-order-meta">{order.whatsapp || "Tanpa WA"} / {order.product_name || order.product_id || "Produk belum dipilih"}</span>
+                <span className={`admin-order-status${(order.status || "new") === "new" ? " is-new" : " is-contacted"}`}>
+                  {(order.status || "new") === "new" ? "Baru" : "Kontak"}
+                </span>
+              </div>
               {(order.recipient_name || order.personal_message || order.custom_request) && (
-                <p className="admin-list-note">
-                  Untuk {order.recipient_name || "penerima"}: {order.personal_message || order.custom_request}
-                </p>
+                <details className="admin-order-note">
+                  <summary>
+                    {order.recipient_name ? `Untuk ${order.recipient_name}: ` : ""}
+                    {order.personal_message || order.custom_request}
+                  </summary>
+                </details>
               )}
             </div>
             <div className="admin-list-actions">
-              <button onClick={() => useOrderMemory(order)}>Pakai</button>
-              <a href={`https://wa.me/${normalizeWhatsApp(order.whatsapp)}`} target="_blank" rel="noopener noreferrer">WA</a>
-              <button onClick={() => setOrderStatus(order, (order.status || "new") === "new" ? "contacted" : "new")}>
+              <button className="admin-order-use" onClick={() => useOrderMemory(order)}>Pakai</button>
+              <a className="admin-order-whatsapp" href={`https://wa.me/${normalizeWhatsApp(order.whatsapp)}`} target="_blank" rel="noopener noreferrer">WA</a>
+              <button className="admin-order-toggle" onClick={() => setOrderStatus(order, (order.status || "new") === "new" ? "contacted" : "new")}>
                 {(order.status || "new") === "new" ? "Kontak" : "Baru"}
               </button>
             </div>
@@ -1077,7 +1148,7 @@ export default function Admin() {
                 <tr key={product.id}>
                   <td>{product.nama_produk}</td>
                   <td>{product.tier}</td>
-                  <td>{product.harga}</td>
+                  <td>{formatHarga(product.harga)}</td>
                   <td>{product.bunga || "-"}</td>
                 </tr>
               ))}
@@ -1212,11 +1283,13 @@ export default function Admin() {
             return (
               <button
                 key={tab.id}
+                data-tab={tab.id}
+                aria-label={tab.label}
                 className={activeTab === tab.id ? "active" : ""}
                 onClick={() => setActiveTab(tab.id)}
               >
-                <Icon size={20} />
-                {tab.label}
+                <Icon size={16} />
+                <span className="admin-nav-label">{tab.label}</span>
               </button>
             );
           })}

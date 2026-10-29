@@ -22,3 +22,11 @@ export function normalizeWhatsApp(raw: string): string {
   else if (digits.startsWith("8") && !digits.startsWith("62")) digits = `62${digits}`;
   return digits;
 }
+
+export function formatHarga(raw: string): string {
+  if (!raw) return "";
+  if (!/^\d+$/.test(raw)) return raw;
+
+  const normalized = raw.replace(/^0+(?=\d)/, "");
+  return `Rp${normalized.replace(/\B(?=(\d{3})+(?!\d))/g, ".")}`;
+}
