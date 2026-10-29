@@ -53,65 +53,6 @@ export default defineConfig(({ mode }) => {
       outDir: path.resolve(import.meta.dirname, "dist"),
       emptyOutDir: true,
       sourcemap: sentryPlugin !== null,
-      rollupOptions: {
-        output: {
-          codeSplitting: {
-            groups: [
-              {
-                name: "admin-chunk",
-                test: (id) => {
-                  const moduleId = id.replace(/\\/g, "/");
-                  return (
-                    moduleId.endsWith("/src/pages/Admin.tsx") ||
-                    moduleId.includes("/node_modules/.pnpm/qrcode.react@") ||
-                    moduleId.includes("/node_modules/qrcode.react/") ||
-                    moduleId.includes("/node_modules/.pnpm/lucide-react@") ||
-                    moduleId.includes("/node_modules/lucide-react/")
-                  );
-                },
-                includeDependenciesRecursively: false,
-              },
-              {
-                name: "vendor-react",
-                test: (id) => {
-                  const moduleId = id.replace(/\\/g, "/");
-                  return (
-                    moduleId.includes("/node_modules/.pnpm/react@") ||
-                    moduleId.includes("/node_modules/react/") ||
-                    moduleId.includes("/node_modules/.pnpm/react-dom@") ||
-                    moduleId.includes("/node_modules/react-dom/")
-                  );
-                },
-                includeDependenciesRecursively: false,
-              },
-              {
-                name: "vendor-router",
-                test: (id) => {
-                  const moduleId = id.replace(/\\/g, "/");
-                  return (
-                    moduleId.includes("/node_modules/.pnpm/wouter@") ||
-                    moduleId.includes("/node_modules/wouter/")
-                  );
-                },
-                includeDependenciesRecursively: false,
-              },
-              {
-                name: "vendor-supabase",
-                test: (id) => {
-                  const moduleId = id.replace(/\\/g, "/");
-                  return (
-                    moduleId.includes(
-                      "/node_modules/.pnpm/@supabase+supabase-js@"
-                    ) ||
-                    moduleId.includes("/node_modules/@supabase/supabase-js/")
-                  );
-                },
-                includeDependenciesRecursively: false,
-              },
-            ],
-          },
-        },
-      },
     },
     server: {
       port,
