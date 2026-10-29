@@ -51,14 +51,20 @@ Vercel Project Settings -> Environment Variables:
 VITE_SUPABASE_URL=https://fcevjiflawxmzrccramo.supabase.co
 VITE_SUPABASE_ANON_KEY=isi_anon_public_key
 VITE_WA_NUMBER=6281234567890
+VITE_SENTRY_DSN=isi_sentry_dsn
 ```
 
+Sentry hanya diinisialisasi pada build production. Untuk upload source map,
+tambahkan `SENTRY_ORG`, `SENTRY_PROJECT`, dan `SENTRY_AUTH_TOKEN` sebagai
+environment variable build yang privat di Vercel. Jangan beri prefix `VITE_`
+pada token autentikasi.
+
 Konfigurasi di `vercel.json`:
-- `rewrites`: `/api/admin` -> `https://<PROJECT>.supabase.co/functions/v1/admin` dan
-  `/api/send-preorder` -> `https://<PROJECT>.supabase.co/functions/v1/send-preorder`
+- `rewrites`: `/api/admin` -> `https://fcevjiflawxmzrccramo.supabase.co/functions/v1/admin` dan
+  `/api/send-preorder` -> `https://fcevjiflawxmzrccramo.supabase.co/functions/v1/send-preorder`
   (daftar eksplisit, bukan `:path*` generik — supaya tidak membajak fungsi
-  prerender `/api/produk`). GANTI URL proyek placeholder (`your-project.supabase.co`)
-  dengan URL asli. Proxy ini yang membuat cookie sesi admin same-origin sehingga
+  prerender `/api/produk`). URL ini harus sesuai dengan `VITE_SUPABASE_URL`.
+  Proxy ini yang membuat cookie sesi admin same-origin sehingga
   bisa memakai `SameSite=Strict` (aman dari CSRF) sekaligus `HttpOnly` (aman dari XSS).
 - `rewrites`: `/produk` -> `/api/produk` (prerender SEO, lihat "SEO halaman detail"),
   lalu SPA fallback ke `index.html`.
@@ -66,7 +72,10 @@ Konfigurasi di `vercel.json`:
   `Referrer-Policy`, `Permissions-Policy`, HSTS (defense in depth terhadap XSS
   & clickjacking).
 
-Redeploy project setelah environment variable diubah.
+Atur environment variables untuk **Production**, **Preview**, dan **Development**
+sesuai kebutuhan di Vercel Project Settings -> Environment Variables. `VITE_*`
+dibundel ke frontend saat build; redeploy setelah mengubah nilainya. Jangan
+menambahkan `SUPABASE_SERVICE_ROLE_KEY` ke Vercel frontend atau variabel `VITE_*`.
 
 ## Supabase
 
@@ -371,8 +380,9 @@ Halaman `/produk?id=...` dirender di browser. Untuk preview media sosial
 tersedia fungsi serverless Vercel `api/produk.ts`:
 
 - Request `GET /produk?id=X` di-rewrite ke `/api/produk`, fungsi mengambil
-  shell `index.html` dari origin, membaca produk dari PostgREST (observasi RLS:
-  hanya `status='active'` yang terbaca anon), lalu menyuntikkan `og:title`,
+  shell `frontend/dist/index.html` dari filesystem (file disertakan dalam bundle
+  fungsi), membaca produk dari PostgREST (observasi RLS: hanya `status='active'`
+  yang terbaca anon), lalu menyuntikkan `og:title`,
   `og:description`, `og:image` (foto produk atau `opengraph.jpg`), `og:url`,
   `twitter:*`, dan `canonical` sebelum mengirim HTML.
 - React tetap memuat normal untuk interaktivitas; SEO browser (Google/Bing yang

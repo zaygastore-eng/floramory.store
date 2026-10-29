@@ -155,7 +155,7 @@ export default function Produk() {
               <div id="vault-panel">
                 {hasPersonalMessage ? (
                   <div className="vault-message">
-                    "{product.pesan_personal}"
+                    {product.pesan_personal}
                     <div className="vault-from">Dari {product.dari || "Floramory"}</div>
                   </div>
                 ) : (

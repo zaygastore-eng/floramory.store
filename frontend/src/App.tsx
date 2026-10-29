@@ -8,7 +8,12 @@ import ErrorBoundary from "@/components/ErrorBoundary";
 const Admin = lazy(() => import("@/pages/Admin"));
 
 function LoadingPage() {
-  return <div className="loading-screen"><div className="loading-dots"><span /><span /><span /></div></div>;
+  return (
+    <div className="loading-screen">
+      <span style={{ opacity: 0.5 }}>Loading...</span>
+      <div className="loading-dots"><span /><span /><span /></div>
+    </div>
+  );
 }
 
 function Router() {

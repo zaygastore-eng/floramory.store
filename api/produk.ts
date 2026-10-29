@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+
 // ============================================================
 // Floramory — Vercel Serverless Function: prerender SEO /produk
 // ============================================================
@@ -12,7 +15,7 @@
 // Alur:
 //   GET /produk?id=X
 //     -> rewrite vercel.json: /produk -> /api/produk
-//     -> fungsi ini: ambil shell index.html dari origin sendiri,
+//     -> fungsi ini: baca shell frontend/dist/index.html,
 //        ambil data produk dari PostgREST (RLS publik: hanya
 //        produk status='active' yang terlihat), suntik meta, kirim.
 //   Client React tetap berjalan normal untuk interaktivitas.
@@ -115,11 +118,23 @@ export default async function handler(req: Req, res: Res): Promise<void> {
   const origin = `${proto}://${host}`;
 
   const url = new URL(req.url || "/", origin);
-  const id = (url.searchParams.get("id") || url.searchParams.get("ID") || "").trim();
+  const id = url.searchParams.has("id")
+    ? url.searchParams.get("id") || ""
+    : url.searchParams.get("ID") || "";
+  if (!/^[a-zA-Z0-9_-]{1,64}$/.test(id)) {
+    res.setHeader("Content-Type", "application/json; charset=utf-8");
+    res.status(400).send(JSON.stringify({ error: "Invalid id parameter." }));
+    return;
+  }
 
-  const shell = await fetch(`${origin}/`)
-    .then((r) => r.text())
-    .catch(() => "");
+  let shell: string;
+  try {
+    shell = readFileSync(join(process.cwd(), "frontend", "dist", "index.html"), "utf8");
+  } catch (error) {
+    console.error("Failed to read the prerender HTML shell:", error);
+    res.status(502).send("Terjadi kesalahan server.");
+    return;
+  }
   if (!shell) {
     res.status(502).send("Terjadi kesalahan server.");
     return;

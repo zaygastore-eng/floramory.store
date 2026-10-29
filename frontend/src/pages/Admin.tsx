@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ComponentType } from "react";
+import { useEffect, useMemo, useRef, useState, useCallback, type ComponentType } from "react";
 import { QRCodeCanvas as QRCode } from "qrcode.react";
 import {
   Box,
@@ -34,6 +34,7 @@ import {
 import BrandLogo from "@/components/BrandLogo";
 import { isSupabaseStorageUrl, productImageUrl, validateImageUrl } from "@/lib/images";
 import { normalizeWhatsApp } from "@/lib/site";
+import { getSupabaseClient } from "@/lib/supabase";
 
 const BASE_URL_KEY = "fm_base_url";
 const WA_KEY = "fm_wa";
@@ -375,6 +376,8 @@ export default function Admin() {
   const [sqlDraft, setSqlDraft] = useState(DEFAULT_SQL);
   const [toastMsg, setToastMsg] = useState("");
   const [toastVisible, setToastVisible] = useState(false);
+  const [toastLevel, setToastLevel] = useState<"info" | "success" | "alert">("info");
+  const [realtimeConnected, setRealtimeConnected] = useState(false);
   const qrRef = useRef<HTMLDivElement>(null);
   const produkUploadRef = useRef<HTMLInputElement>(null);
   const qrUploadRef = useRef<HTMLInputElement>(null);
@@ -412,11 +415,12 @@ export default function Admin() {
     localStorage.setItem(SQL_DRAFT_KEY, sqlDraft);
   }, [authed, sqlDraft]);
 
-  const showToast = (msg: string) => {
+  const showToast = useCallback((msg: string, level: "info" | "success" | "alert" = "info") => {
     setToastMsg(msg);
+    setToastLevel(level);
     setToastVisible(true);
-    setTimeout(() => setToastVisible(false), 2500);
-  };
+    setTimeout(() => setToastVisible(false), level === "alert" ? 5000 : 2500);
+  }, []);
 
   const loadProducts = async () => {
     setLoadingProducts(true);
@@ -465,6 +469,35 @@ export default function Admin() {
   useEffect(() => {
     if (authed) void reloadAll();
   }, [authed]);
+
+  // Supabase Realtime: subscribe ke INSERT baru di preorder_orders
+  // saat admin sudah login. Auto-refresh pesanan + notifikasi.
+  useEffect(() => {
+    if (!authed) return;
+    const supabase = getSupabaseClient();
+    if (!supabase) return;
+
+    const channel = supabase
+      .channel("admin-preorder-watch")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "preorder_orders" },
+        (payload) => {
+          const name = (payload.new as { customer_name?: string })?.customer_name || "Seseorang";
+          showToast(`🛎️ Pre-order baru dari ${name}!`, "alert");
+          // Reload daftar pesanan & badge counter
+          void loadPreOrders();
+        }
+      )
+      .subscribe((status) => {
+        setRealtimeConnected(status === "SUBSCRIBED");
+      });
+
+    return () => {
+      void supabase.removeChannel(channel);
+      setRealtimeConnected(false);
+    };
+  }, [authed, showToast]);
 
   const saveConfig = async () => {
     const clean = baseUrl.trim().replace(/\/$/, "");
@@ -1191,6 +1224,10 @@ export default function Admin() {
         <div className="admin-sidebar-footer">
           <p>Smart Eco-Preserved Artware</p>
           <span>Sumber data: Supabase</span>
+          <div className="admin-realtime-indicator">
+            <span className={`admin-realtime-dot${realtimeConnected ? " connected" : ""}`} />
+            <span>{realtimeConnected ? "Realtime aktif" : "Realtime nonaktif"}</span>
+          </div>
           <button onClick={logout}><LogOut size={16} /> Keluar</button>
         </div>
       </aside>
@@ -1215,7 +1252,7 @@ export default function Admin() {
         {renderContent()}
       </main>
 
-      <div className={`admin-toast${toastVisible ? " show" : ""}`}>{toastMsg}</div>
+      <div className={`admin-toast${toastVisible ? " show" : ""} admin-toast--${toastLevel}`}>{toastMsg}</div>
     </div>
   );
 }
