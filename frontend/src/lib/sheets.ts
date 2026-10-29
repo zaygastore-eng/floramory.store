@@ -428,7 +428,7 @@ async function fetchProductsFromSupabase(): Promise<Product[] | null> {
     return all;
   } catch (error) {
     if (import.meta.env.PROD) {
-      Sentry.captureException(error);
+      console.error(error);
     }
     return null;
   }

@@ -406,7 +406,7 @@ export default function Admin() {
 
   useEffect(() => {
     if (!hasSupabaseConfig()) return;
-    statusAdminSession().then((status) => {
+    statusAdminSession().then((status: any) => {
       if (status.authenticated && status.isAdmin) setAuthed(true);
       else void signOutAdmin();
     });
@@ -504,14 +504,14 @@ export default function Admin() {
       .on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "preorder_orders" },
-        (payload) => {
+        (payload: any) => {
           const name = (payload.new as { customer_name?: string })?.customer_name || "Seseorang";
           showToast(`🛎️ Pre-order baru dari ${name}!`, "alert");
           // Reload daftar pesanan & badge counter
           void loadPreOrders();
         }
       )
-      .subscribe((status) => {
+      .subscribe((status: any) => {
         setRealtimeConnected(status === "SUBSCRIBED");
       });
 
