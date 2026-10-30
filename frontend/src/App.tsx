@@ -10,7 +10,7 @@ import ErrorBoundary from "@/components/ErrorBoundary";
 // live inside Admin.tsx and are proxied through the Supabase Edge Function
 // at /api/admin (see supabase/functions/admin/index.ts).
 // Public pages (Home, Produk) have zero dependency on admin code.
-const Admin = lazy(() => import("@/pages/Admin"));
+import Admin from "./pages/Admin";
 
 function LoadingPage() {
   return (

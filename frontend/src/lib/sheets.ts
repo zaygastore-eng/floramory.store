@@ -644,9 +644,16 @@ export interface PreOrderPage {
   total: number | null;
 }
 
+export interface PreOrderStatusCounts {
+  new: number;
+  dp_verified: number;
+  in_progress: number;
+  completed: number;
+}
+
 function parseContentRangeTotal(value: string | null): number | null {
   if (!value) return null;
-  const match = /^\d+-\d+\/(\d+|\*)$/.exec(value.trim());
+  const match = /^(?:\d+-\d+|\*)\/(\d+|\*)$/.exec(value.trim());
   if (!match) return null;
   const total = match[1];
   return total === "*" ? null : Number(total);
@@ -703,6 +710,40 @@ export async function fetchNewPreOrderCount(): Promise<number> {
   } catch {
     return 0;
   }
+}
+
+export async function fetchPreOrderStatusCounts(): Promise<PreOrderStatusCounts> {
+  if (!isSupabaseConfigured()) {
+    return { new: 0, dp_verified: 0, in_progress: 0, completed: 0 };
+  }
+
+  const statusFilters: Record<keyof PreOrderStatusCounts, string> = {
+    new: "new",
+    dp_verified: "dp_verified,paid",
+    in_progress: "in_progress,contacted",
+    completed: "completed",
+  };
+  const statusKeys = ["new", "dp_verified", "in_progress", "completed"] as const;
+  const counts = await Promise.all(
+    statusKeys.map(async statusKey => {
+      const { status, data, headers } = await adminCall("proxy", {
+        method: "GET",
+        path: "/rest/v1/preorder_orders",
+        query: `select=id&status=in.(${statusFilters[statusKey]})&limit=1&order=created_at.desc`,
+        prefer: "count=exact",
+      });
+      if (status >= 400) {
+        const message = typeof data.message === "string" ? data.message : "Gagal memuat jumlah pre-order.";
+        throw new Error(message);
+      }
+      const total = parseContentRangeTotal(headers.get("content-range"));
+      if (total === null) throw new Error("Jumlah pre-order tidak tersedia dari Supabase.");
+      return [statusKey, total] as const;
+    })
+  );
+  const result: PreOrderStatusCounts = { new: 0, dp_verified: 0, in_progress: 0, completed: 0 };
+  for (const [statusKey, count] of counts) result[statusKey] = count;
+  return result;
 }
 
 export async function updatePreOrderStatus(id: string, status: string): Promise<void> {

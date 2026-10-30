@@ -3,21 +3,26 @@ import { QRCodeCanvas as QRCode } from "qrcode.react";
 import {
   Box,
   ClipboardList,
-  Copy,
-  Database,
+  DollarSign,
   Download,
   LayoutDashboard,
   LogOut,
+  Menu,
+  PanelLeftClose,
+  PanelLeftOpen,
+  Plus,
   RefreshCw,
   Settings,
-  Trash2,
+  TrendingUp,
+  Wallet,
+  ExternalLink,
 } from "lucide-react";
 import {
   createProduct,
   deleteProduct,
   fetchManagedProducts,
-  fetchNewPreOrderCount,
   fetchPreOrders,
+  fetchPreOrderStatusCounts,
   fetchWhatsAppNumber,
   hasSupabaseConfig,
   signInAdmin,
@@ -29,6 +34,7 @@ import {
   uploadProductImage,
   type PreOrder,
   type Product,
+  type PreOrderStatusCounts,
   type ProductImageField,
 } from "@/lib/sheets";
 import BrandLogo from "@/components/BrandLogo";
@@ -38,7 +44,7 @@ import { getSupabaseClient } from "@/lib/supabase";
 
 const BASE_URL_KEY = "fm_base_url";
 const WA_KEY = "fm_wa";
-const SQL_DRAFT_KEY = "fm_sql_draft";
+const SIDEBAR_PREFERENCE_KEY = "fm_admin_sidebar_collapsed";
 
 const TIER_OPTIONS = [
   { value: "classic", label: "Floramory Classic" },
@@ -46,157 +52,27 @@ const TIER_OPTIONS = [
   { value: "masterpiece", label: "Floramory Masterpiece" },
 ];
 
-type AdminTab = "dashboard" | "produk" | "pesanan" | "sql" | "pengaturan";
+const ORDER_STATUSES = [
+  { value: "new", label: "New Order" },
+  { value: "dp_verified", label: "50% DP Received" },
+  { value: "in_progress", label: "Lab Dehydration & UV Casting" },
+  { value: "completed", label: "Delivered / Vault Active" },
+  { value: "cancelled", label: "Cancelled" },
+] as const;
 
-const DEFAULT_SQL = `-- Floramory Supabase SQL
--- Tulis atau tempel SQL di sini, lalu salin ke Supabase SQL Editor.
+function getOrderStatus(status?: string): typeof ORDER_STATUSES[number]["value"] {
+  const normalized = (status || "").toLowerCase();
+  if (normalized === "contacted") return "in_progress";
+  if (normalized === "paid") return "dp_verified";
+  return ORDER_STATUSES.find(option => option.value === normalized)?.value || "new";
+}
 
-create table if not exists public.products (
-  id text primary key,
-  nama_produk text not null,
-  tier text not null default 'classic',
-  harga text not null default '',
-  bunga text not null default '',
-  deskripsi text not null default '',
-  bahan text not null default '',
-  ukuran text not null default '',
-  nama_pembeli text not null default '',
-  dari text not null default '',
-  pesan_personal text not null default '',
-  foto_produk text not null default '',
-  foto_qr text not null default '',
-  status text not null default 'active',
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
-);
+function isDpReceivedStatus(status?: string): boolean {
+  const normalized = (status || "").toLowerCase();
+  return normalized === "paid" || normalized === "dp_verified";
+}
 
-create table if not exists public.preorder_orders (
-  id uuid primary key default gen_random_uuid(),
-  customer_name text not null default '',
-  whatsapp text not null default '',
-  product_id text not null default '',
-  product_name text not null default '',
-  custom_request text not null default '',
-  recipient_name text not null default '',
-  sender_name text not null default '',
-  personal_message text not null default '',
-  status text not null default 'new',
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
-);
-
-create table if not exists public.app_settings (
-  key text primary key,
-  value text not null default '',
-  updated_at timestamptz not null default now()
-);
-
-create table if not exists public.admin_users (
-  id uuid primary key references auth.users(id) on delete cascade,
-  created_at timestamptz not null default now()
-);
-
-create or replace function public.is_admin()
-returns boolean
-language sql
-security definer
-set search_path = public
-stable
-as $$
-  select exists (
-    select 1 from public.admin_users where id = auth.uid()
-  );
-$$;
-
-alter table public.products enable row level security;
-alter table public.preorder_orders enable row level security;
-alter table public.app_settings enable row level security;
-alter table public.admin_users enable row level security;
-
-drop policy if exists "Public can read active products" on public.products;
-drop policy if exists "Authenticated admin can manage products" on public.products;
-
-create policy "Public can read active products"
-on public.products
-for select
-to anon, authenticated
-using (status = 'active');
-
-create policy "Authenticated admin can manage products"
-on public.products
-for all
-to authenticated
-using (public.is_admin())
-with check (public.is_admin());
-
--- preorder_orders: PRIVASI. anon tanpa akses; authenticated HANYA
--- select/update dan dibatasi policy is_admin() -> user biasa yang
--- login tidak bisa membaca kontak/pesan pribadi (whatsapp, dll).
--- INSERT hanya lewat Edge Function \`send-preorder\` (service_role).
-drop policy if exists "Public can create preorder" on public.preorder_orders;
-drop policy if exists "Authenticated admin can manage preorder" on public.preorder_orders;
-
-grant select, update on public.preorder_orders to authenticated;
-revoke insert, delete on public.preorder_orders from authenticated;
-revoke all on public.preorder_orders from anon;
-
-create policy "Authenticated admin can manage preorder"
-on public.preorder_orders
-for all
-to authenticated
-using (public.is_admin())
-with check (public.is_admin());
-
-drop policy if exists "Public can read app settings" on public.app_settings;
-drop policy if exists "Authenticated admin can manage app settings" on public.app_settings;
-
-create policy "Public can read app settings"
-on public.app_settings
-for select
-to anon, authenticated
-using (key in ('wa_number'));
-
-create policy "Authenticated admin can manage app settings"
-on public.app_settings
-for all
-to authenticated
-using (public.is_admin())
-with check (public.is_admin());
-
-grant usage on schema public to anon, authenticated;
-
--- products: publik baca katalog aktif; tulis hanya authenticated + RLS is_admin()
-grant select on public.products to anon, authenticated;
-grant select, insert, update on public.products to authenticated;
-
--- app_settings: publik baca (nomor WA kontak); tulis hanya admin
-grant select on public.app_settings to anon, authenticated;
-grant select, insert, update on public.app_settings to authenticated;
-
--- preorder_orders: PRIVASI - grant select/update di bagian policy di atas
-
--- Setelah menjalankan SQL di atas, daftarkan akun admin (wajib, lewat SQL Editor):
--- insert into public.admin_users (id)
--- select id from auth.users where email = 'EMAIL_ADMIN_KAMU';
-
--- Foto: aktifkan Supabase Storage bucket product-images + policy (sekali saja):
--- insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
--- values ('product-images', 'product-images', true, 5242880,
---         array['image/jpeg','image/png','image/webp','image/avif','image/gif'])
--- on conflict (id) do update set public = true,
---         file_size_limit = excluded.file_size_limit,
---         allowed_mime_types = excluded.allowed_mime_types;
---
--- create policy "Public read product images" on storage.objects for select
---   to anon, authenticated using (bucket_id = 'product-images');
--- create policy "Admin upload product images" on storage.objects for insert
---   to authenticated with check (bucket_id = 'product-images' and public.is_admin());
--- create policy "Admin update product images" on storage.objects for update
---   to authenticated using (bucket_id = 'product-images' and public.is_admin())
---   with check (bucket_id = 'product-images' and public.is_admin());
--- create policy "Admin delete product images" on storage.objects for delete
---   to authenticated using (bucket_id = 'product-images' and public.is_admin());
--- (Lengkap: lihat backend/db/migrations/0005_product_images_storage.sql)`;
+type AdminTab = "dashboard" | "produk" | "pesanan" | "keuangan" | "pengaturan";
 
 interface FormState {
   id: string;
@@ -255,11 +131,17 @@ function getAutoBaseUrl(): string {
   return base ? `${origin}${base}` : origin;
 }
 
-function countSqlStatements(sql: string): number {
-  return sql
-    .split(";")
-    .map(part => part.trim())
-    .filter(Boolean).length;
+function parsePrice(value: string): number {
+  const digits = value.replace(/[^\d]/g, "");
+  return digits ? Number(digits) : 0;
+}
+
+function formatCurrency(value: number): string {
+  return new Intl.NumberFormat("id-ID", {
+    style: "currency",
+    currency: "IDR",
+    maximumFractionDigits: 0,
+  }).format(value);
 }
 
 function LoginGate({ onLogin }: { onLogin: () => void }) {
@@ -356,6 +238,11 @@ function LoginGate({ onLogin }: { onLogin: () => void }) {
 export default function Admin() {
   const [authed, setAuthed] = useState(false);
   const [activeTab, setActiveTab] = useState<AdminTab>("dashboard");
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    if (window.innerWidth < 768) return true;
+    return localStorage.getItem(SIDEBAR_PREFERENCE_KEY) === "true";
+  });
+  const [productFormOpen, setProductFormOpen] = useState(false);
   const [baseUrl, setBaseUrl] = useState("");
   const [waNum, setWaNum] = useState("");
   const [configSaved, setConfigSaved] = useState(false);
@@ -371,9 +258,17 @@ export default function Admin() {
   const [preOrderOffset, setPreOrderOffset] = useState(0);
   const [hasMorePreOrders, setHasMorePreOrders] = useState(false);
   const [newOrderCount, setNewOrderCount] = useState(0);
+  const [operationalCounts, setOperationalCounts] = useState<PreOrderStatusCounts>({
+    new: 0,
+    dp_verified: 0,
+    in_progress: 0,
+    completed: 0,
+  });
+  const [orderSearch, setOrderSearch] = useState("");
+  const [orderFilterStatus, setOrderFilterStatus] = useState<"all" | typeof ORDER_STATUSES[number]["value"]>("all");
+  const [printOrder, setPrintOrder] = useState<PreOrder | null>(null);
   const [editingId, setEditingId] = useState("");
   const [productSearch, setProductSearch] = useState("");
-  const [sqlDraft, setSqlDraft] = useState(DEFAULT_SQL);
   const [toastMsg, setToastMsg] = useState("");
   const [toastVisible, setToastVisible] = useState(false);
   const [toastLevel, setToastLevel] = useState<"info" | "success" | "alert">("info");
@@ -381,6 +276,50 @@ export default function Admin() {
   const qrRef = useRef<HTMLDivElement>(null);
   const produkUploadRef = useRef<HTMLInputElement>(null);
   const qrUploadRef = useRef<HTMLInputElement>(null);
+  const wasMobileViewport = useRef(window.innerWidth < 768);
+
+  useEffect(() => {
+    const handleResize = () => {
+      const isMobileViewport = window.innerWidth < 768;
+      if (isMobileViewport === wasMobileViewport.current) return;
+      wasMobileViewport.current = isMobileViewport;
+      if (isMobileViewport) {
+        setSidebarCollapsed(true);
+      } else {
+        setSidebarCollapsed(localStorage.getItem(SIDEBAR_PREFERENCE_KEY) === "true");
+      }
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  const toggleSidebar = useCallback(() => {
+    const nextCollapsed = !sidebarCollapsed;
+    setSidebarCollapsed(nextCollapsed);
+    if (window.innerWidth >= 768) {
+      localStorage.setItem(SIDEBAR_PREFERENCE_KEY, String(nextCollapsed));
+    }
+  }, [sidebarCollapsed]);
+
+  useEffect(() => {
+    const handleShortcut = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && !event.altKey && event.key.toLowerCase() === "b") {
+        event.preventDefault();
+        toggleSidebar();
+      }
+    };
+    window.addEventListener("keydown", handleShortcut);
+    return () => window.removeEventListener("keydown", handleShortcut);
+  }, [toggleSidebar]);
+
+  useEffect(() => {
+    if (!printOrder) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setPrintOrder(null);
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [printOrder]);
 
   useEffect(() => {
     let meta = document.querySelector<HTMLMetaElement>('meta[name="robots"]');
@@ -427,16 +366,6 @@ export default function Admin() {
     });
   }, [authed]);
 
-  useEffect(() => {
-    if (!authed) return;
-    setSqlDraft(localStorage.getItem(SQL_DRAFT_KEY) || DEFAULT_SQL);
-  }, [authed]);
-
-  useEffect(() => {
-    if (!authed) return;
-    localStorage.setItem(SQL_DRAFT_KEY, sqlDraft);
-  }, [authed, sqlDraft]);
-
   const showToast = useCallback((msg: string, level: "info" | "success" | "alert" = "info") => {
     setToastMsg(msg);
     setToastLevel(level);
@@ -458,13 +387,42 @@ export default function Admin() {
   const loadPreOrders = async () => {
     setLoadingOrders(true);
     try {
-      const page = await fetchPreOrders(0);
+      const [page, counts] = await Promise.all([fetchPreOrders(0), fetchPreOrderStatusCounts()]);
       setPreOrders(page.orders);
       setPreOrderOffset(page.orders.length);
       setHasMorePreOrders(page.hasMore);
-      setNewOrderCount(await fetchNewPreOrderCount());
+      setOperationalCounts(counts);
+      setNewOrderCount(counts.new);
     } catch (error) {
       showToast(error instanceof Error ? error.message : "Gagal memuat pre-order");
+    } finally {
+      setLoadingOrders(false);
+    }
+  };
+
+  const loadAllPreOrders = async () => {
+    setLoadingOrders(true);
+    try {
+      const orders: PreOrder[] = [];
+      let offset = 0;
+      let hasMore = true;
+      while (hasMore) {
+        const page = await fetchPreOrders(offset);
+        if (page.orders.length === 0 && page.hasMore) {
+          throw new Error("Gagal memuat seluruh data pre-order untuk laporan.");
+        }
+        orders.push(...page.orders);
+        offset += page.orders.length;
+        hasMore = page.hasMore;
+      }
+      const counts = await fetchPreOrderStatusCounts();
+      setPreOrders(orders);
+      setPreOrderOffset(orders.length);
+      setHasMorePreOrders(false);
+      setOperationalCounts(counts);
+      setNewOrderCount(counts.new);
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "Gagal memuat data laporan keuangan");
     } finally {
       setLoadingOrders(false);
     }
@@ -639,6 +597,7 @@ export default function Admin() {
   const editProduct = (product: Product) => {
     setForm(productToForm(product));
     setEditingId(product.id);
+    setProductFormOpen(true);
     setActiveTab("produk");
     setQrVisible(false);
     setGeneratedUrl("");
@@ -666,6 +625,7 @@ export default function Admin() {
       dari: order.sender_name || order.customer_name,
       pesan: order.personal_message || order.custom_request,
     }));
+    setProductFormOpen(true);
     setActiveTab("produk");
     showToast("Data Memory Vault dari pre-order sudah dimasukkan");
   };
@@ -674,8 +634,23 @@ export default function Admin() {
     if (!order.id) return;
     try {
       await updatePreOrderStatus(order.id, status);
-      await loadPreOrders();
-      showToast("Status pre-order diperbarui");
+      const previousStatus = getOrderStatus(order.status);
+      setPreOrders(orders => orders.map(item => item.id === order.id ? { ...item, status } : item));
+      const nextStatus = getOrderStatus(status);
+      if (previousStatus !== nextStatus) {
+        setOperationalCounts(counts => {
+          const updated = { ...counts };
+          if (previousStatus !== "cancelled") {
+            updated[previousStatus] = Math.max(0, counts[previousStatus] - 1);
+          }
+          if (nextStatus !== "cancelled") updated[nextStatus] = counts[nextStatus] + 1;
+          return updated;
+        });
+        if (previousStatus === "new" && nextStatus !== "new") setNewOrderCount(count => Math.max(0, count - 1));
+        if (previousStatus !== "new" && nextStatus === "new") setNewOrderCount(count => count + 1);
+      }
+      const statusLabel = ORDER_STATUSES.find(option => option.value === status)?.label || status;
+      showToast(`Status pesanan diperbarui: ${statusLabel}`, "success");
     } catch (error) {
       showToast(error instanceof Error ? error.message : "Gagal mengubah status pre-order");
     }
@@ -727,21 +702,6 @@ export default function Admin() {
     showToast("QR Code berhasil didownload");
   };
 
-  const copySql = () => {
-    navigator.clipboard.writeText(sqlDraft).then(() => showToast("SQL disalin. Tempel di Supabase SQL Editor."));
-  };
-
-  const downloadSql = () => {
-    const blob = new Blob([sqlDraft], { type: "text/sql;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.download = "floramory-supabase.sql";
-    link.href = url;
-    link.click();
-    URL.revokeObjectURL(url);
-    showToast("File SQL berhasil didownload");
-  };
-
   const exportPreOrders = () => {
     const columns: (keyof PreOrder)[] = [
       "id",
@@ -778,11 +738,33 @@ export default function Admin() {
     URL.revokeObjectURL(url);
   };
 
-  const resetSqlDraft = () => {
-    const ok = window.confirm("Reset isi SQL editor ke template awal?");
-    if (!ok) return;
-    setSqlDraft(DEFAULT_SQL);
-    showToast("Template SQL dimuat ulang");
+  const exportFinancialReport = () => {
+    const columns = ["Tanggal", "Nama Pelanggan", "Produk", "Nilai Transaksi", "Status Pembayaran"];
+    const escapeCsv = (value: string | number) => {
+      const text = String(value);
+      const safeText = /^[\t\r ]*[=+\-@]/.test(text) ? `'${text}` : text;
+      return `"${safeText.replace(/"/g, '""')}"`;
+    };
+    const rows = financialTransactions.map(({ order, product, amount }) => [
+      order.created_at ? new Date(order.created_at).toLocaleDateString("id-ID") : "",
+      order.customer_name || "Tanpa nama",
+      product?.nama_produk || order.product_name || order.product_id || "Produk tidak ditemukan",
+      amount,
+      isDpReceivedStatus(order.status) ? "DP Diterima (50%)" : "Selesai (100%)",
+    ]);
+    const csv = [
+      columns.map(escapeCsv).join(","),
+      ...rows.map(row => row.map(escapeCsv).join(",")),
+    ].join("\r\n");
+    const blob = new Blob([`\uFEFF${csv}`], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `floramory-laporan-keuangan-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
   };
 
   const activeProducts = useMemo(
@@ -806,29 +788,60 @@ export default function Admin() {
     count: activeProducts.filter(product => product.tier === option.value).length,
   }));
   const previewUrl = getPreviewUrl();
-  const sqlStats = useMemo(() => {
-    const lines = sqlDraft.split(/\r?\n/).length;
-    const statements = countSqlStatements(sqlDraft);
-    const hasDangerousCommand = /\b(drop|truncate|delete\s+from|alter\s+table)\b/i.test(sqlDraft);
-    return { lines, statements, hasDangerousCommand };
-  }, [sqlDraft]);
+  const financialTransactions = useMemo(() => preOrders
+    .filter(order => ["completed", "dp_verified"].includes(getOrderStatus(order.status)))
+    .map(order => {
+      const product = managedProducts.find(item => item.id === order.product_id)
+        || managedProducts.find(item => item.nama_produk.toLowerCase() === order.product_name.toLowerCase());
+      const amount = product ? parsePrice(product.harga) : 0;
+      return {
+        order,
+        product,
+        amount,
+        receivedAmount: isDpReceivedStatus(order.status) ? amount * 0.5 : amount,
+      };
+    }), [managedProducts, preOrders]);
+  const totalRevenue = financialTransactions.reduce((sum, transaction) => sum + transaction.receivedAmount, 0);
+  const averageTransaction = financialTransactions.length ? totalRevenue / financialTransactions.length : 0;
+  const normalizedOrderSearch = orderSearch.trim().toLowerCase();
+  const searchedOrders = preOrders.filter(order => {
+    if (!normalizedOrderSearch) return true;
+    return [
+      order.customer_name,
+      order.whatsapp,
+      order.product_name,
+      order.recipient_name,
+    ].some(value => (value || "").toLowerCase().includes(normalizedOrderSearch));
+  });
+  const filteredOrders = searchedOrders.filter(order =>
+    orderFilterStatus === "all" || getOrderStatus(order.status) === orderFilterStatus
+  );
+  const orderStatusCounts = ORDER_STATUSES.reduce<Record<string, number>>((counts, status) => {
+    counts[status.value] = searchedOrders.filter(order => getOrderStatus(order.status) === status.value).length;
+    return counts;
+  }, {});
+  const estimatedDpReceived = financialTransactions.reduce((sum, transaction) => sum + transaction.amount * 0.5, 0);
 
   const tabs: { id: AdminTab; label: string; icon: ComponentType<{ size?: number }> }[] = [
     { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
     { id: "produk", label: "Produk", icon: Box },
     { id: "pesanan", label: "Pesanan", icon: ClipboardList },
-    { id: "sql", label: "SQL", icon: Database },
+    { id: "keuangan", label: "Keuangan", icon: TrendingUp },
     { id: "pengaturan", label: "Pengaturan", icon: Settings },
   ];
 
   if (!authed) return <LoginGate onLogin={() => setAuthed(true)} />;
 
   const renderProductForm = () => (
-    <div className="admin-panel-card">
+    <>
+      <button className="admin-outline-btn admin-back-to-products" onClick={() => setProductFormOpen(false)}>
+        ← Kembali ke Daftar Produk
+      </button>
+      <div className="admin-panel-card admin-product-form-card">
       <div className="admin-panel-head">
         <div>
-          <h2>{editingId ? "Edit Produk" : "Tambah Produk"}</h2>
-          <p>Lengkapi data katalog dan foto sebelum membuat QR.</p>
+          <h2>Informasi Produk</h2>
+          <p>{editingId ? `Edit data produk ${form.id}.` : "Lengkapi detail katalog produk."}</p>
         </div>
         {editingId && <span className="admin-pill">Edit #{editingId}</span>}
       </div>
@@ -887,7 +900,14 @@ export default function Admin() {
         </div>
       </div>
 
-      <div className="admin-subsection-title">Memory Vault</div>
+      </div>
+      <div className="admin-panel-card admin-product-form-card">
+      <div className="admin-panel-head">
+        <div>
+          <h2>Memory Vault Default</h2>
+          <p>Isi pesan dan nama default yang ditampilkan pada halaman QR produk.</p>
+        </div>
+      </div>
       <div className="admin-form-row">
         <div className="admin-form-group">
           <label className="admin-form-label">Nama Penerima</label>
@@ -906,7 +926,14 @@ export default function Admin() {
           value={form.pesan} onChange={e => setForm(f => ({ ...f, pesan: e.target.value }))} />
       </div>
 
-      <div className="admin-subsection-title">Foto</div>
+      </div>
+      <div className="admin-panel-card admin-product-form-card">
+      <div className="admin-panel-head">
+        <div>
+          <h2>Unggah Foto</h2>
+          <p>Tambahkan gambar produk dan foto QR yang akan digunakan.</p>
+        </div>
+      </div>
       <div className="admin-form-group">
         <label className="admin-form-label">Foto Produk</label>
         <div className="admin-upload-row">
@@ -1016,7 +1043,8 @@ export default function Admin() {
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </>
   );
 
   const renderProductList = () => (
@@ -1026,9 +1054,17 @@ export default function Admin() {
           <h2>Daftar Produk</h2>
           <p>{activeProducts.length} aktif, {archivedProducts.length} terarsip.</p>
         </div>
-        <button className="admin-outline-btn" onClick={loadProducts} disabled={loadingProducts}>
-          <RefreshCw size={16} /> Refresh
-        </button>
+        <div className="admin-panel-head-actions">
+          <button className="admin-primary-btn" onClick={() => {
+            resetForm();
+            setProductFormOpen(true);
+          }}>
+            + Tambah Produk Baru
+          </button>
+          <button className="admin-outline-btn" onClick={loadProducts} disabled={loadingProducts}>
+            <RefreshCw size={16} /> Refresh
+          </button>
+        </div>
       </div>
       <input
         className="admin-form-input"
@@ -1048,8 +1084,12 @@ export default function Admin() {
             <div className={`admin-list-item admin-product-row${editingId === product.id ? " active" : ""}`} key={product.id}>
               <div className="admin-list-main">
                 <strong>{product.nama_produk || product.id}</strong>
+                <span>#{product.id}</span>
               </div>
-              <span className="admin-product-meta">#{product.id} / {product.tier} / {formatHarga(product.harga) || "Tanpa harga"}</span>
+              <span className={`admin-tier-badge tier-${product.tier.toLowerCase()}`}>
+                {TIER_OPTIONS.find(option => option.value === product.tier.toLowerCase())?.label || product.tier}
+              </span>
+              <span className="admin-product-price">{formatHarga(product.harga) || "Tanpa harga"}</span>
               <div className="admin-list-actions">
                 <button onClick={() => editProduct(product)}>Edit</button>
                 <a href={productUrl} target="_blank" rel="noopener noreferrer">Cek</a>
@@ -1078,21 +1118,79 @@ export default function Admin() {
           </button>
         </div>
       </div>
+      <div className="admin-order-filters">
+        <input
+          className="admin-form-input"
+          type="search"
+          placeholder="Cari nama, WhatsApp, produk, atau penerima"
+          value={orderSearch}
+          onChange={event => setOrderSearch(event.target.value)}
+          aria-label="Cari pre-order"
+        />
+        <div className="admin-order-filter-tabs" role="group" aria-label="Filter status pre-order">
+          <button
+            type="button"
+            className={`admin-order-filter${orderFilterStatus === "all" ? " active" : ""}`}
+            onClick={() => setOrderFilterStatus("all")}
+            aria-pressed={orderFilterStatus === "all"}
+          >
+            Semua <span>{searchedOrders.length}</span>
+          </button>
+          {ORDER_STATUSES.map(status => (
+            <button
+              type="button"
+              key={status.value}
+              className={`admin-order-filter status-${status.value}${orderFilterStatus === status.value ? " active" : ""}`}
+              onClick={() => setOrderFilterStatus(status.value)}
+              aria-pressed={orderFilterStatus === status.value}
+            >
+              {status.label} <span>{orderStatusCounts[status.value] || 0}</span>
+            </button>
+          ))}
+        </div>
+      </div>
       <div className="admin-list">
         {loadingOrders ? (
           <div className="manage-empty">Memuat pre-order...</div>
         ) : preOrders.length === 0 ? (
           <div className="manage-empty">Belum ada pre-order.</div>
-        ) : preOrders.map(order => (
-          <div className={`admin-list-item admin-order-row${(order.status || "new") === "new" ? " active" : ""}`} key={order.id || `${order.whatsapp}-${order.created_at}`}>
+        ) : filteredOrders.length === 0 ? (
+          <div className="manage-empty">Tidak ada pre-order yang cocok dengan pencarian atau filter ini.</div>
+        ) : filteredOrders.map(order => {
+          const currentStatus = getOrderStatus(order.status);
+          const customerName = order.customer_name || "Kak";
+          const productName = order.product_name || order.product_id || "produk pilihan Anda";
+          const base = (localStorage.getItem(BASE_URL_KEY) || baseUrl).trim().replace(/\/$/, "");
+          const productUrl = `${base}/produk?id=${encodeURIComponent(order.product_id || "")}`;
+          const linkedProduct = managedProducts.find(product => product.id === order.product_id);
+          const dpAmount = linkedProduct
+            ? formatCurrency(parsePrice(linkedProduct.harga) * 0.5)
+            : "50% dari total pesanan";
+          const dpMessage = `Halo Kak ${customerName}! Terima kasih sudah memesan ${productName} di Floramory. Untuk memulai pembuatan Memory Vault dan pengawetan bunga, silakan transfer DP 50% sebesar ${dpAmount} ke rekening resmi Floramory yang akan dikirimkan tim kami. Setelah transfer, mohon kirim bukti pembayaran di chat ini.`;
+          const progressMessage = `Halo Kak ${customerName}! Karya botani pesanan Anda (${productName}) saat ini sedang menjalani dehidrasi silica di laboratorium dan casting kristal anti-UV. Kami akan mengabari Anda kembali saat karya siap.`;
+          const vaultMessage = `Halo Kak ${customerName}! Memory Vault untuk ${order.recipient_name || "penerima hadiah"} sudah aktif. Pratinjau digital kado Anda dapat diakses di: ${productUrl}`;
+          const whatsappNumber = normalizeWhatsApp(order.whatsapp);
+          const directChatUrl = `https://wa.me/${whatsappNumber}`;
+          const whatsappUrl = (message: string) =>
+            `${directChatUrl}?text=${encodeURIComponent(message)}`;
+          const vaultAvailable = currentStatus === "completed" && Boolean(order.product_id);
+          return (
+          <div className="admin-list-item admin-order-row" key={order.id || `${order.whatsapp}-${order.created_at}`}>
             <div className="admin-order-main">
               <div className="admin-order-primary">
                 <strong>{order.customer_name || "Tanpa nama"}</strong>
                 <span className="admin-order-meta">{order.whatsapp || "Tanpa WA"} / {order.product_name || order.product_id || "Produk belum dipilih"}</span>
-                <span className={`admin-order-status${(order.status || "new") === "new" ? " is-new" : " is-contacted"}`}>
-                  {(order.status || "new") === "new" ? "Baru" : "Kontak"}
-                </span>
+                <span>{order.created_at ? new Date(order.created_at).toLocaleDateString("id-ID") : ""}</span>
               </div>
+              <select
+                className={`admin-order-status-select status-${currentStatus}`}
+                value={currentStatus}
+                disabled={!order.id}
+                aria-label={`Status pesanan ${customerName}`}
+                onChange={event => void setOrderStatus(order, event.target.value)}
+              >
+                {ORDER_STATUSES.map(status => <option value={status.value} key={status.value}>{status.label}</option>)}
+              </select>
               {(order.recipient_name || order.personal_message || order.custom_request) && (
                 <details className="admin-order-note">
                   <summary>
@@ -1103,14 +1201,26 @@ export default function Admin() {
               )}
             </div>
             <div className="admin-list-actions">
-              <button className="admin-order-use" onClick={() => useOrderMemory(order)}>Pakai</button>
-              <a className="admin-order-whatsapp" href={`https://wa.me/${normalizeWhatsApp(order.whatsapp)}`} target="_blank" rel="noopener noreferrer">WA</a>
-              <button className="admin-order-toggle" onClick={() => setOrderStatus(order, (order.status || "new") === "new" ? "contacted" : "new")}>
-                {(order.status || "new") === "new" ? "Kontak" : "Baru"}
-              </button>
+              <button type="button" className="admin-order-use" onClick={() => useOrderMemory(order)}>Pakai Data Memory</button>
+              {whatsappNumber ? (
+                <>
+                  <a className="admin-order-whatsapp direct-wa" href={directChatUrl} target="_blank" rel="noopener noreferrer" title="Buka chat WhatsApp tanpa pesan">💬 Direct Chat</a>
+                  <a className="admin-order-whatsapp" href={whatsappUrl(dpMessage)} target="_blank" rel="noopener noreferrer" title="Kirim instruksi pembayaran DP 50%">Confirm DP</a>
+                  <a className="admin-order-whatsapp progress-wa" href={whatsappUrl(progressMessage)} target="_blank" rel="noopener noreferrer" title="Kirim kabar proses laboratorium">Progress Update</a>
+                  {vaultAvailable ? (
+                    <a className="admin-order-whatsapp vault-wa" href={whatsappUrl(vaultMessage)} target="_blank" rel="noopener noreferrer" title="Kirim tautan Memory Vault aktif">Send Vault Link</a>
+                  ) : (
+                    <button type="button" className="admin-order-whatsapp vault-wa is-disabled" disabled title="Tersedia setelah pesanan berstatus Delivered / Vault Active">Send Vault Link</button>
+                  )}
+                </>
+              ) : (
+                <span className="admin-order-wa-missing">Nomor WhatsApp tidak tersedia</span>
+              )}
+              <button type="button" className="admin-order-print" onClick={() => setPrintOrder(order)}>Cetak Label</button>
             </div>
           </div>
-        ))}
+          );
+        })}
       </div>
       {hasMorePreOrders && (
         <div className="admin-load-more">
@@ -1120,6 +1230,68 @@ export default function Admin() {
         </div>
       )}
     </div>
+  );
+
+  const renderFinancialReport = () => (
+    <>
+      <section className="admin-financial-stats">
+        <article className="admin-financial-card">
+          <span className="admin-financial-icon"><DollarSign size={20} /></span>
+          <div><p>Total Pendapatan (Omzet)</p><strong>{formatCurrency(totalRevenue)}</strong></div>
+        </article>
+        <article className="admin-financial-card">
+          <span className="admin-financial-icon"><ClipboardList size={20} /></span>
+          <div><p>Jumlah Transaksi Selesai</p><strong>{financialTransactions.length}</strong></div>
+        </article>
+        <article className="admin-financial-card">
+          <span className="admin-financial-icon"><Wallet size={20} /></span>
+          <div><p>Estimasi DP Diterima (50%)</p><strong>{formatCurrency(estimatedDpReceived)}</strong></div>
+        </article>
+        <article className="admin-financial-card">
+          <span className="admin-financial-icon"><TrendingUp size={20} /></span>
+          <div><p>Rata-rata Nilai Transaksi</p><strong>{formatCurrency(averageTransaction)}</strong></div>
+        </article>
+      </section>
+      <div className="admin-panel-card">
+        <div className="admin-panel-head">
+          <div>
+            <h2>Daftar Transaksi Berhasil</h2>
+            <p>{loadingOrders ? "Memuat seluruh data pre-order..." : `${financialTransactions.length} transaksi berstatus selesai atau lunas.`}</p>
+          </div>
+          <button className="admin-primary-btn" onClick={exportFinancialReport} disabled={loadingOrders || financialTransactions.length === 0}>
+            <Download size={16} /> Export Laporan Keuangan (CSV)
+          </button>
+        </div>
+        {loadingOrders ? (
+          <div className="manage-empty">Memuat laporan keuangan...</div>
+        ) : financialTransactions.length === 0 ? (
+          <div className="manage-empty">Belum ada transaksi yang selesai atau lunas.</div>
+        ) : (
+          <div className="admin-table-wrap">
+            <table className="admin-table admin-financial-table">
+              <thead>
+                <tr><th>Tanggal</th><th>Nama Pelanggan</th><th>Produk</th><th>Nilai Transaksi</th><th>Status Pembayaran</th></tr>
+              </thead>
+              <tbody>
+                {financialTransactions.map(({ order, product, amount }) => (
+                  <tr key={order.id || `${order.whatsapp}-${order.created_at}`}>
+                    <td>{order.created_at ? new Date(order.created_at).toLocaleDateString("id-ID") : "-"}</td>
+                    <td>{order.customer_name || "Tanpa nama"}</td>
+                    <td>{product?.nama_produk || order.product_name || order.product_id || "Produk tidak ditemukan"}</td>
+                    <td>{product ? formatCurrency(amount) : "Harga tidak tersedia"}</td>
+                    <td>
+                      <span className={`admin-payment-badge ${(order.status || "").toLowerCase()}`}>
+                        {isDpReceivedStatus(order.status) ? "DP Diterima (50%)" : "Selesai (100%)"}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </>
   );
 
   const renderDashboard = () => (
@@ -1201,72 +1373,25 @@ export default function Admin() {
     </div>
   );
 
-  const renderSqlEditor = () => (
-    <div className="admin-two-col sql-layout">
-      <div className="admin-panel-card sql-editor-card">
-        <div className="admin-panel-head">
-          <div>
-            <h2>SQL Editor</h2>
-            <p>Siapkan query di website, lalu salin dan jalankan di Supabase.</p>
-          </div>
-          <span className="admin-pill">{sqlStats.statements} statement</span>
-        </div>
-        <textarea
-          className="sql-editor"
-          spellCheck={false}
-          value={sqlDraft}
-          onChange={e => setSqlDraft(e.target.value)}
-        />
-        <div className="sql-toolbar">
-          <button className="admin-outline-btn" onClick={copySql}><Copy size={16} /> Salin SQL</button>
-          <button className="admin-outline-btn" onClick={downloadSql}><Download size={16} /> Download</button>
-          <button className="admin-outline-btn danger" onClick={resetSqlDraft}><Trash2 size={16} /> Reset</button>
-        </div>
-      </div>
-
-      <div className="admin-panel-card">
-        <div className="admin-panel-head">
-          <div>
-            <h2>Panduan Supabase</h2>
-            <p>Editor ini tidak mengeksekusi SQL langsung agar database tetap aman.</p>
-          </div>
-        </div>
-        <div className="admin-check-list sql-guide">
-          <p>Buka Supabase Dashboard, lalu masuk ke menu SQL Editor.</p>
-          <p>Klik New query, tempel SQL dari tombol Salin SQL.</p>
-          <p>Jalankan query, lalu cek tabel products, preorder_orders, dan app_settings.</p>
-          <p>Setelah berhasil, isi environment VITE_SUPABASE_URL dan VITE_SUPABASE_ANON_KEY.</p>
-        </div>
-        <div className={`sql-warning${sqlStats.hasDangerousCommand ? " show" : ""}`}>
-          Query berisi perintah berisiko. Pastikan kamu sudah backup database sebelum menjalankannya.
-        </div>
-        <div className="sql-meta-grid">
-          <div><strong>{sqlStats.lines}</strong><span>Baris</span></div>
-          <div><strong>{sqlDraft.length}</strong><span>Karakter</span></div>
-          <div><strong>{hasSupabaseConfig() ? "Aktif" : "Belum"}</strong><span>Env Supabase</span></div>
-        </div>
-      </div>
-    </div>
-  );
-
   const titleMap: Record<AdminTab, { title: string; desc: string }> = {
     dashboard: { title: "Dashboard", desc: "Ringkasan katalog dan pesanan Floramory." },
-    produk: { title: "Produk", desc: "Tambah, edit, dan arsipkan produk katalog." },
+    produk: { title: "Produk", desc: "Kelola katalog produk Floramory." },
     pesanan: { title: "Pesanan", desc: "Kelola pre-order dan pakai data Memory Vault pelanggan." },
-    sql: { title: "SQL Editor", desc: "Tulis, simpan draft, dan salin query untuk Supabase." },
+    keuangan: { title: "Keuangan", desc: "Pantau omzet dari pre-order yang sudah selesai." },
     pengaturan: { title: "Pengaturan", desc: "Atur domain QR dan nomor WhatsApp aktif." },
   };
 
   const renderContent = () => {
     if (activeTab === "dashboard") return renderDashboard();
-    if (activeTab === "produk") return <div className="admin-two-col wide-left">{renderProductForm()}{renderProductList()}</div>;
+    if (activeTab === "produk") return productFormOpen ? renderProductForm() : renderProductList();
     if (activeTab === "pesanan") return renderOrders();
-    if (activeTab === "sql") return renderSqlEditor();
+    if (activeTab === "keuangan") return renderFinancialReport();
     return renderSettings();
   };
 
   return (
-    <div className="admin-shell">
+    <div className={`admin-shell${sidebarCollapsed ? " is-sidebar-collapsed" : " admin-sidebar-open"}`}>
+      {!sidebarCollapsed && <button className="admin-sidebar-backdrop" onClick={() => setSidebarCollapsed(true)} aria-label="Tutup menu admin" />}
       <aside className="admin-sidebar">
         <div className="admin-brand">
           <div className="admin-brand-mark">F</div>
@@ -1286,7 +1411,12 @@ export default function Admin() {
                 data-tab={tab.id}
                 aria-label={tab.label}
                 className={activeTab === tab.id ? "active" : ""}
-                onClick={() => setActiveTab(tab.id)}
+                title={sidebarCollapsed ? tab.label : undefined}
+                onClick={() => {
+                  setActiveTab(tab.id);
+                  if (window.innerWidth < 768) setSidebarCollapsed(true);
+                  if (tab.id === "keuangan") void loadAllPreOrders();
+                }}
               >
                 <Icon size={16} />
                 <span className="admin-nav-label">{tab.label}</span>
@@ -1294,6 +1424,17 @@ export default function Admin() {
             );
           })}
         </nav>
+        <button
+          type="button"
+          className="admin-sidebar-collapse"
+          onClick={toggleSidebar}
+          aria-label={sidebarCollapsed ? "Perluas sidebar" : "Ciutkan sidebar"}
+          aria-expanded={!sidebarCollapsed}
+          title={sidebarCollapsed ? "Perluas sidebar" : "Ciutkan sidebar"}
+        >
+          {sidebarCollapsed ? <PanelLeftOpen size={16} /> : <PanelLeftClose size={16} />}
+          <span>{sidebarCollapsed ? "Perluas menu" : "Ciutkan menu"}</span>
+        </button>
         <div className="admin-sidebar-footer">
           <p>Smart Eco-Preserved Artware</p>
           <span>Sumber data: Supabase</span>
@@ -1301,18 +1442,30 @@ export default function Admin() {
             <span className={`admin-realtime-dot${realtimeConnected ? " connected" : ""}`} />
             <span>{realtimeConnected ? "Realtime aktif" : "Realtime nonaktif"}</span>
           </div>
-          <button onClick={logout}><LogOut size={16} /> Keluar</button>
+          <button onClick={logout}><LogOut size={16} /><span>Keluar</span></button>
         </div>
       </aside>
 
       <main className="admin-main">
         <header className="admin-main-header">
-          <div>
-            <h1>{titleMap[activeTab].title}</h1>
-            <p>{titleMap[activeTab].desc}</p>
+          <div className="admin-header-title">
+            <button
+              type="button"
+              className="admin-sidebar-toggle"
+              onClick={toggleSidebar}
+              aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+              aria-expanded={!sidebarCollapsed}
+              title="Toggle sidebar (Ctrl+B)"
+            >
+              {sidebarCollapsed ? <Menu size={18} /> : <PanelLeftClose size={18} />}
+            </button>
+            <div>
+              <h1>{activeTab === "produk" && productFormOpen ? (editingId ? "Edit Produk" : "Tambah Produk Baru") : titleMap[activeTab].title}</h1>
+              <p>{activeTab === "produk" && productFormOpen ? "Lengkapi detail produk, Memory Vault, dan foto." : titleMap[activeTab].desc}</p>
+            </div>
           </div>
           <div className="admin-header-actions">
-            <button type="button" className="admin-outline-btn" onClick={reloadAll} disabled={loadingProducts || loadingOrders}>
+            <button type="button" className="admin-outline-btn" onClick={() => activeTab === "keuangan" ? void loadAllPreOrders() : void reloadAll()} disabled={loadingProducts || loadingOrders}>
               <RefreshCw size={16} />
               Muat ulang data
             </button>
@@ -1322,8 +1475,129 @@ export default function Admin() {
             </button>
           </div>
         </header>
+        <section className="admin-command-bar" aria-label="Operational command bar">
+          <div className="admin-command-metrics">
+            <button
+              type="button"
+              className="admin-command-metric is-new"
+              onClick={() => {
+                setActiveTab("pesanan");
+                setOrderSearch("");
+                setOrderFilterStatus("new");
+              }}
+            >
+              <span className="admin-command-label">New inquiries</span>
+              <strong aria-live="polite">{newOrderCount}</strong>
+              <span className="admin-command-caption">Needs first contact</span>
+            </button>
+            <button
+              type="button"
+              className="admin-command-metric is-deposit"
+              onClick={() => {
+                setActiveTab("pesanan");
+                setOrderSearch("");
+                setOrderFilterStatus("dp_verified");
+              }}
+            >
+              <span className="admin-command-label">Pending 50% DP</span>
+              <strong aria-live="polite">{operationalCounts.dp_verified}</strong>
+              <span className="admin-command-caption">Deposit stage</span>
+            </button>
+            <button
+              type="button"
+              className="admin-command-metric is-lab"
+              onClick={() => {
+                setActiveTab("pesanan");
+                setOrderSearch("");
+                setOrderFilterStatus("in_progress");
+              }}
+            >
+              <span className="admin-command-label">In lab</span>
+              <strong aria-live="polite">{operationalCounts.in_progress}</strong>
+              <span className="admin-command-caption">Dehydration &amp; UV casting</span>
+            </button>
+            <button
+              type="button"
+              className="admin-command-metric is-ready"
+              onClick={() => {
+                setActiveTab("pesanan");
+                setOrderSearch("");
+                setOrderFilterStatus("completed");
+              }}
+            >
+              <span className="admin-command-label">Ready / vault active</span>
+              <strong aria-live="polite">{operationalCounts.completed}</strong>
+              <span className="admin-command-caption">Completed keepsakes</span>
+            </button>
+          </div>
+          <div className="admin-command-actions">
+            <button
+              type="button"
+              className="admin-command-new-product"
+              onClick={() => {
+                resetForm();
+                setActiveTab("produk");
+                setProductFormOpen(true);
+                window.scrollTo({ top: 0, behavior: "smooth" });
+              }}
+            >
+              <Plus size={16} /> New Product
+            </button>
+            <button
+              type="button"
+              className="admin-command-store"
+              onClick={() => window.open(getAutoBaseUrl(), "_blank", "noopener,noreferrer")}
+            >
+              <ExternalLink size={15} /> Open Live Store
+            </button>
+            <span className="admin-command-realtime" role="status" aria-live="polite">
+              <span className={`admin-realtime-dot${realtimeConnected ? " connected" : ""}`} />
+              {realtimeConnected ? "Realtime connected" : "Realtime offline"}
+            </span>
+          </div>
+        </section>
         {renderContent()}
       </main>
+
+      {printOrder && (
+        <div className="admin-print-overlay" onClick={event => {
+          if (event.target === event.currentTarget) setPrintOrder(null);
+        }}>
+          <section className="admin-print-modal" role="dialog" aria-modal="true" aria-labelledby="packing-slip-title">
+            <div className="admin-print-actions">
+              <button type="button" className="admin-outline-btn" onClick={() => setPrintOrder(null)}>Tutup</button>
+              <button type="button" className="admin-primary-btn" onClick={() => window.print()}>Print Label</button>
+            </div>
+            <article className="admin-packing-slip">
+              <header className="admin-packing-brand">
+                <BrandLogo className="brand-logo-img admin-packing-logo" />
+                <p>Smart Eco-Preserved Artware</p>
+              </header>
+              <h2 id="packing-slip-title">Memory Vault</h2>
+              <div className="admin-packing-qr">
+                <QRCode
+                  value={`${(localStorage.getItem(BASE_URL_KEY) || baseUrl).trim().replace(/\/$/, "")}/produk?id=${encodeURIComponent(printOrder.product_id || "")}`}
+                  size={240}
+                  level="H"
+                  includeMargin
+                />
+              </div>
+              <div className="admin-packing-recipient">
+                <p><span>Kepada</span><strong>{printOrder.recipient_name || "-"}</strong></p>
+                <p><span>Dari</span><strong>{printOrder.sender_name || printOrder.customer_name || "-"}</strong></p>
+              </div>
+              <div className="admin-packing-message">
+                <span>Pesan Personal</span>
+                <p>“{printOrder.personal_message || "-"}”</p>
+              </div>
+              <footer className="admin-packing-product">
+                <strong>{printOrder.product_name || "Floramory Gift"}</strong>
+                <span>Serial: #{printOrder.product_id || "-"}</span>
+              </footer>
+            </article>
+          </section>
+        </div>
+      )}
 
       <div className={`admin-toast${toastVisible ? " show" : ""} admin-toast--${toastLevel}`}>{toastMsg}</div>
     </div>

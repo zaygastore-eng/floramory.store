@@ -1,0 +1,25 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Floramory Local Dev Server",
+			"type": "shell",
+			"command": "pnpm",
+			"args": [
+				"--filter",
+				"frontend",
+				"exec",
+				"vite",
+				"--config",
+				"vite.config.ts",
+				"--host",
+				"127.0.0.1",
+				"--port",
+				"5199",
+				"--strictPort"
+			],
+			"isBackground": true,
+			"problemMatcher": []
+		}
+	]
+}
