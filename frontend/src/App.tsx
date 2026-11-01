@@ -5,12 +5,10 @@ import Produk from "@/pages/Produk";
 import NotFound from "@/pages/not-found";
 import ErrorBoundary from "@/components/ErrorBoundary";
 
-// Admin panel — loaded as a separate chunk (admin-chunk).
-// All admin logic, CRUD operations, and Supabase session management
-// live inside Admin.tsx and are proxied through the Supabase Edge Function
-// at /api/admin (see supabase/functions/admin/index.ts).
-// Public pages (Home, Produk) have zero dependency on admin code.
-import Admin from "./pages/Admin";
+// Admin panel — loaded as a separate chunk only when /admin route is visited.
+// All admin logic, CRUD operations, lucide-react, qrcode.react, and Supabase
+// session management live inside Admin.tsx and are never downloaded by public visitors.
+const Admin = lazy(() => import("./pages/Admin"));
 
 function LoadingPage() {
   return (

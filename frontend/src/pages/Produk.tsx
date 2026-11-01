@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import BrandLogo from "@/components/BrandLogo";
 import ProductSpecimen from "@/components/ProductSpecimen";
-import { fetchProductById, fetchWhatsAppNumber, tierLabel, type Product } from "@/lib/sheets";
+import { fetchProductById, fetchWhatsAppNumber, tierLabel, type Product } from "@/lib/api";
 import { applyProductMeta } from "@/lib/seo";
 import { pageUrl, normalizeWhatsApp } from "@/lib/site";
 

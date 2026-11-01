@@ -1,5 +1,4 @@
 import { Component, type ErrorInfo, type ReactNode } from "react";
-import * as Sentry from "@sentry/react";
 
 interface Props {
   children: ReactNode;
@@ -8,6 +7,15 @@ interface Props {
 interface State {
   hasError: boolean;
   errorMessage?: string;
+}
+
+// Sentry is loaded asynchronously (see main.tsx). This module-level promise
+// resolves once the chunk is available so captureReactException still fires.
+let sentryCapture: ((error: Error, info: ErrorInfo) => void) | null = null;
+if (import.meta.env.PROD && import.meta.env.VITE_SENTRY_DSN) {
+  import("@sentry/react").then((Sentry) => {
+    sentryCapture = (error, info) => Sentry.captureReactException(error, info);
+  });
 }
 
 export default class ErrorBoundary extends Component<Props, State> {
@@ -19,7 +27,7 @@ export default class ErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, info: ErrorInfo) {
     console.error("ErrorBoundary caught an error:", error, info);
-    Sentry.captureReactException(error, info);
+    sentryCapture?.(error, info);
   }
 
   render() {

@@ -1,28 +1,28 @@
 Migration README
 ================
 
-Files
+Files (Supabase CLI migration format: `<timestamp>_<name>.sql`)
 -----
-- `0001_schema.sql`        -> skema Supabase lengkap (tabel, RLS, policy, grant, constraint tier, seed, admin_users + is_admin).
-- `0002_indexes.sql`       -> indeks performa untuk query yang paling sering dipakai.
-- `0003_admin_rls.sql`     -> (incremental) batasi akses admin: policy kelola hanya untuk user di `admin_users` via `public.is_admin()`; sekaligus batasi BACA publik `app_settings` hanya untuk key `wa_number`.
-- `0004_preorder_edge_function.sql` -> (incremental) kunci `preorder_orders`: anti-spam (tutup insert publik, semua pre-order lewat Edge Function `send-preorder`) + PRIVASI (anon tanpa akses; authenticated hanya `select/update` dibatasi policy `is_admin()`, jadi user biasa yang login tidak bisa membaca data pribadi pre-order).
-- `0005_product_images_storage.sql` -> (incremental) bucket storage `product-images` (publik, maks. 5 MB, hanya gambar) + RLS storage: anon & authenticated hanya bisa baca; upload/update/delete HANYA lewat sesi admin (`is_admin()`). Mendukung CDN Image Transform (WebP/AVIF) di frontend.
-- `20260708_migrate_tiers.sql` -> migrasi nilai `tier` dari label lama (`lite`/`home`) ke baru (`classic`/`masterpiece`).
+- `20260101000001_schema.sql`        -> skema Supabase lengkap (tabel, RLS, policy, grant, constraint tier, seed, admin_users + is_admin).
+- `20260101000002_indexes.sql`       -> indeks performa untuk query yang paling sering dipakai.
+- `20260101000003_admin_rls.sql`     -> (incremental) batasi akses admin: policy kelola hanya untuk user di `admin_users` via `public.is_admin()`; sekaligus batasi BACA publik `app_settings` hanya untuk key `wa_number`.
+- `20260101000004_preorder_edge_function.sql` -> (incremental) kunci `preorder_orders`: anti-spam (tutup insert publik, semua pre-order lewat Edge Function `send-preorder`) + PRIVASI (anon tanpa akses; authenticated hanya `select/update` dibatasi policy `is_admin()`, jadi user biasa yang login tidak bisa membaca data pribadi pre-order).
+- `20260101000005_product_images_storage.sql` -> (incremental) bucket storage `product-images` (publik, maks. 5 MB, hanya gambar) + RLS storage: anon & authenticated hanya bisa baca; upload/update/delete HANYA lewat sesi admin (`is_admin()`). Mendukung CDN Image Transform (WebP/AVIF) di frontend.
+- `20260708000000_migrate_tiers.sql` -> migrasi nilai `tier` dari label lama (`lite`/`home`) ke baru (`classic`/`masterpiece`).
 
 Urutan
 ------
-- Setup baru: jalankan `0001_schema.sql`, lalu `0002_indexes.sql` di Supabase SQL editor.
-- Upgrade dari DB lama: jalankan `0001_schema.sql` dulu (membuat/menormalkan schema),
-  kemudian `20260708_migrate_tiers.sql` untuk menyesuaikan data `tier` lama, lalu `0002_indexes.sql`.
-- Migrasi RLS admin (`0003_admin_rls.sql`): jalankan setelah itu untuk menutup celah
-  akses admin yang terlalu luas. Untuk DB yang sudah lama (built-in `is_admin()` sudah ada dari `0001` terbaru), file ini idempotent.
-- Migrasi anti-spam & privasi (`0004_preorder_edge_function.sql`): wajib dijalankan SETELAH
-  `0001_schema.sql` versi baru. Menutup insert publik ke `preorder_orders` dan mencabut
-  akses baca non-admin — setelah ini JANGAN jalankan ulang skema lama (0001 versi lama)
+- Setup baru: jalankan migrasi via Supabase CLI (`supabase db push`) atau jalankan `20260101000001_schema.sql`, lalu `20260101000002_indexes.sql` di Supabase SQL editor.
+- Upgrade dari DB lama: jalankan `20260101000001_schema.sql` dulu (membuat/menormalkan schema),
+  kemudian `20260708000000_migrate_tiers.sql` untuk menyesuaikan data `tier` lama, lalu `20260101000002_indexes.sql`.
+- Migrasi RLS admin (`20260101000003_admin_rls.sql`): jalankan setelah itu untuk menutup celah
+  akses admin yang terlalu luas. Untuk DB yang sudah lama (built-in `is_admin()` sudah ada dari `20260101000001` terbaru), file ini idempotent.
+- Migrasi anti-spam & privasi (`20260101000004_preorder_edge_function.sql`): wajib dijalankan SETELAH
+  `20260101000001_schema.sql` versi baru. Menutup insert publik ke `preorder_orders` dan mencabut
+  akses baca non-admin — setelah ini JANGAN jalankan ulang skema lama
   karena akan membuka kembali jalur spam & kebocoran privasi. Deploy Edge Function
   `send-preorder` (supabase/functions/) setelahnya.
-- Migrasi storage (`0005_product_images_storage.sql`): buat bucket `product-images` + RLS
+- Migrasi storage (`20260101000005_product_images_storage.sql`): buat bucket `product-images` + RLS
   storage. Aman dijalankan kapan saja (idempotent). Setelahnya redepoy Edge Function `admin`
   agar upload foto dari panel admin bekerja (proxy storage + batas 6 MB). File FOTO lama
   yang berupa URL eksternal (imgbb/Dribbble/dll.) TETAP tampil — hanya tidak di-optimasi CDN;
@@ -81,7 +81,7 @@ Notes & safety
 - The migration updates existing rows in-place; the backup table is a snapshot of `public.products` before changes.
 - Make sure no other systems rely on the old tier values before switching the constraint.
 - If your application still maps UI values to legacy DB values (the app contains such mapping), coordinate deployment so the app and DB change together to avoid mismatches.
-- The app (frontend/src/lib/sheets.ts) expects the new tier labels (`classic`/`signature`/`masterpiece`) as enforced by `0001_schema.sql`. It keeps a small retry safety net if a constraint error occurs, but the schema constraint is the source of truth.
+- The app (frontend/src/lib/api.ts) expects the new tier labels (`classic`/`signature`/`masterpiece`) as enforced by `0001_schema.sql`. It keeps a small retry safety net if a constraint error occurs, but the schema constraint is the source of truth.
 
 Questions or help
 -----------------

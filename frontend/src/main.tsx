@@ -1,16 +1,8 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import * as Sentry from "@sentry/react";
 import App from "./App";
 import { ensureBaseMeta } from "./lib/seo";
 import "./index.css";
-
-if (import.meta.env.PROD && import.meta.env.VITE_SENTRY_DSN) {
-  Sentry.init({
-    dsn: import.meta.env.VITE_SENTRY_DSN,
-    integrations: [],
-  });
-}
 
 ensureBaseMeta();
 
@@ -22,3 +14,16 @@ createRoot(rootEl).render(
     <App />
   </StrictMode>
 );
+
+// Initialize Sentry asynchronously after first paint so it never blocks TTI.
+if (import.meta.env.PROD && import.meta.env.VITE_SENTRY_DSN) {
+  const dsn = import.meta.env.VITE_SENTRY_DSN;
+  const initSentry = () =>
+    import("@sentry/react").then(({ init }) => init({ dsn, integrations: [] }));
+
+  if ("requestIdleCallback" in window) {
+    requestIdleCallback(initSentry, { timeout: 3000 });
+  } else {
+    setTimeout(initSentry, 1000);
+  }
+}

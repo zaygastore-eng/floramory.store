@@ -1,6 +1,6 @@
 import ProductImage from "@/components/ProductImage";
 import { formatHarga } from "@/lib/site";
-import { tierEmoji, tierLabel, type Product } from "@/lib/sheets";
+import { tierEmoji, tierLabel, type Product } from "@/lib/api";
 
 interface ProductSpecimenProps {
   product: Product;

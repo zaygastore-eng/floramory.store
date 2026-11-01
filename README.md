@@ -7,10 +7,10 @@ Vite, dengan Supabase sebagai sumber data dan backend.
 ## Struktur Proyek
 
 - `frontend/` — aplikasi React, halaman, dan aset publik.
-- `backend/db/migrations/` — skema dan migrasi database Supabase.
+- `supabase/migrations/` — skema dan migrasi database Supabase.
 - `supabase/functions/` — Supabase Edge Functions untuk pre-order dan admin.
 - `api/` — fungsi Vercel untuk halaman detail produk dan preview SEO.
-- `backend/docs/OPERASIONAL.md` — setup Supabase, deployment, pengaturan admin,
+- `docs/OPERASIONAL.md` — setup Supabase, deployment, pengaturan admin,
   alur operasional pre-order, dan QR produk.
 
 ## Menjalankan Secara Lokal
@@ -63,6 +63,6 @@ untuk pemeriksaan TypeScript tanpa menjalankan server.
 
 ## Dokumentasi
 
-Lihat [panduan operasional](backend/docs/OPERASIONAL.md) untuk petunjuk setup
+Lihat [panduan operasional](docs/OPERASIONAL.md) untuk petunjuk setup
 Supabase dan Edge Functions, environment deployment, admin, dan operasional
 website.

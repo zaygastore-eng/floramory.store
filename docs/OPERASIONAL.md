@@ -12,11 +12,11 @@ FLORAMORY REALL/          # root workspace (repo)
 ├── frontend/             # React + Vite (src, public, dist build) -> Supabase langsung
 │   ├── .env.local        # variabel VITE_* (dibaca Vite)
 │   └── package.json      # dependency frontend
-└── backend/              # lapisan data Supabase (bukan server Node)
-    ├── .env.example      # panduan variabel Supabase untuk frontend
-    ├── functions/        # Supabase Edge Function: send-preorder + admin
-    ├── db/migrations/    # SQL skema Supabase (satu-satunya sumber skema)
-    └── docs/             # dokumentasi operasional
+├── docs/                 # dokumentasi operasional
+└── supabase/             # konfigurasi, migrasi, dan edge functions
+    ├── config.toml
+    ├── migrations/       # SQL skema Supabase (CLI migrations)
+    └── functions/        # Supabase Edge Function: send-preorder + admin
 ```
 
 Perintah:
@@ -29,7 +29,7 @@ pnpm serve              # preview hasil build
 ```
 
 Frontend memanggil Supabase untuk baca data (REST via anon key) di
-`frontend/src/lib/sheets.ts`. Dua jalur yang SARAT aturan keamanan melewati
+`frontend/src/lib/api.ts`. Dua jalur yang SARAT aturan keamanan melewati
 Supabase Edge Function (lihat "Edge Function" di bawah) dengan prefix
 same-origin `/api` (Vercel rewrite di production / Vite proxy saat dev):
 
@@ -81,12 +81,12 @@ menambahkan `SUPABASE_SERVICE_ROLE_KEY` ke Vercel frontend atau variabel `VITE_*
 
 Supabase adalah satu-satunya sumber data. Skema lengkap (tabel + RLS + policy +
 grant + constraint tier + seed) tersedia di
-`backend/db/migrations/0001_schema.sql` — satu-satunya sumber skema.
+`supabase/migrations/20260101000001_schema.sql` — satu-satunya sumber skema.
 
 ### Setup awal (dijalankan sekali)
 
-1. Jalankan `backend/db/migrations/0001_schema.sql` di Supabase SQL Editor.
-2. Jalankan `backend/db/migrations/0004_preorder_edge_function.sql`
+1. Jalankan `supabase/migrations/20260101000001_schema.sql` di Supabase SQL Editor (atau via `supabase db push`).
+2. Jalankan `supabase/migrations/20260101000004_preorder_edge_function.sql`
    (menutup jalur insert publik — lihat catatan di file tersebut).
 3. Deploy kedua Supabase Edge Function: `send-preorder` dan `admin`
    (detail: "Edge Function").
@@ -251,7 +251,7 @@ ke PostgREST. Token Supabase **tidak pernah disimpan di `localStorage`**
   PENGUNJUNG asli -> **RLS tetap berlaku**. Saat token akses kedaluwarsa,
   fungsi menukar refresh token lalu menerbitkan cookie baru.
 
-Frontend `frontend/src/lib/sheets.ts` memanggil fungsi ini via
+Frontend `frontend/src/lib/api.ts` memanggil fungsi ini via
 `POST /api/admin` (`credentials: include`) dan memakai
 `statusAdminSession()` untuk cek sesi di awal render.
 

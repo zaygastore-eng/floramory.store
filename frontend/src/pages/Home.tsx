@@ -2,11 +2,21 @@ import { useState, useEffect, useRef } from "react";
 import BrandLogo from "@/components/BrandLogo";
 import ProductImage from "@/components/ProductImage";
 import ProductSpecimen from "@/components/ProductSpecimen";
-import { createPreOrder, fetchAllProducts, fetchWhatsAppNumber, tierLabel, tierEmoji, tierBadgeClass, type Product } from "@/lib/sheets";
+import {
+  createPreOrder,
+  fetchCatalogProducts,
+  fetchProductDetailById,
+  fetchWhatsAppNumber,
+  tierLabel,
+  tierEmoji,
+  tierBadgeClass,
+  type CatalogProduct,
+  type Product,
+} from "@/lib/api";
 import { pageUrl, normalizeWhatsApp, formatHarga } from "@/lib/site";
 import useToast from "@/hooks/useToast";
 
-function ProductCard({ product, onClick }: { product: Product; onClick: () => void }) {
+function ProductCard({ product, onClick }: { product: CatalogProduct; onClick: () => void }) {
   const tier = product.tier.toLowerCase();
   const emoji = tierEmoji(tier);
   const badgeClass = tierBadgeClass(tier);
@@ -60,7 +70,7 @@ function ProductModal({
 }: {
   product: Product;
   onClose: () => void;
-  onOrder: (product: Product) => void;
+  onOrder: (product: CatalogProduct | Product) => void;
   whatsappNumber: string;
 }) {
   const dialogRef = useRef<HTMLDivElement>(null);
@@ -133,7 +143,7 @@ function ProductModal({
 }
 
 export default function Home() {
-  const [products, setProducts] = useState<Product[]>([]);
+  const [products, setProducts] = useState<CatalogProduct[]>([]);
   const [loadingProducts, setLoadingProducts] = useState(true);
   const [filter, setFilter] = useState("all");
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
@@ -158,7 +168,7 @@ export default function Home() {
   const formStartRef = useRef(Date.now());
 
   useEffect(() => {
-    fetchAllProducts()
+    fetchCatalogProducts()
       .then(loadedProducts => {
         setProducts(loadedProducts);
         const preselectedId = new URLSearchParams(window.location.search).get("product");
@@ -178,6 +188,27 @@ export default function Home() {
       setWhatsappNumber(normalizeWhatsApp(number) || "6285235242425");
     });
   }, []);
+
+  const handleSelectProduct = (cardProduct: CatalogProduct) => {
+    // Immediate preview representation with available card fields
+    setSelectedProduct({
+      ...cardProduct,
+      bunga: "",
+      bahan: "",
+      ukuran: "",
+      nama_pembeli: "",
+      dari: "",
+      pesan_personal: "",
+      foto_qr: "",
+    });
+
+    // Fetch full product details including specimen fields
+    fetchProductDetailById(cardProduct.id).then(fullProduct => {
+      if (fullProduct) {
+        setSelectedProduct(fullProduct);
+      }
+    });
+  };
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -208,7 +239,7 @@ export default function Home() {
     window.requestAnimationFrame(() => document.getElementById(`vault-tab-${nextTab}`)?.focus());
   };
 
-  const orderProduct = (product: Product) => {
+  const orderProduct = (product: CatalogProduct | Product) => {
     setOrderForm(f => ({ ...f, produk: product.id }));
     setPrefilledProductName(product.nama_produk);
     setOrderStep(1);
@@ -373,7 +404,7 @@ export default function Home() {
           ) : (
             <div className="products-grid">
               {filtered.map(p => (
-                <ProductCard key={p.id} product={p} onClick={() => setSelectedProduct(p)} />
+                <ProductCard key={p.id} product={p} onClick={() => handleSelectProduct(p)} />
               ))}
             </div>
           )}

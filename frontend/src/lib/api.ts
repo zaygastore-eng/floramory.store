@@ -1,4 +1,3 @@
-import * as Sentry from "@sentry/react";
 import { normalizeWhatsApp } from "@/lib/site";
 
 const SUPABASE_URL = String(import.meta.env.VITE_SUPABASE_URL || "").replace(/\/$/, "");
@@ -12,19 +11,25 @@ const FUNCTIONS_BASE = FUNCTIONS_BASE_URL ||
 const PREORDER_FUNCTION = `${FUNCTIONS_BASE}/send-preorder`;
 const ADMIN_FUNCTION = `${FUNCTIONS_BASE}/admin`;
 
-export interface Product {
+/** Lightweight type for the public catalog grid — only the 6 columns fetched
+ *  by `fetchCatalogProducts`. No detail/admin-only fields. */
+export interface CatalogProduct {
   id: string;
   nama_produk: string;
   tier: string;
   harga: string;
-  bunga: string;
   deskripsi: string;
+  foto_produk: string;
+}
+
+/** Full product type used by detail views (Produk page, modal) and Admin panel. */
+export interface Product extends CatalogProduct {
+  bunga: string;
   bahan: string;
   ukuran: string;
   nama_pembeli: string;
   dari: string;
   pesan_personal: string;
-  foto_produk: string;
   foto_qr: string;
   status?: string;
 }
@@ -43,6 +48,7 @@ export interface PreOrder {
   created_at?: string;
 }
 
+let cachedCatalog: CatalogProduct[] | null = null;
 let cachedProducts: Product[] | null = null;
 let cacheTime = 0;
 const CACHE_TTL = 60_000;
@@ -350,7 +356,8 @@ function tierToDbValue(tier: string): string {
   return legacyMap[normalized] || normalized;
 }
 
-function normalizeProduct(obj: Partial<Product> & Record<string, unknown>): Product {
+function normalizeProduct(obj: Partial<Product>): Product {
+  const record = obj as Record<string, unknown>;
   return {
     id: String(obj.id || "").trim(),
     nama_produk: String(obj.nama_produk || "").trim(),
@@ -364,7 +371,7 @@ function normalizeProduct(obj: Partial<Product> & Record<string, unknown>): Prod
     dari: String(obj.dari || "").trim(),
     pesan_personal: String(obj.pesan_personal || "").trim(),
     foto_produk: String(obj.foto_produk || "").trim(),
-    foto_qr: String(obj.foto_qr || obj.foto_QR || "").trim(),
+    foto_qr: String(obj.foto_qr || record.foto_QR || "").trim(),
     status: String(obj.status || "active").trim(),
   };
 }
@@ -404,27 +411,43 @@ function normalizePreOrder(obj: Partial<PreOrder> & Record<string, unknown>): Pr
   };
 }
 
-async function fetchProductsFromSupabase(): Promise<Product[] | null> {
+// Lightweight normalizer for catalog cards — only the 6 public columns.
+function normalizeCatalogProduct(obj: Record<string, unknown>): CatalogProduct {
+  return {
+    id: String(obj.id || "").trim(),
+    nama_produk: String(obj.nama_produk || "").trim(),
+    tier: normalizeTierValue(String(obj.tier || "classic")),
+    harga: String(obj.harga || "").trim(),
+    deskripsi: String(obj.deskripsi || "").trim(),
+    foto_produk: String(obj.foto_produk || "").trim(),
+  };
+}
+
+// Public catalog query — only the 6 columns needed for the card grid.
+// Heavy detail fields (pesan_personal, foto_qr, nama_pembeli, etc.) are
+// excluded here and only fetched on demand via fetchProductById.
+const CATALOG_SELECT = "id,nama_produk,tier,harga,deskripsi,foto_produk";
+
+async function fetchCatalogFromSupabase(): Promise<CatalogProduct[] | null> {
   if (!isSupabaseConfigured()) return null;
 
-  const all: Product[] = [];
+  const all: CatalogProduct[] = [];
   try {
     for (let page = 0; page < PUBLIC_PRODUCTS_MAX_PAGES; page++) {
       const offset = page * PUBLIC_PRODUCTS_PAGE_SIZE;
       const res = await fetch(
-        `${SUPABASE_URL}/rest/v1/products?select=id,nama_produk,tier,harga,bunga,deskripsi,bahan,ukuran,nama_pembeli,dari,pesan_personal,foto_produk,foto_qr,status&status=eq.active&order=created_at.desc&limit=${PUBLIC_PRODUCTS_PAGE_SIZE}&offset=${offset}`,
+        `${SUPABASE_URL}/rest/v1/products?select=${CATALOG_SELECT}&status=eq.active&order=created_at.desc&limit=${PUBLIC_PRODUCTS_PAGE_SIZE}&offset=${offset}`,
         { headers: supabaseHeaders() }
       );
       if (!res.ok) return null;
       const data = await res.json();
       if (!Array.isArray(data)) return null;
       const rows = data
-        .map(normalizeProduct)
-        .filter((p: Product) => p.id && p.nama_produk);
+        .map(normalizeCatalogProduct)
+        .filter((p) => p.id && p.nama_produk);
       all.push(...rows);
       if (rows.length < PUBLIC_PRODUCTS_PAGE_SIZE) break;
     }
-    // [] (katalog kosong) = sukse; null = gagal/error.
     return all;
   } catch (error) {
     if (import.meta.env.PROD) {
@@ -434,24 +457,31 @@ async function fetchProductsFromSupabase(): Promise<Product[] | null> {
   }
 }
 
-export async function fetchAllProducts(): Promise<Product[]> {
-  const cached = cachedProducts;
-  // Katalog kosong juga di-cache (dengan umur lebih pendek) supaya
-  // request berikutnya tidak mengulang fetch ke Supabase saat belum
-  // ada produk. Kegagalan (null) TIDAK di-cache.
+/** Fetch the public catalog (lightweight). Returns CatalogProduct[] with only
+ *  card-display columns. Results are cached for CACHE_TTL ms. */
+export async function fetchCatalogProducts(): Promise<CatalogProduct[]> {
+  const cached = cachedCatalog;
   const ttl = cached && cached.length === 0 ? EMPTY_CACHE_TTL : CACHE_TTL;
   if (cached && Date.now() - cacheTime < ttl) {
     return cached;
   }
 
-  const supabaseProducts = await fetchProductsFromSupabase();
-  if (supabaseProducts !== null) {
-    cachedProducts = supabaseProducts;
+  const rows = await fetchCatalogFromSupabase();
+  if (rows !== null) {
+    cachedCatalog = rows;
     cacheTime = Date.now();
-    return cachedProducts;
+    return cachedCatalog;
   }
 
-  return cachedProducts || [];
+  return cachedCatalog || [];
+}
+
+/** @deprecated Use fetchCatalogProducts for the public grid. This alias exists
+ *  only for Admin panel compatibility (admin fetcher overrides it anyway). */
+export type ProductSummary = CatalogProduct;
+
+export async function fetchAllProducts(): Promise<CatalogProduct[]> {
+  return fetchCatalogProducts();
 }
 
 // Kolom eksplisit (bukan select=*). created_at/updated_at terakhir
@@ -459,9 +489,15 @@ export async function fetchAllProducts(): Promise<Product[]> {
 const MANAGED_PRODUCTS_SELECT =
   "id,nama_produk,tier,harga,bunga,deskripsi,bahan,ukuran,nama_pembeli,dari,pesan_personal,foto_produk,foto_qr,status";
 
+function invalidateProductCaches() {
+  cachedCatalog = null;
+  cachedProducts = null;
+}
+
 export async function fetchManagedProducts(): Promise<Product[]> {
   if (!isSupabaseConfigured()) {
-    return fetchAllProducts();
+    const catalog = await fetchCatalogProducts();
+    return catalog.map(p => normalizeProduct(p));
   }
 
   const all: Product[] = [];
@@ -502,6 +538,9 @@ export async function fetchProductById(id: string): Promise<Product | null> {
   }
 }
 
+export const fetchProductDetailById = fetchProductById;
+export const fetchAllProductsAdmin = fetchManagedProducts;
+
 export async function createProduct(product: Product): Promise<Product> {
   if (!isSupabaseConfigured()) {
     throw new Error("Simpan produk hanya tersedia saat Supabase aktif");
@@ -512,7 +551,7 @@ export async function createProduct(product: Product): Promise<Product> {
       prefer: "return=representation",
       body: productPayload(product, "active"),
     });
-    cachedProducts = null;
+    invalidateProductCaches();
     return normalizeProduct(Array.isArray(data) ? data[0] : data);
   } catch (error) {
     const errorText = error instanceof Error ? error.message : "";
@@ -521,7 +560,7 @@ export async function createProduct(product: Product): Promise<Product> {
         prefer: "return=representation",
         body: productPayload(product, "active", true),
       });
-      cachedProducts = null;
+      invalidateProductCaches();
       return normalizeProduct(Array.isArray(retry) ? retry[0] : retry);
     }
     throw error;
@@ -544,7 +583,7 @@ export async function updateProduct(id: string, product: Product): Promise<Produ
       prefer: "return=representation",
       body,
     });
-    cachedProducts = null;
+    invalidateProductCaches();
     return normalizeProduct(Array.isArray(data) ? data[0] : data);
   } catch (error) {
     const errorText = error instanceof Error ? error.message : "";
@@ -557,7 +596,7 @@ export async function updateProduct(id: string, product: Product): Promise<Produ
           updated_at: new Date().toISOString(),
         },
       });
-      cachedProducts = null;
+      invalidateProductCaches();
       return normalizeProduct(Array.isArray(retry) ? retry[0] : retry);
     }
     throw error;
@@ -575,7 +614,7 @@ export async function deleteProduct(id: string): Promise<void> {
       updated_at: new Date().toISOString(),
     },
   });
-  cachedProducts = null;
+  invalidateProductCaches();
 }
 
 export interface PreOrderSubmitMeta {

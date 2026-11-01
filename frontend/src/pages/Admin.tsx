@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, useCallback, type ComponentType } from "react";
+import "./admin.css";
 import { QRCodeCanvas as QRCode } from "qrcode.react";
 import {
   Box,
@@ -36,7 +37,7 @@ import {
   type Product,
   type PreOrderStatusCounts,
   type ProductImageField,
-} from "@/lib/sheets";
+} from "@/lib/api";
 import BrandLogo from "@/components/BrandLogo";
 import { isSupabaseStorageUrl, productImageUrl, validateImageUrl } from "@/lib/images";
 import { formatHarga, normalizeWhatsApp } from "@/lib/site";

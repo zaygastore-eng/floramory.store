@@ -224,7 +224,7 @@ on conflict (key) do nothing;
 
 -- ============================================================
 -- Selesai. Langkah berikutnya (WAJIB):
---   1) Jalankan backend/db/migrations/0004_preorder_edge_function.sql
+--   1) Jalankan supabase/migrations/20260101000004_preorder_edge_function.sql
 --      (rekomendasi) atau pastikan skema di atas sudah diterapkan.
 --   2) Deploy Edge Function send-preorder (supabase/functions/):
 --        supabase functions deploy send-preorder
