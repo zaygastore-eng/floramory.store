@@ -337,7 +337,7 @@ logout menghapus cookie.
 
 Alur kerja:
 
-1. Isi Base URL dengan domain publik Vercel.
+1. Base URL otomatis terkonfigurasi ke domain produksi `https://floramory.store` (dapat dikonfigurasi via `VITE_PUBLIC_SITE_URL`).
 2. Lihat pesanan pelanggan di kartu Pre-order masuk.
 3. Klik Pakai pada pre-order untuk memasukkan data Memory Vault ke form produk.
 4. Lengkapi data produk dan foto.
@@ -351,10 +351,10 @@ Alur kerja:
 Format URL QR:
 
 ```text
-https://domain-vercel.app/produk?id=ID_PRODUK
+https://floramory.store/produk?id=ID_PRODUK
 ```
 
-Jangan cetak QR dari URL localhost.
+Panel admin otomatis menjaga agar QR fisik tidak menggunakan URL localhost dev. Download QR menghasilkan gambar PNG beresolusi tinggi (1200×1500 px) dengan branding Floramory Memory Vault yang siap cetak ke media fisik (stiker, akrilik, kartu hadiah).
 
 ## Foto Produk & QR (Storage)
 

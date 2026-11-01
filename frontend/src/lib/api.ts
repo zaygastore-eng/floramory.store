@@ -20,6 +20,7 @@ export interface CatalogProduct {
   harga: string;
   deskripsi: string;
   foto_produk: string;
+  is_catalog?: boolean;
 }
 
 /** Full product type used by detail views (Produk page, modal) and Admin panel. */
@@ -31,6 +32,11 @@ export interface Product extends CatalogProduct {
   dari: string;
   pesan_personal: string;
   foto_qr: string;
+  audio_url: string;
+  audio_durasi: number; // in seconds
+  video_url: string;
+  foto_vault: string;
+  is_catalog: boolean;
   status?: string;
 }
 
@@ -358,6 +364,7 @@ function tierToDbValue(tier: string): string {
 
 function normalizeProduct(obj: Partial<Product>): Product {
   const record = obj as Record<string, unknown>;
+  const parsedDurasi = Number(obj.audio_durasi ?? record.audio_durasi ?? 0);
   return {
     id: String(obj.id || "").trim(),
     nama_produk: String(obj.nama_produk || "").trim(),
@@ -372,6 +379,11 @@ function normalizeProduct(obj: Partial<Product>): Product {
     pesan_personal: String(obj.pesan_personal || "").trim(),
     foto_produk: String(obj.foto_produk || "").trim(),
     foto_qr: String(obj.foto_qr || record.foto_QR || "").trim(),
+    audio_url: String(obj.audio_url || record.audio_url || "").trim(),
+    audio_durasi: Number.isFinite(parsedDurasi) ? Math.max(0, Math.round(parsedDurasi)) : 0,
+    video_url: String(obj.video_url || record.video_url || "").trim(),
+    foto_vault: String(obj.foto_vault || record.foto_vault || "").trim(),
+    is_catalog: Boolean(obj.is_catalog ?? record.is_catalog ?? false),
     status: String(obj.status || "active").trim(),
   };
 }
@@ -391,6 +403,11 @@ function productPayload(product: Product, status = product.status || "active", u
     pesan_personal: product.pesan_personal.trim(),
     foto_produk: product.foto_produk.trim(),
     foto_qr: product.foto_qr.trim(),
+    audio_url: (product.audio_url || "").trim(),
+    audio_durasi: Number(product.audio_durasi) || 0,
+    video_url: (product.video_url || "").trim(),
+    foto_vault: (product.foto_vault || "").trim(),
+    is_catalog: Boolean(product.is_catalog),
     status,
   };
 }
@@ -420,13 +437,14 @@ function normalizeCatalogProduct(obj: Record<string, unknown>): CatalogProduct {
     harga: String(obj.harga || "").trim(),
     deskripsi: String(obj.deskripsi || "").trim(),
     foto_produk: String(obj.foto_produk || "").trim(),
+    is_catalog: Boolean(obj.is_catalog ?? true),
   };
 }
 
 // Public catalog query — only the 6 columns needed for the card grid.
 // Heavy detail fields (pesan_personal, foto_qr, nama_pembeli, etc.) are
 // excluded here and only fetched on demand via fetchProductById.
-const CATALOG_SELECT = "id,nama_produk,tier,harga,deskripsi,foto_produk";
+const CATALOG_SELECT = "id,nama_produk,tier,harga,deskripsi,foto_produk,is_catalog";
 
 async function fetchCatalogFromSupabase(): Promise<CatalogProduct[] | null> {
   if (!isSupabaseConfigured()) return null;
@@ -436,7 +454,7 @@ async function fetchCatalogFromSupabase(): Promise<CatalogProduct[] | null> {
     for (let page = 0; page < PUBLIC_PRODUCTS_MAX_PAGES; page++) {
       const offset = page * PUBLIC_PRODUCTS_PAGE_SIZE;
       const res = await fetch(
-        `${SUPABASE_URL}/rest/v1/products?select=${CATALOG_SELECT}&status=eq.active&order=created_at.desc&limit=${PUBLIC_PRODUCTS_PAGE_SIZE}&offset=${offset}`,
+        `${SUPABASE_URL}/rest/v1/products?select=${CATALOG_SELECT}&status=eq.active&is_catalog=eq.true&order=created_at.desc&limit=${PUBLIC_PRODUCTS_PAGE_SIZE}&offset=${offset}`,
         { headers: supabaseHeaders() }
       );
       if (!res.ok) return null;
@@ -487,7 +505,7 @@ export async function fetchAllProducts(): Promise<CatalogProduct[]> {
 // Kolom eksplisit (bukan select=*). created_at/updated_at terakhir
 // tidak diambil: tidak dipakai UI admin.
 const MANAGED_PRODUCTS_SELECT =
-  "id,nama_produk,tier,harga,bunga,deskripsi,bahan,ukuran,nama_pembeli,dari,pesan_personal,foto_produk,foto_qr,status";
+  "id,nama_produk,tier,harga,bunga,deskripsi,bahan,ukuran,nama_pembeli,dari,pesan_personal,foto_produk,foto_qr,audio_url,audio_durasi,video_url,foto_vault,is_catalog,status";
 
 function invalidateProductCaches() {
   cachedCatalog = null;
@@ -524,7 +542,7 @@ export async function fetchProductById(id: string): Promise<Product | null> {
 
   try {
     const res = await fetch(
-      `${SUPABASE_URL}/rest/v1/products?id=eq.${encodeURIComponent(id)}&status=eq.active&select=id,nama_produk,tier,harga,bunga,deskripsi,bahan,ukuran,nama_pembeli,dari,pesan_personal,foto_produk,foto_qr,status&limit=1`,
+      `${SUPABASE_URL}/rest/v1/products?id=eq.${encodeURIComponent(id)}&status=eq.active&select=id,nama_produk,tier,harga,bunga,deskripsi,bahan,ukuran,nama_pembeli,dari,pesan_personal,foto_produk,foto_qr,audio_url,audio_durasi,video_url,foto_vault,is_catalog,status&limit=1`,
       { headers: supabaseHeaders() }
     );
     if (!res.ok) return null;
@@ -540,6 +558,27 @@ export async function fetchProductById(id: string): Promise<Product | null> {
 
 export const fetchProductDetailById = fetchProductById;
 export const fetchAllProductsAdmin = fetchManagedProducts;
+
+const supabase = {
+  storage: {
+    from: (bucket: string) => ({
+      getPublicUrl: (path: string) => ({
+        data: {
+          publicUrl: SUPABASE_URL
+            ? `${SUPABASE_URL}/storage/v1/object/public/${bucket}/${path.replace(/^\/+/, "")}`
+            : path,
+        },
+      }),
+    }),
+  },
+};
+
+export const getVaultAudioUrl = (filePath: string): string => {
+  if (!filePath) return "";
+  if (filePath.startsWith("http")) return filePath;
+  const { data } = supabase.storage.from("vault-media").getPublicUrl(filePath);
+  return data.publicUrl;
+};
 
 export async function createProduct(product: Product): Promise<Product> {
   if (!isSupabaseConfigured()) {

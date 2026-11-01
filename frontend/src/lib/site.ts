@@ -1,4 +1,7 @@
 export const BASE_PATH = import.meta.env.BASE_URL.replace(/\/$/, "");
+export const PRODUCTION_SITE_URL = String(
+  import.meta.env.VITE_PUBLIC_SITE_URL || "https://floramory.store"
+).replace(/\/+$/, "");
 
 export function assetUrl(path: string): string {
   const clean = path.startsWith("/") ? path : `/${path}`;

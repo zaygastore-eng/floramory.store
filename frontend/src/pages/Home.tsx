@@ -200,6 +200,11 @@ export default function Home() {
       dari: "",
       pesan_personal: "",
       foto_qr: "",
+      audio_url: "",
+      audio_durasi: 0,
+      video_url: "",
+      foto_vault: "",
+      is_catalog: cardProduct.is_catalog ?? true,
     });
 
     // Fetch full product details including specimen fields

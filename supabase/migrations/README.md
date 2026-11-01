@@ -9,6 +9,9 @@ Files (Supabase CLI migration format: `<timestamp>_<name>.sql`)
 - `20260101000004_preorder_edge_function.sql` -> (incremental) kunci `preorder_orders`: anti-spam (tutup insert publik, semua pre-order lewat Edge Function `send-preorder`) + PRIVASI (anon tanpa akses; authenticated hanya `select/update` dibatasi policy `is_admin()`, jadi user biasa yang login tidak bisa membaca data pribadi pre-order).
 - `20260101000005_product_images_storage.sql` -> (incremental) bucket storage `product-images` (publik, maks. 5 MB, hanya gambar) + RLS storage: anon & authenticated hanya bisa baca; upload/update/delete HANYA lewat sesi admin (`is_admin()`). Mendukung CDN Image Transform (WebP/AVIF) di frontend.
 - `20260708000000_migrate_tiers.sql` -> migrasi nilai `tier` dari label lama (`lite`/`home`) ke baru (`classic`/`masterpiece`).
+- `20261101000000_add_audio_to_products.sql` -> tambah kolom `audio_url` & `audio_durasi` pada `public.products` serta konfigurasi bucket Supabase storage `vault-media` (10 MB audio, RLS read publik & admin manage).
+- `20261101010000_add_multimedia_to_products.sql` -> tambah kolom `video_url` & `foto_vault` pada `public.products` untuk kapsul memori multi-media (foto kenangan / polaroid dan video message).
+- `20261101020000_add_is_catalog_to_products.sql` -> tambah kolom `is_catalog` pada `public.products` untuk memisahkan katalog etalase toko publik (`is_catalog=true`) dari pesanan kado fisik personal (`is_catalog=false`).
 
 Urutan
 ------
