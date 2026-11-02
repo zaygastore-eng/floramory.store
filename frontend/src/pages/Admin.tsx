@@ -1074,66 +1074,6 @@ export default function Admin() {
             <textarea className="admin-form-textarea" placeholder="Pesan yang tampil saat QR dipindai"
               value={form.pesan} onChange={e => setForm(f => ({ ...f, pesan: e.target.value }))} />
           </div>
-          <div className="admin-form-group">
-            <label className="admin-form-label">URL Pesan Suara / Audio Vault</label>
-            <input
-              type="url"
-              className="admin-form-input"
-              placeholder="https://... (URL file audio .mp3 / .m4a)"
-              value={form.audioUrl}
-              onChange={(e) => setForm((f) => ({ ...f, audioUrl: e.target.value }))}
-            />
-            {form.audioUrl && (
-              <div style={{ marginTop: "8px" }}>
-                <audio
-                  controls
-                  src={form.audioUrl}
-                  style={{ width: "100%", height: "36px" }}
-                  preload="metadata"
-                >
-                  Browser Anda tidak mendukung pratinjau audio.
-                </audio>
-              </div>
-            )}
-          </div>
-
-          <div className="admin-form-group">
-            <label className="admin-form-label">Foto Kenangan (Polaroid / Capsule Photo)</label>
-            <input
-              type="url"
-              className="admin-form-input"
-              placeholder="https://... (URL foto personal/kenangan penerima)"
-              value={form.fotoVault}
-              onChange={(e) => setForm((f) => ({ ...f, fotoVault: e.target.value }))}
-            />
-            {form.fotoVault && (
-              <div style={{ marginTop: "8px", display: "flex", alignItems: "center", gap: "10px" }}>
-                <img
-                  src={form.fotoVault}
-                  alt="Pratinjau Foto Kenangan"
-                  style={{ width: "64px", height: "64px", objectFit: "cover", borderRadius: "8px", border: "1px solid var(--border)" }}
-                  onError={(e) => {
-                    (e.currentTarget as HTMLImageElement).style.display = "none";
-                  }}
-                />
-                <span style={{ fontSize: "0.78rem", color: "var(--text-muted)" }}>Pratinjau foto kenangan</span>
-              </div>
-            )}
-          </div>
-
-          <div className="admin-form-group">
-            <label className="admin-form-label">Link Video Kenangan (YouTube / MP4)</label>
-            <input
-              type="url"
-              className="admin-form-input"
-              placeholder="https://www.youtube.com/watch?v=... atau https://.../video.mp4"
-              value={form.videoUrl}
-              onChange={(e) => setForm((f) => ({ ...f, videoUrl: e.target.value }))}
-            />
-            <small style={{ display: "block", marginTop: "4px", color: "#697099", fontSize: "0.75rem" }}>
-              Mendukung link video YouTube (unlisted/public/shorts) atau direct link .mp4 / .webm.
-            </small>
-          </div>
         </div>
       )}
 

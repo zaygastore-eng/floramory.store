@@ -355,11 +355,24 @@ async function callVaultOtp(payload: Record<string, string>): Promise<Record<str
 
 export async function requestVaultOtp(
   productId: string
-): Promise<{ ok: boolean; message: string; debugOtp?: string }> {
+): Promise<{
+  ok: boolean;
+  message: string;
+  targetType?: "recipient" | "buyer";
+  maskedPhone?: string;
+  debugOtp?: string;
+}> {
   const data = await callVaultOtp({ action: "request", product_id: productId });
+  const targetType =
+    data.targetType === "buyer" || data.targetType === "recipient"
+      ? data.targetType
+      : undefined;
+  const maskedPhone = typeof data.maskedPhone === "string" ? data.maskedPhone : undefined;
   return {
     ok: data.ok === true,
     message: String(data.message || ""),
+    ...(targetType ? { targetType } : {}),
+    ...(maskedPhone ? { maskedPhone } : {}),
     ...(typeof data.debugOtp === "string" ? { debugOtp: data.debugOtp } : {}),
   };
 }

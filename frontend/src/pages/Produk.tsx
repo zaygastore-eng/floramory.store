@@ -38,6 +38,8 @@ export default function Produk() {
   const [otpRequested, setOtpRequested] = useState(false);
   const [otpCode, setOtpCode] = useState("");
   const [otpMessage, setOtpMessage] = useState("");
+  const [otpTargetType, setOtpTargetType] = useState<"recipient" | "buyer">("recipient");
+  const [otpMaskedPhone, setOtpMaskedPhone] = useState("");
   const [otpBusy, setOtpBusy] = useState(false);
   const otpInputRefs = useRef<Array<HTMLInputElement | null>>([]);
 
@@ -120,12 +122,14 @@ export default function Produk() {
       const result = await requestVaultOtp(product.id);
       if (!result.ok) throw new Error(result.message || "Gagal meminta kode OTP.");
       setOtpRequested(true);
+      if (result.targetType) setOtpTargetType(result.targetType);
+      if (result.maskedPhone) setOtpMaskedPhone(result.maskedPhone);
       if (result.debugOtp) {
         setOtpCode(result.debugOtp);
-        setOtpMessage(`${result.message}. Kode simulasi: ${result.debugOtp}`);
+        setOtpMessage(`Kode simulasi: ${result.debugOtp}`);
       } else {
         setOtpCode("");
-        setOtpMessage(result.message);
+        setOtpMessage("");
       }
     } catch (requestError) {
       setOtpMessage(requestError instanceof Error ? requestError.message : "Gagal meminta kode OTP.");
@@ -176,13 +180,15 @@ export default function Produk() {
       </header>
 
       <main className="produk-specimen-page">
-        <ProductSpecimen
-          product={product}
-          whatsappUrl={`https://wa.me/${waDigits}?text=${waMsg}`}
-          onOrder={() => {
-            window.location.href = `${pageUrl("/")}?product=${encodeURIComponent(product.id)}#pesan`;
-          }}
-        />
+        {product.is_catalog && (
+          <ProductSpecimen
+            product={product}
+            whatsappUrl={`https://wa.me/${waDigits}?text=${waMsg}`}
+            onOrder={() => {
+              window.location.href = `${pageUrl("/")}?product=${encodeURIComponent(product.id)}#pesan`;
+            }}
+          />
+        )}
 
         <section className="specimen-personal-vault" aria-labelledby="personal-vault-title">
           <div className="specimen-personal-heading">
@@ -217,7 +223,7 @@ export default function Produk() {
                   onClick={() => void handleRequestOtp()}
                   disabled={otpBusy}
                 >
-                  {otpBusy ? "Menyiapkan kode..." : "✦ Buka Kado Kenangan"}
+                  {otpBusy ? "Menyiapkan kode..." : "🎁 Buka Kado & Dapatkan Kode"}
                 </button>
                 {!otpRequested && otpMessage && (
                   <p role="status" aria-live="polite" style={{ margin: "0.8rem 0 0", color: "#8a4d3b", fontSize: "0.88rem" }}>
@@ -227,7 +233,9 @@ export default function Produk() {
                 {otpRequested && (
                   <form onSubmit={handleVerifyOtp} style={{ margin: "1.5rem auto 0", maxWidth: "22rem" }}>
                     <p style={{ margin: "0 0 0.9rem", color: "#69705d" }}>
-                      Masukkan enam digit kode yang dikirim ke WhatsApp penerima.
+                      {otpTargetType === "buyer"
+                        ? `Kode rahasia telah dikirim ke WhatsApp pengirim kado (${otpMaskedPhone}). Silakan minta kode kepada pengirim untuk membuka kado.`
+                        : `Kode rahasia telah dikirim ke WhatsApp Anda (${otpMaskedPhone}).`}
                     </p>
                     <div style={{ display: "flex", justifyContent: "center", gap: "0.5rem", marginBottom: "1rem" }}>
                       {Array.from({ length: 6 }, (_, index) => (

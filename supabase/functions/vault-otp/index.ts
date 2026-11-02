@@ -33,6 +33,20 @@ function cleanMessageField(value: unknown): string {
   return String(value || "").replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim();
 }
 
+function maskPhoneNumber(phone: string): string {
+  const digits = normalizeWhatsApp(phone);
+  if (!digits) return "";
+  if (digits.startsWith("62")) {
+    const rest = digits.slice(2);
+    const prefix = rest.slice(0, 3);
+    const suffix = rest.slice(-4);
+    return `+62 ${prefix}-xxxx-${suffix}`;
+  }
+  const prefix = digits.slice(0, 4);
+  const suffix = digits.slice(-4);
+  return `+${prefix}-xxxx-${suffix}`;
+}
+
 async function dispatchWhatsApp(to: string, message: string): Promise<boolean> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), DISPATCH_TIMEOUT_MS);
@@ -80,10 +94,12 @@ async function requestOtp(admin: ReturnType<typeof createClient>, productId: str
   let recipientWhatsapp = normalizeWhatsApp(product.recipient_whatsapp);
   let recipientName = String(product.nama_pembeli || "");
   let senderName = String(product.dari || "");
-  if (!recipientWhatsapp && product.order_id) {
+  let buyerWhatsapp = "";
+
+  if (product.order_id) {
     const { data: order, error: orderError } = await admin
       .from("preorder_orders")
-      .select("recipient_whatsapp,recipient_name,sender_name,customer_name")
+      .select("recipient_whatsapp,recipient_name,sender_name,customer_name,whatsapp")
       .eq("id", product.order_id)
       .maybeSingle();
     if (orderError) {
@@ -91,25 +107,38 @@ async function requestOtp(admin: ReturnType<typeof createClient>, productId: str
       return json({ ok: false, message: "Gagal memuat data pemesan." }, 500);
     }
     if (order) {
-      recipientWhatsapp = normalizeWhatsApp(order.recipient_whatsapp);
       recipientName = recipientName || String(order.recipient_name || "");
       senderName = senderName || String(order.sender_name || order.customer_name || "");
-      if (recipientWhatsapp) {
-        const { error: backfillError } = await admin
-          .from("products")
-          .update({ recipient_whatsapp: recipientWhatsapp })
-          .eq("id", product.id);
-        if (backfillError) {
-          console.error("[VAULT_OTP_ERROR] Could not backfill recipient WhatsApp:", backfillError.message);
-          return json({ ok: false, message: "Gagal menyimpan kontak penerima." }, 500);
+      buyerWhatsapp = normalizeWhatsApp(order.whatsapp);
+
+      if (!recipientWhatsapp || !WA_REGEX.test(recipientWhatsapp)) {
+        const orderRecipientWa = normalizeWhatsApp(order.recipient_whatsapp);
+        if (orderRecipientWa && WA_REGEX.test(orderRecipientWa)) {
+          recipientWhatsapp = orderRecipientWa;
+          const { error: backfillError } = await admin
+            .from("products")
+            .update({ recipient_whatsapp: recipientWhatsapp })
+            .eq("id", product.id);
+          if (backfillError) {
+            console.error("[VAULT_OTP_ERROR] Could not backfill recipient WhatsApp:", backfillError.message);
+          }
         }
       }
     }
   }
 
-  if (!recipientWhatsapp || !WA_REGEX.test(recipientWhatsapp)) {
+  let targetType: "recipient" | "buyer";
+  let targetPhone = "";
+
+  if (recipientWhatsapp && WA_REGEX.test(recipientWhatsapp)) {
+    targetType = "recipient";
+    targetPhone = recipientWhatsapp;
+  } else if (buyerWhatsapp && WA_REGEX.test(buyerWhatsapp)) {
+    targetType = "buyer";
+    targetPhone = buyerWhatsapp;
+  } else {
     return json(
-      { ok: false, message: "Nomor WhatsApp penerima belum didaftarkan untuk kado ini." },
+      { ok: false, message: "Nomor WhatsApp belum didaftarkan untuk kado ini." },
       422
     );
   }
@@ -156,29 +185,45 @@ async function requestOtp(admin: ReturnType<typeof createClient>, productId: str
     return json({ ok: false, message: "Gagal membuat kode pembuka." }, 500);
   }
 
-  const message = [
-    `Halo Kak ${cleanMessageField(recipientName)}! 🎁 Ada kado kenangan istimewa dari ${cleanMessageField(senderName)} yang siap dibuka.`,
-    "",
-    "Gunakan kode pembuka berikut di layarmu:",
-    `🔑 ${otpCode}`,
-    "",
-    "(Kode berlaku 10 menit dan bersifat rahasia khusus untukmu)",
-  ].join("\n");
+  const rName = cleanMessageField(recipientName) || "Penerima";
+  const sName = cleanMessageField(senderName) || "Pengirim";
+  const maskedPhone = maskPhoneNumber(targetPhone);
+
+  const message = targetType === "recipient"
+    ? `Halo Kak ${rName}! 🎁 Ada kado kenangan istimewa dari ${sName} yang siap dibuka.\n\nGunakan kode pembuka berikut di layarmu:\n🔑 ${otpCode}\n\n(Kode berlaku 10 menit)`
+    : `Halo Kak ${sName}! 🎁 Kode pembuka kado untuk ${rName} siap digunakan:\n🔑 ${otpCode}\n\nBerikan kode ini kepada penerima untuk membuka Memory Vault.`;
 
   if (!FONNTE_API_TOKEN) {
-    console.warn(`[WA_MOCK_DISPATCH] FONNTE_API_TOKEN is not configured. Vault OTP for product ${product.id}: ${otpCode}`);
+    console.warn(`[WA_MOCK_DISPATCH] FONNTE_API_TOKEN is not configured. Vault OTP for product ${product.id} (${targetType} ${maskedPhone}): ${otpCode}`);
     return json({
       ok: true,
       waStatus: "mock_dispatched",
-      message: "Kode OTP simulasi dikirim",
+      targetType,
+      maskedPhone,
+      message: targetType === "buyer"
+        ? `Kode rahasia telah dikirim ke WhatsApp pengirim (${maskedPhone}).`
+        : `Kode rahasia telah dikirim ke WhatsApp penerima (${maskedPhone}).`,
       debugOtp: otpCode,
     });
   }
 
-  if (!(await dispatchWhatsApp(recipientWhatsapp, message))) {
-    return json({ ok: false, message: "Gagal mengirim kode OTP ke WhatsApp penerima." }, 502);
+  if (!(await dispatchWhatsApp(targetPhone, message))) {
+    return json({
+      ok: false,
+      message: targetType === "buyer"
+        ? "Gagal mengirim kode OTP ke WhatsApp pengirim."
+        : "Gagal mengirim kode OTP ke WhatsApp penerima.",
+    }, 502);
   }
-  return json({ ok: true, waStatus: "dispatched", message: "Kode OTP telah dikirim ke WhatsApp penerima." });
+  return json({
+    ok: true,
+    waStatus: "dispatched",
+    targetType,
+    maskedPhone,
+    message: targetType === "buyer"
+      ? `Kode rahasia telah dikirim ke WhatsApp pengirim (${maskedPhone}).`
+      : `Kode rahasia telah dikirim ke WhatsApp penerima (${maskedPhone}).`,
+  });
 }
 
 async function verifyOtp(
