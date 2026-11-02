@@ -54,6 +54,14 @@ export interface PreOrder {
   created_at?: string;
 }
 
+export interface PreOrderSubmissionResult extends PreOrder {
+  success: boolean;
+  orderId: string;
+  orderNumber: string;
+  dpAmount: number;
+  waStatus: "dispatched" | "failed";
+}
+
 let cachedCatalog: CatalogProduct[] | null = null;
 let cachedProducts: Product[] | null = null;
 let cacheTime = 0;
@@ -664,7 +672,7 @@ export interface PreOrderSubmitMeta {
 export async function createPreOrder(
   order: PreOrder,
   meta: PreOrderSubmitMeta = {}
-): Promise<PreOrder> {
+): Promise<PreOrderSubmissionResult> {
   if (!isSupabaseConfigured()) {
     throw new Error("Supabase belum dikonfigurasi untuk menerima pre-order");
   }
@@ -704,7 +712,18 @@ export async function createPreOrder(
     throw new Error(firstError || data.message || "Gagal mengirim pre-order");
   }
 
-  return normalizePreOrder({ ...order, id: data.id || "" });
+  return {
+    ...normalizePreOrder({
+      ...order,
+      id: data.orderId || data.id || "",
+      status: "waiting_dp",
+    }),
+    success: data.success === true,
+    orderId: String(data.orderId || data.id || ""),
+    orderNumber: String(data.orderNumber || ""),
+    dpAmount: Number(data.dpAmount || 0),
+    waStatus: data.waStatus === "dispatched" ? "dispatched" : "failed",
+  };
 }
 
 function isTierConstraintError(message: string): boolean {
@@ -724,8 +743,8 @@ export interface PreOrderPage {
 
 export interface PreOrderStatusCounts {
   new: number;
-  dp_verified: number;
-  in_progress: number;
+  waiting_dp: number;
+  in_production: number;
   completed: number;
 }
 
@@ -792,16 +811,16 @@ export async function fetchNewPreOrderCount(): Promise<number> {
 
 export async function fetchPreOrderStatusCounts(): Promise<PreOrderStatusCounts> {
   if (!isSupabaseConfigured()) {
-    return { new: 0, dp_verified: 0, in_progress: 0, completed: 0 };
+    return { new: 0, waiting_dp: 0, in_production: 0, completed: 0 };
   }
 
   const statusFilters: Record<keyof PreOrderStatusCounts, string> = {
     new: "new",
-    dp_verified: "dp_verified,paid",
-    in_progress: "in_progress,contacted",
+    waiting_dp: "waiting_dp",
+    in_production: "in_production,in_progress,dp_verified,paid,contacted",
     completed: "completed",
   };
-  const statusKeys = ["new", "dp_verified", "in_progress", "completed"] as const;
+  const statusKeys = ["new", "waiting_dp", "in_production", "completed"] as const;
   const counts = await Promise.all(
     statusKeys.map(async statusKey => {
       const { status, data, headers } = await adminCall("proxy", {
@@ -819,7 +838,7 @@ export async function fetchPreOrderStatusCounts(): Promise<PreOrderStatusCounts>
       return [statusKey, total] as const;
     })
   );
-  const result: PreOrderStatusCounts = { new: 0, dp_verified: 0, in_progress: 0, completed: 0 };
+  const result: PreOrderStatusCounts = { new: 0, waiting_dp: 0, in_production: 0, completed: 0 };
   for (const [statusKey, count] of counts) result[statusKey] = count;
   return result;
 }

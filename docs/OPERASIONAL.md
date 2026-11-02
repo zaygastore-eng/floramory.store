@@ -214,6 +214,27 @@ Fungsi ini satu-satunya jalur masuk pre-order (berjalan dengan
    dan diperiksa format `62xxxxxxxxxx`, serta produk harus ada dan
    berstatus `active` (nama produk diambil dari database, tidak percaya
    input client).
+5. **Konfirmasi DP WhatsApp** — setelah order tersimpan dengan status
+   `waiting_dp`, fungsi mengambil harga dari tabel `products`, menghitung DP
+   50%, membuat nomor order, lalu mengirim instruksi transfer ke pelanggan.
+   Kegagalan gateway tidak membatalkan order; kolom `wa_sent` mencatat hasilnya.
+
+Sebelum deploy versi ini, jalankan
+`supabase/migrations/20261102000000_preorder_payment_metadata.sql` di SQL
+Editor. Atur secrets Edge Function melalui Supabase CLI (jangan di frontend):
+
+```bash
+supabase secrets set --project-ref PROJECT_REF WA_GATEWAY_URL="https://gateway.example/send" WA_API_KEY="GANTI_DENGAN_TOKEN_GATEWAY" BANK_NAME="NAMA_BANK" BANK_ACCOUNT_NUMBER="NOMOR_REKENING" BANK_ACCOUNT_HOLDER="NAMA_PEMILIK_REKENING"
+```
+
+Ganti semua nilai contoh sebelum menjalankan perintah.
+
+`send-preorder` mengirim `POST` HTTPS dengan header Authorization Bearer dan
+JSON `{ "to": "628...", "message": "..." }`. Gateway harus
+mendukung kontrak ini; untuk Fonnte/Starsender dengan format berbeda, gunakan
+endpoint/adaptor yang menerjemahkan payload tersebut. Request gateway dibatasi
+9 detik. Status `wa_sent` menjadi `false` jika secrets belum lengkap atau
+gateway gagal merespons.
 
 Deploy:
 

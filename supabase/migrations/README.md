@@ -12,6 +12,7 @@ Files (Supabase CLI migration format: `<timestamp>_<name>.sql`)
 - `20261101000000_add_audio_to_products.sql` -> tambah kolom `audio_url` & `audio_durasi` pada `public.products` serta konfigurasi bucket Supabase storage `vault-media` (10 MB audio, RLS read publik & admin manage).
 - `20261101010000_add_multimedia_to_products.sql` -> tambah kolom `video_url` & `foto_vault` pada `public.products` untuk kapsul memori multi-media (foto kenangan / polaroid dan video message).
 - `20261101020000_add_is_catalog_to_products.sql` -> tambah kolom `is_catalog` pada `public.products` untuk memisahkan katalog etalase toko publik (`is_catalog=true`) dari pesanan kado fisik personal (`is_catalog=false`).
+- `20261102000000_preorder_payment_metadata.sql` -> tambah nomor referensi order, total harga, nominal DP, dan status pengiriman WhatsApp pada `public.preorder_orders`.
 
 Urutan
 ------
@@ -30,6 +31,8 @@ Urutan
   agar upload foto dari panel admin bekerja (proxy storage + batas 6 MB). File FOTO lama
   yang berupa URL eksternal (imgbb/Dribbble/dll.) TETAP tampil — hanya tidak di-optimasi CDN;
   untuk hasil terbaik, unggah ulang lewat tombol "Unggah & Optimasi" di panel admin.
+- Migrasi pembayaran (`20261102000000_preorder_payment_metadata.sql`): jalankan sebelum
+  deploy Edge Function `send-preorder` yang mengirim instruksi DP otomatis.
 - Catatan privasi (`preorder_orders`): data berisi kontak & pesan pribadi. Status aman
   dicapai lewat KOMBINASI privilege + RLS:
   - `anon` : tanpa grant apa pun -> tidak bisa membaca/menulis.

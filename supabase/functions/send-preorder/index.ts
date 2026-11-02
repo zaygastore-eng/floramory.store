@@ -22,6 +22,11 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "";
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
+const WA_GATEWAY_URL = Deno.env.get("WA_GATEWAY_URL") || "";
+const WA_API_KEY = Deno.env.get("WA_API_KEY") || "";
+const BANK_NAME = Deno.env.get("BANK_NAME") || "";
+const BANK_ACCOUNT_NUMBER = Deno.env.get("BANK_ACCOUNT_NUMBER") || "";
+const BANK_ACCOUNT_HOLDER = Deno.env.get("BANK_ACCOUNT_HOLDER") || "";
 
 const CORS_HEADERS: Record<string, string> = {
   "Access-Control-Allow-Origin": "*",
@@ -36,6 +41,7 @@ const IP_WINDOW_MS = 10 * 60 * 1000;
 const PHONE_WINDOW_MS = 24 * 60 * 60 * 1000;
 const MIN_FILL_MS = 1200; // waktu minimal mengisi form (time-trap)
 const MAX_BODY_BYTES = 50_000;
+const WA_DISPATCH_TIMEOUT_MS = 9_000;
 
 const MAX_LENGTH: Record<string, number> = {
   customer_name: 120,
@@ -91,6 +97,98 @@ function normalizeWhatsApp(raw: unknown): string {
   if (digits.startsWith("0")) return `62${digits.slice(1)}`;
   if (digits.startsWith("8") && !digits.startsWith("62")) return `62${digits}`;
   return digits;
+}
+
+function getPriceAmount(raw: unknown): number {
+  const digits = String(raw || "").replace(/\D/g, "");
+  const amount = Number(digits);
+  return Number.isSafeInteger(amount) ? amount : 0;
+}
+
+function formatIdr(amount: number): string {
+  return new Intl.NumberFormat("id-ID", {
+    style: "currency",
+    currency: "IDR",
+    maximumFractionDigits: 0,
+  }).format(amount);
+}
+
+function cleanMessageField(value: unknown): string {
+  return String(value || "").replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim();
+}
+
+function createOrderNumber(): string {
+  return `ORD-${crypto.randomUUID().replace(/-/g, "").slice(0, 12).toUpperCase()}`;
+}
+
+function createPaymentMessage(input: {
+  orderNumber: string;
+  customerName: string;
+  productName: string;
+  totalAmount: number;
+  dpAmount: number;
+}): string {
+  return [
+    `Halo ${cleanMessageField(input.customerName)}, terima kasih telah memesan di Floramory!`,
+    "",
+    `Konfirmasi pesanan #${input.orderNumber}`,
+    `Produk: ${cleanMessageField(input.productName)}`,
+    `Total harga: ${formatIdr(input.totalAmount)}`,
+    `DP 50%: ${formatIdr(input.dpAmount)}`,
+    "",
+    "Silakan transfer DP ke rekening resmi berikut:",
+    `Bank: ${cleanMessageField(BANK_NAME)}`,
+    `Nomor rekening: ${cleanMessageField(BANK_ACCOUNT_NUMBER)}`,
+    `Atas nama: ${cleanMessageField(BANK_ACCOUNT_HOLDER)}`,
+    "",
+    "Setelah transfer, balas pesan ini dengan foto atau screenshot bukti pembayaran. Terima kasih!",
+  ].join("\n");
+}
+
+async function dispatchWhatsApp(to: string, message: string): Promise<boolean> {
+  if (!WA_GATEWAY_URL || !WA_API_KEY || !BANK_NAME || !BANK_ACCOUNT_NUMBER || !BANK_ACCOUNT_HOLDER) {
+    console.error("[WA_DISPATCH_ERROR] WhatsApp gateway or payment details are not fully configured.");
+    return false;
+  }
+
+  let gatewayUrl: URL;
+  try {
+    gatewayUrl = new URL(WA_GATEWAY_URL);
+  } catch {
+    console.error("[WA_DISPATCH_ERROR] WA_GATEWAY_URL is not a valid URL.");
+    return false;
+  }
+  if (gatewayUrl.protocol !== "https:") {
+    console.error("[WA_DISPATCH_ERROR] WA_GATEWAY_URL must use HTTPS.");
+    return false;
+  }
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), WA_DISPATCH_TIMEOUT_MS);
+  try {
+    const response = await fetch(gatewayUrl, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${WA_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ to, message }),
+      signal: controller.signal,
+    });
+    if (!response.ok) {
+      console.error(`[WA_DISPATCH_ERROR] WhatsApp gateway returned HTTP ${response.status}.`);
+      return false;
+    }
+    return true;
+  } catch (error) {
+    const reason = error instanceof DOMException && error.name === "AbortError"
+      ? `request timed out after ${WA_DISPATCH_TIMEOUT_MS}ms`
+      : "network request failed";
+    console.error(`[WA_DISPATCH_ERROR] ${reason}.`);
+    return false;
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 function getStr(payload: Record<string, unknown>, key: string): string {
@@ -193,7 +291,7 @@ Deno.serve(async (req: Request) => {
   // 7) Validasi produk: harus ada dan berstatus active (tidak percaya client).
   const { data: product, error: productError } = await admin
     .from("products")
-    .select("id, nama_produk")
+    .select("id, nama_produk, harga")
     .eq("id", productId)
     .eq("status", "active")
     .maybeSingle();
@@ -203,6 +301,12 @@ Deno.serve(async (req: Request) => {
   if (!product) {
     return json({ message: "Produk tidak valid atau sudah tidak tersedia." }, 400);
   }
+  const totalAmount = getPriceAmount(product.harga);
+  if (totalAmount <= 0) {
+    return json({ message: "Harga produk belum dikonfigurasi dengan benar." }, 400);
+  }
+  const dpAmount = Math.ceil(totalAmount * 0.5);
+  const orderNumber = createOrderNumber();
 
   // 8) Rate limit per nomor WhatsApp (24 jam, lintas-IP) via DB.
   const since = new Date(Date.now() - PHONE_WINDOW_MS).toISOString();
@@ -230,13 +334,45 @@ Deno.serve(async (req: Request) => {
       recipient_name: getStr(body, "recipient_name").trim(),
       sender_name: getStr(body, "sender_name").trim(),
       personal_message: getStr(body, "personal_message").trim(),
-      status: "new",
+      status: "waiting_dp",
+      order_number: orderNumber,
+      total_amount: totalAmount,
+      dp_amount: dpAmount,
+      wa_sent: false,
     })
     .select("id")
     .single();
   if (insertError) {
+    console.error("[PREORDER_INSERT_ERROR]", insertError.message);
     return json({ message: "Gagal menyimpan pre-order." }, 500);
   }
 
-  return json({ ok: true, id: row?.id }, 201);
+  const paymentMessage = createPaymentMessage({
+    orderNumber,
+    customerName: getStr(body, "customer_name"),
+    productName: String(product.nama_produk || ""),
+    totalAmount,
+    dpAmount,
+  });
+  const waSent = await dispatchWhatsApp(whatsapp, paymentMessage);
+
+  try {
+    const { error: dispatchStatusError } = await admin
+      .from("preorder_orders")
+      .update({ wa_sent: waSent })
+      .eq("id", row.id);
+    if (dispatchStatusError) throw dispatchStatusError;
+  } catch {
+    console.error(`[WA_DISPATCH_ERROR] Could not store delivery status for order ${orderNumber}.`);
+  }
+
+  return json({
+    success: true,
+    ok: true,
+    id: row.id,
+    orderId: row.id,
+    orderNumber,
+    dpAmount,
+    waStatus: waSent ? "dispatched" : "failed",
+  }, 201);
 });

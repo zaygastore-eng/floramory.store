@@ -52,22 +52,21 @@ const TIER_OPTIONS = [
 
 const ORDER_STATUSES = [
   { value: "new", label: "Pesanan Baru" },
-  { value: "dp_verified", label: "DP Diterima" },
-  { value: "in_progress", label: "Proses Vault & Cetak QR" },
+  { value: "waiting_dp", label: "Menunggu DP" },
+  { value: "in_production", label: "Dalam Produksi" },
   { value: "completed", label: "Selesai / Terkirim" },
   { value: "cancelled", label: "Dibatalkan" },
 ] as const;
 
 function getOrderStatus(status?: string): typeof ORDER_STATUSES[number]["value"] {
   const normalized = (status || "").toLowerCase();
-  if (normalized === "contacted") return "in_progress";
-  if (normalized === "paid") return "dp_verified";
+  if (["contacted", "paid", "dp_verified", "in_progress"].includes(normalized)) return "in_production";
   return ORDER_STATUSES.find(option => option.value === normalized)?.value || "new";
 }
 
 function isDpReceivedStatus(status?: string): boolean {
   const normalized = (status || "").toLowerCase();
-  return normalized === "paid" || normalized === "dp_verified";
+  return ["paid", "dp_verified", "in_production"].includes(normalized);
 }
 
 type AdminTab = "dashboard" | "produk" | "pesanan" | "keuangan" | "pengaturan";
@@ -271,13 +270,12 @@ export default function Admin() {
   const [newOrderCount, setNewOrderCount] = useState(0);
   const [operationalCounts, setOperationalCounts] = useState<PreOrderStatusCounts>({
     new: 0,
-    dp_verified: 0,
-    in_progress: 0,
+    waiting_dp: 0,
+    in_production: 0,
     completed: 0,
   });
   const [orderSearch, setOrderSearch] = useState("");
   const [orderFilterStatus, setOrderFilterStatus] = useState<"all" | typeof ORDER_STATUSES[number]["value"]>("all");
-  const [printOrder, setPrintOrder] = useState<PreOrder | null>(null);
   const [editingId, setEditingId] = useState("");
   const [productSearch, setProductSearch] = useState("");
   const [productViewTab, setProductViewTab] = useState<"catalog" | "orders">("catalog");
@@ -322,15 +320,6 @@ export default function Admin() {
     window.addEventListener("keydown", handleShortcut);
     return () => window.removeEventListener("keydown", handleShortcut);
   }, [toggleSidebar]);
-
-  useEffect(() => {
-    if (!printOrder) return;
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setPrintOrder(null);
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [printOrder]);
 
   useEffect(() => {
     let meta = document.querySelector<HTMLMetaElement>('meta[name="robots"]');
@@ -575,7 +564,7 @@ export default function Admin() {
     }
 
     // Validasi URL foto produk manual (opsional namun harus http/https kala diisi).
-    const fotoProdukError = validateImageUrl(form.fotoProduk);
+    const fotoProdukError = form.isCatalog ? validateImageUrl(form.fotoProduk) : null;
     if (fotoProdukError) {
       showToast(fotoProdukError);
       return;
@@ -910,7 +899,7 @@ export default function Admin() {
   }));
   const previewUrl = getPreviewUrl();
   const financialTransactions = useMemo(() => preOrders
-    .filter(order => ["completed", "dp_verified"].includes(getOrderStatus(order.status)))
+    .filter(order => ["completed", "in_production"].includes(getOrderStatus(order.status)))
     .map(order => {
       const product = managedProducts.find(item => item.id === order.product_id)
         || managedProducts.find(item => item.nama_produk.toLowerCase() === order.product_name.toLowerCase());
@@ -1136,93 +1125,97 @@ export default function Admin() {
         </div>
       )}
 
-      <div className="admin-panel-card admin-product-form-card">
-      <div className="admin-panel-head">
-        <div>
-          <h2>Unggah Foto Produk</h2>
-          <p>Tambahkan gambar produk yang akan digunakan di katalog.</p>
-        </div>
-      </div>
-      <div className="admin-form-group">
-        <label className="admin-form-label">Foto Produk</label>
-        <div className="admin-upload-row">
-          <input className="admin-form-input" type="text" placeholder="URL atau unggah otomatis"
-            value={form.fotoProduk} onChange={e => setForm(f => ({ ...f, fotoProduk: e.target.value }))} />
-          <button
-            type="button"
-            className="admin-upload-btn"
-            disabled={uploadingImage || !form.id.trim()}
-            title={!form.id.trim() ? "Isi ID Produk dulu" : "Unggah & kompresi ke WebP (maks 5 MB)"}
-            onClick={() => produkUploadRef.current?.click()}
-          >
-            {uploadingImage ? "Mengunggah..." : "Unggah & Optimasi"}
-          </button>
-          <input
-            ref={produkUploadRef}
-            type="file"
-            accept="image/jpeg,image/png,image/webp,image/avif,image/gif"
-            className="admin-upload-input"
-            onChange={e => {
-              const file = e.target.files?.[0];
-              if (file) void handleImageUpload(file);
-              e.target.value = "";
-            }}
-          />
-        </div>
-        {form.fotoProduk.startsWith("http") && (
-          <img className="admin-upload-preview" src={productImageUrl(form.fotoProduk, "thumb")} alt="Pratinjau foto produk" />
-        )}
-        {(() => {
-          const err = form.fotoProduk.trim() ? validateImageUrl(form.fotoProduk) : null;
-          if (err) return <p className="form-hint form-hint-error">{err}</p>;
-          if (form.fotoProduk.trim() && !isSupabaseStorageUrl(form.fotoProduk)) {
-            return (
-              <p className="form-hint form-hint-warn">
-                URL eksternal tidak dioptimasi CDN. Sambungkan ke storage dengan "Unggah & Optimasi".
-              </p>
-            );
-          }
-          return null;
-        })()}
-        <p className="form-hint">Maks. 5 MB · otomatis dikompresi ke WebP · thumbnail 600px dibuat CDN untuk katalog.</p>
-      </div>
-
-      <div className="admin-form-actions">
-        <button type="button" className="btn-generate" onClick={saveProductAndGenerateQR} disabled={savingProduct}>
-          {savingProduct ? "Menyimpan..." : editingId ? "Update Produk" : "Simpan Produk"}
-        </button>
-        <button type="button" className="btn-secondary-admin" onClick={generateQR}>Generate QR</button>
-        <button type="button" className="btn-reset" onClick={resetForm}>Bersihkan</button>
-      </div>
-      {qrVisible && (
-        <div className="admin-inline-qr">
-          <div ref={qrRef}>
-            <QRCode
-              value={generatedUrl}
-              size={1024}
-              fgColor="#111111"
-              bgColor="#fafbff"
-              level="H"
-              marginSize={2}
-              style={{ width: "168px", height: "168px", display: "block" }}
-            />
-          </div>
-          <div>
-            <strong>{form.nama || form.id}</strong>
-            <span>{generatedUrl}</span>
-            {/^https?:\/\/(localhost|127\.0\.0\.1)/i.test(generatedUrl) && (
-              <div style={{ color: "#c0392b", fontSize: "0.75rem", fontWeight: 600, marginTop: "4px" }}>
-                ⚠️ URL lokal terdeteksi: Jangan cetak ke media fisik (akrilik/stiker)!
-              </div>
-            )}
-            <div className="admin-inline-qr-actions">
-              <button type="button" onClick={downloadQR}>Download PNG</button>
-              <button type="button" onClick={copyUrl}>Salin URL</button>
+      {form.isCatalog && (
+        <div className="admin-panel-card admin-product-form-card">
+          <div className="admin-panel-head">
+            <div>
+              <h2>Unggah Foto Produk</h2>
+              <p>Tambahkan gambar produk yang akan digunakan di katalog.</p>
             </div>
+          </div>
+          <div className="admin-form-group">
+            <label className="admin-form-label">Foto Produk</label>
+            <div className="admin-upload-row">
+              <input className="admin-form-input" type="text" placeholder="URL atau unggah otomatis"
+                value={form.fotoProduk} onChange={e => setForm(f => ({ ...f, fotoProduk: e.target.value }))} />
+              <button
+                type="button"
+                className="admin-upload-btn"
+                disabled={uploadingImage || !form.id.trim()}
+                title={!form.id.trim() ? "Isi ID Produk dulu" : "Unggah & kompresi ke WebP (maks 5 MB)"}
+                onClick={() => produkUploadRef.current?.click()}
+              >
+                {uploadingImage ? "Mengunggah..." : "Unggah & Optimasi"}
+              </button>
+              <input
+                ref={produkUploadRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/avif,image/gif"
+                className="admin-upload-input"
+                onChange={e => {
+                  const file = e.target.files?.[0];
+                  if (file) void handleImageUpload(file);
+                  e.target.value = "";
+                }}
+              />
+            </div>
+            {form.fotoProduk.startsWith("http") && (
+              <img className="admin-upload-preview" src={productImageUrl(form.fotoProduk, "thumb")} alt="Pratinjau foto produk" />
+            )}
+            {(() => {
+              const err = form.fotoProduk.trim() ? validateImageUrl(form.fotoProduk) : null;
+              if (err) return <p className="form-hint form-hint-error">{err}</p>;
+              if (form.fotoProduk.trim() && !isSupabaseStorageUrl(form.fotoProduk)) {
+                return (
+                  <p className="form-hint form-hint-warn">
+                    URL eksternal tidak dioptimasi CDN. Sambungkan ke storage dengan "Unggah & Optimasi".
+                  </p>
+                );
+              }
+              return null;
+            })()}
+            <p className="form-hint">Maks. 5 MB · otomatis dikompresi ke WebP · thumbnail 600px dibuat CDN untuk katalog.</p>
           </div>
         </div>
       )}
-      </div>
+
+      <div className="admin-panel-card admin-product-form-card">
+        <div className="admin-form-actions">
+          <button type="button" className="btn-generate" onClick={saveProductAndGenerateQR} disabled={savingProduct}>
+            {savingProduct ? "Menyimpan..." : editingId ? "Update Produk" : "Simpan Produk"}
+          </button>
+          <button type="button" className="btn-secondary-admin" onClick={generateQR}>Generate QR</button>
+          <button type="button" className="btn-reset" onClick={resetForm}>Bersihkan</button>
+        </div>
+        {qrVisible && (
+          <div className="admin-inline-qr">
+            <div ref={qrRef}>
+              <QRCode
+                value={generatedUrl}
+                size={1024}
+                fgColor="#111111"
+                bgColor="#fafbff"
+                level="H"
+                marginSize={2}
+                style={{ width: "168px", height: "168px", display: "block" }}
+              />
+            </div>
+            <div>
+              <strong>{form.nama || form.id}</strong>
+              <span>{generatedUrl}</span>
+              {/^https?:\/\/(localhost|127\.0\.0\.1)/i.test(generatedUrl) && (
+                <div style={{ color: "#c0392b", fontSize: "0.75rem", fontWeight: 600, marginTop: "4px" }}>
+                  ⚠️ URL lokal terdeteksi: Jangan cetak ke media fisik (akrilik/stiker)!
+                </div>
+              )}
+              <div className="admin-inline-qr-actions">
+                <button type="button" onClick={downloadQR}>Download PNG</button>
+                <button type="button" onClick={copyUrl}>Salin URL</button>
+              </div>
+            </div>
+          </div>
+        )}
+        </div>
     </>
   );
 
@@ -1375,27 +1368,12 @@ export default function Admin() {
         ) : filteredOrders.map(order => {
           const currentStatus = getOrderStatus(order.status);
           const customerName = order.customer_name || "Kak";
-          const productName = order.product_name || order.product_id || "produk pilihan Anda";
-          const base = (localStorage.getItem(BASE_URL_KEY) || baseUrl || PRODUCTION_SITE_URL).trim().replace(/\/+$/, "");
-          const productUrl = `${base}/produk?id=${encodeURIComponent(order.product_id || "")}`;
-          const linkedProduct = managedProducts.find(product => product.id === order.product_id);
-          const dpAmount = linkedProduct
-            ? formatCurrency(parsePrice(linkedProduct.harga) * 0.5)
-            : "50% dari total pesanan";
-          const dpMessage = `Halo Kak ${customerName}! Terima kasih sudah memesan ${productName} di Floramory. Untuk memulai pembuatan Memory Vault dan pengawetan bunga, silakan transfer DP 50% sebesar ${dpAmount} ke rekening resmi Floramory yang akan dikirimkan tim kami. Setelah transfer, mohon kirim bukti pembayaran di chat ini.`;
-          const progressMessage = `Halo Kak ${customerName}! Karya botani pesanan Anda (${productName}) saat ini sedang menjalani dehidrasi silica di laboratorium dan casting kristal anti-UV. Kami akan mengabari Anda kembali saat karya siap.`;
-          const vaultMessage = `Halo Kak ${customerName}! Memory Vault untuk ${order.recipient_name || "penerima hadiah"} sudah aktif. Pratinjau digital kado Anda dapat diakses di: ${productUrl}`;
-          const whatsappNumber = normalizeWhatsApp(order.whatsapp);
-          const directChatUrl = `https://wa.me/${whatsappNumber}`;
-          const whatsappUrl = (message: string) =>
-            `${directChatUrl}?text=${encodeURIComponent(message)}`;
-          const vaultAvailable = currentStatus === "completed" && Boolean(order.product_id);
           return (
           <div className="admin-list-item admin-order-row" key={order.id || `${order.whatsapp}-${order.created_at}`}>
             <div className="admin-order-main">
               <div className="admin-order-primary">
                 <strong>{order.customer_name || "Tanpa nama"}</strong>
-                <span className="admin-order-meta">{order.whatsapp || "Tanpa WA"} / {order.product_name || order.product_id || "Produk belum dipilih"}</span>
+                <span className="admin-order-meta">WhatsApp: {order.whatsapp || "Tidak tersedia"} / {order.product_name || order.product_id || "Produk belum dipilih"}</span>
                 <span>{order.created_at ? new Date(order.created_at).toLocaleDateString("id-ID") : ""}</span>
               </div>
               <select
@@ -1410,9 +1388,11 @@ export default function Admin() {
               {(order.recipient_name || order.personal_message || order.custom_request) && (
                 <details className="admin-order-note">
                   <summary>
-                    {order.recipient_name ? `Untuk ${order.recipient_name}: ` : ""}
-                    {order.personal_message || order.custom_request}
+                    {order.recipient_name ? `Penerima: ${order.recipient_name}` : "Detail pesan"}
                   </summary>
+                  {(order.personal_message || order.custom_request) && (
+                    <p>{order.personal_message || order.custom_request}</p>
+                  )}
                 </details>
               )}
             </div>
@@ -1420,21 +1400,6 @@ export default function Admin() {
               <button type="button" className="admin-order-sync-btn" onClick={() => processOrderToProduct(order)}>
                 ✦ Proses jadi Produk &amp; Cetak QR
               </button>
-              {whatsappNumber ? (
-                <>
-                  <a className="admin-order-whatsapp direct-wa" href={directChatUrl} target="_blank" rel="noopener noreferrer" title="Buka chat WhatsApp tanpa pesan">💬 Direct Chat</a>
-                  <a className="admin-order-whatsapp" href={whatsappUrl(dpMessage)} target="_blank" rel="noopener noreferrer" title="Kirim instruksi pembayaran DP 50%">Confirm DP</a>
-                  <a className="admin-order-whatsapp progress-wa" href={whatsappUrl(progressMessage)} target="_blank" rel="noopener noreferrer" title="Kirim kabar proses laboratorium">Progress Update</a>
-                  {vaultAvailable ? (
-                    <a className="admin-order-whatsapp vault-wa" href={whatsappUrl(vaultMessage)} target="_blank" rel="noopener noreferrer" title="Kirim tautan Memory Vault aktif">Send Vault Link</a>
-                  ) : (
-                    <button type="button" className="admin-order-whatsapp vault-wa is-disabled" disabled title="Tersedia setelah pesanan berstatus Delivered / Vault Active">Send Vault Link</button>
-                  )}
-                </>
-              ) : (
-                <span className="admin-order-wa-missing">Nomor WhatsApp tidak tersedia</span>
-              )}
-              <button type="button" className="admin-order-print" onClick={() => setPrintOrder(order)}>Cetak Label</button>
             </div>
           </div>
           );
@@ -1688,7 +1653,7 @@ export default function Admin() {
             </button>
             <div>
               <h1>{activeTab === "produk" && productFormOpen ? (editingId ? "Edit Produk" : "Tambah Produk Baru") : titleMap[activeTab].title}</h1>
-              <p>{activeTab === "produk" && productFormOpen ? "Lengkapi detail produk, Memory Vault, dan foto." : titleMap[activeTab].desc}</p>
+              <p>{activeTab === "produk" && productFormOpen ? "Lengkapi detail produk dan Memory Vault." : titleMap[activeTab].desc}</p>
             </div>
           </div>
           <div className="admin-header-actions">
@@ -1704,47 +1669,6 @@ export default function Admin() {
         </header>
         {renderContent()}
       </main>
-
-      {printOrder && (
-        <div className="admin-print-overlay" onClick={event => {
-          if (event.target === event.currentTarget) setPrintOrder(null);
-        }}>
-          <section className="admin-print-modal" role="dialog" aria-modal="true" aria-labelledby="packing-slip-title">
-            <div className="admin-print-actions">
-              <button type="button" className="admin-outline-btn" onClick={() => setPrintOrder(null)}>Tutup</button>
-              <button type="button" className="admin-primary-btn" onClick={() => window.print()}>Print Label</button>
-            </div>
-            <article className="admin-packing-slip">
-              <header className="admin-packing-brand">
-                <BrandLogo className="brand-logo-img admin-packing-logo" />
-                <p>Smart Eco-Preserved Artware</p>
-              </header>
-              <h2 id="packing-slip-title">Memory Vault</h2>
-              <div className="admin-packing-qr">
-                <QRCode
-                  value={`${(localStorage.getItem(BASE_URL_KEY) || baseUrl || PRODUCTION_SITE_URL).trim().replace(/\/+$/, "")}/produk?id=${encodeURIComponent(printOrder.product_id || "")}`}
-                  size={512}
-                  level="H"
-                  marginSize={2}
-                  style={{ width: "240px", height: "240px", display: "block" }}
-                />
-              </div>
-              <div className="admin-packing-recipient">
-                <p><span>Kepada</span><strong>{printOrder.recipient_name || "-"}</strong></p>
-                <p><span>Dari</span><strong>{printOrder.sender_name || printOrder.customer_name || "-"}</strong></p>
-              </div>
-              <div className="admin-packing-message">
-                <span>Pesan Personal</span>
-                <p>“{printOrder.personal_message || "-"}”</p>
-              </div>
-              <footer className="admin-packing-product">
-                <strong>{printOrder.product_name || "Floramory Gift"}</strong>
-                <span>Serial: #{printOrder.product_id || "-"}</span>
-              </footer>
-            </article>
-          </section>
-        </div>
-      )}
 
       <div className={`admin-toast${toastVisible ? " show" : ""} admin-toast--${toastLevel}`}>{toastMsg}</div>
     </div>
