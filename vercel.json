@@ -16,6 +16,14 @@
       "destination": "https://fcevjiflawxmzrccramo.supabase.co/functions/v1/send-preorder"
     },
     {
+      "source": "/api/vault-otp",
+      "destination": "https://fcevjiflawxmzrccramo.supabase.co/functions/v1/vault-otp"
+    },
+    {
+      "source": "/api/vault-setup",
+      "destination": "https://fcevjiflawxmzrccramo.supabase.co/functions/v1/vault-setup"
+    },
+    {
       "source": "/produk",
       "destination": "/api/produk"
     },

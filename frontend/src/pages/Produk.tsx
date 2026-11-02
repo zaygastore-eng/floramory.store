@@ -1,8 +1,16 @@
-import { useEffect, useState, lazy, Suspense } from "react";
+import { useEffect, useRef, useState, lazy, Suspense, type FormEvent } from "react";
 import BrandLogo from "@/components/BrandLogo";
 import ProductSpecimen from "@/components/ProductSpecimen";
 const AudioPlayer = lazy(() => import("@/components/AudioPlayer"));
-import { fetchProductById, fetchWhatsAppNumber, tierLabel, getVaultAudioUrl, type Product } from "@/lib/api";
+import {
+  fetchProductById,
+  fetchWhatsAppNumber,
+  requestVaultOtp,
+  verifyVaultOtp,
+  tierLabel,
+  getVaultAudioUrl,
+  type Product,
+} from "@/lib/api";
 import { applyProductMeta } from "@/lib/seo";
 import { pageUrl, normalizeWhatsApp } from "@/lib/site";
 
@@ -26,6 +34,12 @@ export default function Produk() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [waNumber, setWaNumber] = useState(WA_FALLBACK);
+  const [vaultUnlocked, setVaultUnlocked] = useState(false);
+  const [otpRequested, setOtpRequested] = useState(false);
+  const [otpCode, setOtpCode] = useState("");
+  const [otpMessage, setOtpMessage] = useState("");
+  const [otpBusy, setOtpBusy] = useState(false);
+  const otpInputRefs = useRef<Array<HTMLInputElement | null>>([]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -42,6 +56,11 @@ export default function Produk() {
           setError(true);
         } else {
           setProduct(p);
+          try {
+            setVaultUnlocked(sessionStorage.getItem(`fm_unlocked_${p.id}`) === "true");
+          } catch {
+            setVaultUnlocked(false);
+          }
           applyProductMeta({
             id: p.id,
             nama_produk: p.nama_produk,
@@ -86,12 +105,66 @@ export default function Produk() {
   const hasAudio = Boolean(product.audio_url && product.audio_url.trim());
   const hasPersonalMessage = Boolean(product.pesan_personal && product.pesan_personal.trim());
   const isVaultEmpty = !hasFotoVault && !hasVideo && !hasAudio && !hasPersonalMessage;
+  const isVaultLocked = !product.is_catalog && !isVaultEmpty && !vaultUnlocked;
   const ytVideoId = hasVideo ? parseYouTubeId(product.video_url) : null;
   const waDigits = normalizeWhatsApp(waNumber) || WA_FALLBACK;
 
   const waMsg = encodeURIComponent(
     `Hello Floramory, I'd like to consult on customizing ${product.nama_produk} (ID: ${product.id})`
   );
+
+  const handleRequestOtp = async () => {
+    setOtpBusy(true);
+    setOtpMessage("");
+    try {
+      const result = await requestVaultOtp(product.id);
+      if (!result.ok) throw new Error(result.message || "Gagal meminta kode OTP.");
+      setOtpRequested(true);
+      if (result.debugOtp) {
+        setOtpCode(result.debugOtp);
+        setOtpMessage(`${result.message}. Kode simulasi: ${result.debugOtp}`);
+      } else {
+        setOtpCode("");
+        setOtpMessage(result.message);
+      }
+    } catch (requestError) {
+      setOtpMessage(requestError instanceof Error ? requestError.message : "Gagal meminta kode OTP.");
+    } finally {
+      setOtpBusy(false);
+    }
+  };
+
+  const handleVerifyOtp = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!/^\d{6}$/.test(otpCode)) return;
+    setOtpBusy(true);
+    setOtpMessage("");
+    try {
+      const result = await verifyVaultOtp(product.id, otpCode);
+      if (!result.ok || !result.verified) {
+        throw new Error(result.message || "Kode OTP tidak valid atau sudah kadaluarsa.");
+      }
+      try {
+        sessionStorage.setItem(`fm_unlocked_${product.id}`, "true");
+      } catch {
+        // Keep the current view unlocked even when browser storage is unavailable.
+      }
+      setVaultUnlocked(true);
+      setOtpMessage("");
+    } catch (verifyError) {
+      setOtpMessage(verifyError instanceof Error ? verifyError.message : "Gagal memverifikasi kode OTP.");
+    } finally {
+      setOtpBusy(false);
+    }
+  };
+
+  const updateOtpDigit = (index: number, value: string) => {
+    const digits = value.replace(/\D/g, "").slice(0, 1);
+    const next = otpCode.padEnd(6, " ").slice(0, 6).split("");
+    next[index] = digits || " ";
+    setOtpCode(next.join(""));
+    if (digits && index < 5) otpInputRefs.current[index + 1]?.focus();
+  };
 
   return (
     <div className="produk-page">
@@ -119,6 +192,86 @@ export default function Produk() {
           </div>
 
           <div className="vault-content-stack">
+            {isVaultLocked ? (
+              <div
+                className="order-step-content"
+                style={{
+                  padding: "clamp(1.5rem, 5vw, 2.5rem)",
+                  border: "1px solid rgba(160, 139, 94, 0.35)",
+                  borderRadius: "24px",
+                  background: "linear-gradient(145deg, #fffdf7, #f7f3e8)",
+                  boxShadow: "0 18px 48px rgba(67, 59, 39, 0.1)",
+                  textAlign: "center",
+                }}
+              >
+                <span aria-hidden="true" style={{ fontSize: "2.5rem" }}>✦</span>
+                <h3 style={{ margin: "0.75rem 0", color: "#4b503b", fontFamily: "var(--font-heading, Georgia, serif)" }}>
+                  Kapsul Kenangan Terkunci
+                </h3>
+                <p style={{ margin: "0 auto 1.25rem", maxWidth: "28rem", color: "#69705d", lineHeight: 1.7 }}>
+                  Kado ini dilengkapi pesan pribadi &amp; kenangan khusus untuk penerima.
+                </p>
+                <button
+                  type="button"
+                  className="specimen-order-button"
+                  onClick={() => void handleRequestOtp()}
+                  disabled={otpBusy}
+                >
+                  {otpBusy ? "Menyiapkan kode..." : "✦ Buka Kado Kenangan"}
+                </button>
+                {!otpRequested && otpMessage && (
+                  <p role="status" aria-live="polite" style={{ margin: "0.8rem 0 0", color: "#8a4d3b", fontSize: "0.88rem" }}>
+                    {otpMessage}
+                  </p>
+                )}
+                {otpRequested && (
+                  <form onSubmit={handleVerifyOtp} style={{ margin: "1.5rem auto 0", maxWidth: "22rem" }}>
+                    <p style={{ margin: "0 0 0.9rem", color: "#69705d" }}>
+                      Masukkan enam digit kode yang dikirim ke WhatsApp penerima.
+                    </p>
+                    <div style={{ display: "flex", justifyContent: "center", gap: "0.5rem", marginBottom: "1rem" }}>
+                      {Array.from({ length: 6 }, (_, index) => (
+                        <input
+                          key={index}
+                          ref={element => { otpInputRefs.current[index] = element; }}
+                          type="tel"
+                          inputMode="numeric"
+                          autoComplete={index === 0 ? "one-time-code" : "off"}
+                          aria-label={`Digit ${index + 1} kode OTP`}
+                          value={otpCode[index] && otpCode[index] !== " " ? otpCode[index] : ""}
+                          maxLength={1}
+                          onChange={event => updateOtpDigit(index, event.target.value)}
+                          onKeyDown={event => {
+                            if (event.key === "Backspace" && !otpCode[index] && index > 0) {
+                              otpInputRefs.current[index - 1]?.focus();
+                            }
+                          }}
+                          onPaste={event => {
+                            const pasted = event.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6);
+                            if (pasted) {
+                              event.preventDefault();
+                              setOtpCode(pasted.padEnd(6, " "));
+                              otpInputRefs.current[Math.min(pasted.length, 5)]?.focus();
+                            }
+                          }}
+                          className="form-input"
+                          style={{ width: "2.8rem", height: "3.2rem", padding: 0, textAlign: "center", fontSize: "1.25rem", fontWeight: 700 }}
+                        />
+                      ))}
+                    </div>
+                    <button type="submit" className="specimen-order-button" disabled={otpBusy || !/^\d{6}$/.test(otpCode)}>
+                      {otpBusy ? "Memverifikasi..." : "Verifikasi Kode"}
+                    </button>
+                    {otpMessage && (
+                      <p role="status" aria-live="polite" style={{ margin: "0.8rem 0 0", color: "#69705d", fontSize: "0.88rem" }}>
+                        {otpMessage}
+                      </p>
+                    )}
+                  </form>
+                )}
+              </div>
+            ) : (
+              <div className={vaultUnlocked ? "order-step-content" : undefined}>
             {/* Component A: Personal Memory Photo (Polaroid Capsule) */}
             {hasFotoVault && (
               <div className="vault-polaroid-wrap">
@@ -242,6 +395,8 @@ export default function Produk() {
                     <strong>Atelier Floramory</strong>
                   </div>
                 </div>
+              </div>
+            )}
               </div>
             )}
           </div>

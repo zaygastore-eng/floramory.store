@@ -47,6 +47,7 @@ const PROXY_PATHS = new Set([
   "/rest/v1/products",
   "/rest/v1/preorder_orders",
   "/rest/v1/app_settings",
+  "/functions/v1/notify-dp-confirmed",
 ]);
 
 // Supabase Storage: hanya bucket product-images yang boleh diakses via

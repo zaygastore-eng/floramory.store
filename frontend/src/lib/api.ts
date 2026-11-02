@@ -37,19 +37,28 @@ export interface Product extends CatalogProduct {
   video_url: string;
   foto_vault: string;
   is_catalog: boolean;
+  recipient_whatsapp?: string;
+  order_id?: string | null;
   status?: string;
 }
 
 export interface PreOrder {
   id?: string;
+  order_number?: string;
   customer_name: string;
   whatsapp: string;
+  recipient_whatsapp?: string;
   product_id: string;
   product_name: string;
   custom_request: string;
   recipient_name: string;
   sender_name: string;
   personal_message: string;
+  foto_vault?: string;
+  audio_url?: string;
+  audio_durasi?: number;
+  video_url?: string;
+  vault_submitted_at?: string;
   status?: string;
   created_at?: string;
 }
@@ -319,6 +328,148 @@ async function adminRequest(
   return data;
 }
 
+export async function notifyDpConfirmed(orderId: string): Promise<void> {
+  const data = await adminRequest("POST", "/functions/v1/notify-dp-confirmed", {
+    body: { order_id: orderId },
+  });
+  if (data.ok !== true) {
+    throw new Error(String(data.message || "Gagal mengirim notifikasi konfirmasi DP."));
+  }
+}
+
+async function callVaultOtp(payload: Record<string, string>): Promise<Record<string, unknown>> {
+  if (!isSupabaseConfigured()) {
+    throw new Error("Supabase belum dikonfigurasi");
+  }
+  const response = await fetch(`${FUNCTIONS_BASE}/vault-otp`, {
+    method: "POST",
+    headers: supabaseHeaders(),
+    body: JSON.stringify(payload),
+  });
+  const data: unknown = await response.json().catch(() => ({}));
+  if (!data || typeof data !== "object" || Array.isArray(data)) {
+    return { ok: false, message: "Respons server tidak valid." };
+  }
+  return data as Record<string, unknown>;
+}
+
+export async function requestVaultOtp(
+  productId: string
+): Promise<{ ok: boolean; message: string; debugOtp?: string }> {
+  const data = await callVaultOtp({ action: "request", product_id: productId });
+  return {
+    ok: data.ok === true,
+    message: String(data.message || ""),
+    ...(typeof data.debugOtp === "string" ? { debugOtp: data.debugOtp } : {}),
+  };
+}
+
+export async function verifyVaultOtp(
+  productId: string,
+  otpCode: string
+): Promise<{ ok: boolean; verified: boolean; message?: string }> {
+  const data = await callVaultOtp({ action: "verify", product_id: productId, otp_code: otpCode });
+  return {
+    ok: data.ok === true,
+    verified: data.verified === true,
+    ...(typeof data.message === "string" ? { message: data.message } : {}),
+  };
+}
+
+async function callVaultSetup(payload: Record<string, unknown>): Promise<{
+  status: number;
+  data: Record<string, unknown>;
+}> {
+  if (!isSupabaseConfigured()) {
+    throw new Error("Supabase belum dikonfigurasi");
+  }
+  const response = await fetch(`${FUNCTIONS_BASE}/vault-setup`, {
+    method: "POST",
+    headers: supabaseHeaders(),
+    body: JSON.stringify(payload),
+  });
+  const parsed: unknown = await response.json().catch(() => ({}));
+  const data = parsed && typeof parsed === "object" && !Array.isArray(parsed)
+    ? parsed as Record<string, unknown>
+    : {};
+  return { status: response.status, data };
+}
+
+export async function fetchVaultSetup(orderId: string): Promise<{
+  ok: boolean;
+  order?: PreOrder;
+  message?: string;
+}> {
+  const { status, data } = await callVaultSetup({ action: "get", order_id: orderId });
+  const rawOrder = data.order;
+  if (status >= 400 || data.ok !== true || !rawOrder || typeof rawOrder !== "object" || Array.isArray(rawOrder)) {
+    return {
+      ok: false,
+      message: String(data.message || "Link tidak valid atau pesanan tidak ditemukan."),
+    };
+  }
+  return {
+    ok: true,
+    order: normalizePreOrder(rawOrder as Partial<PreOrder> & Record<string, unknown>),
+  };
+}
+
+function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = String(reader.result || "");
+      const separator = result.indexOf(",");
+      if (separator < 0) {
+        reject(new Error("Format file tidak valid."));
+        return;
+      }
+      resolve(result.slice(separator + 1));
+    };
+    reader.onerror = () => reject(new Error("Gagal membaca file."));
+    reader.readAsDataURL(file);
+  });
+}
+
+export async function uploadVaultMedia(
+  orderId: string,
+  fileType: "photo" | "audio",
+  file: File
+): Promise<string> {
+  const { status, data } = await callVaultSetup({
+    action: "upload",
+    order_id: orderId,
+    file_type: fileType,
+    file_base64: await fileToBase64(file),
+    mime_type: file.type,
+  });
+  if (status >= 400 || data.ok !== true || typeof data.publicUrl !== "string") {
+    throw new Error(String(data.message || "Gagal mengunggah media."));
+  }
+  return data.publicUrl;
+}
+
+export async function saveVaultSetup(
+  orderId: string,
+  payload: {
+    personal_message: string;
+    foto_vault: string;
+    audio_url: string;
+    audio_durasi?: number;
+    video_url: string;
+  }
+): Promise<{ ok: boolean; message: string }> {
+  const { status, data } = await callVaultSetup({
+    action: "save",
+    order_id: orderId,
+    ...payload,
+  });
+  return {
+    ok: status < 400 && data.ok === true,
+    message: String(data.message || "Gagal menyimpan Memory Vault."),
+  };
+}
+
 export async function fetchWhatsAppNumber(): Promise<string> {
   if (!isSupabaseConfigured()) return FALLBACK_WA_NUMBER;
 
@@ -392,6 +543,8 @@ function normalizeProduct(obj: Partial<Product>): Product {
     video_url: String(obj.video_url || record.video_url || "").trim(),
     foto_vault: String(obj.foto_vault || record.foto_vault || "").trim(),
     is_catalog: Boolean(obj.is_catalog ?? record.is_catalog ?? false),
+    recipient_whatsapp: String(obj.recipient_whatsapp || record.recipient_whatsapp || "").trim(),
+    order_id: String(obj.order_id || record.order_id || "").trim() || null,
     status: String(obj.status || "active").trim(),
   };
 }
@@ -416,6 +569,8 @@ function productPayload(product: Product, status = product.status || "active", u
     video_url: (product.video_url || "").trim(),
     foto_vault: (product.foto_vault || "").trim(),
     is_catalog: Boolean(product.is_catalog),
+    recipient_whatsapp: normalizeWhatsApp(product.recipient_whatsapp || ""),
+    order_id: product.order_id || null,
     status,
   };
 }
@@ -423,14 +578,21 @@ function productPayload(product: Product, status = product.status || "active", u
 function normalizePreOrder(obj: Partial<PreOrder> & Record<string, unknown>): PreOrder {
   return {
     id: String(obj.id || "").trim(),
+    order_number: String(obj.order_number || "").trim(),
     customer_name: String(obj.customer_name || "").trim(),
     whatsapp: String(obj.whatsapp || "").trim(),
+    recipient_whatsapp: String(obj.recipient_whatsapp || "").trim(),
     product_id: String(obj.product_id || "").trim(),
     product_name: String(obj.product_name || "").trim(),
     custom_request: String(obj.custom_request || "").trim(),
     recipient_name: String(obj.recipient_name || "").trim(),
     sender_name: String(obj.sender_name || "").trim(),
     personal_message: String(obj.personal_message || "").trim(),
+    foto_vault: String(obj.foto_vault || "").trim(),
+    audio_url: String(obj.audio_url || "").trim(),
+    audio_durasi: Number(obj.audio_durasi) || 0,
+    video_url: String(obj.video_url || "").trim(),
+    vault_submitted_at: String(obj.vault_submitted_at || "").trim(),
     status: String(obj.status || "new").trim(),
     created_at: String(obj.created_at || "").trim(),
   };
@@ -513,7 +675,7 @@ export async function fetchAllProducts(): Promise<CatalogProduct[]> {
 // Kolom eksplisit (bukan select=*). created_at/updated_at terakhir
 // tidak diambil: tidak dipakai UI admin.
 const MANAGED_PRODUCTS_SELECT =
-  "id,nama_produk,tier,harga,bunga,deskripsi,bahan,ukuran,nama_pembeli,dari,pesan_personal,foto_produk,foto_qr,audio_url,audio_durasi,video_url,foto_vault,is_catalog,status";
+  "id,nama_produk,tier,harga,bunga,deskripsi,bahan,ukuran,nama_pembeli,dari,pesan_personal,foto_produk,foto_qr,audio_url,audio_durasi,video_url,foto_vault,is_catalog,recipient_whatsapp,order_id,status";
 
 function invalidateProductCaches() {
   cachedCatalog = null;
@@ -547,10 +709,11 @@ export async function fetchManagedProducts(): Promise<Product[]> {
 
 export async function fetchProductById(id: string): Promise<Product | null> {
   if (!id || id.length > 120 || !isSupabaseConfigured()) return null;
+  const normalizedId = id.trim().toUpperCase();
 
   try {
     const res = await fetch(
-      `${SUPABASE_URL}/rest/v1/products?id=eq.${encodeURIComponent(id)}&status=eq.active&select=id,nama_produk,tier,harga,bunga,deskripsi,bahan,ukuran,nama_pembeli,dari,pesan_personal,foto_produk,foto_qr,audio_url,audio_durasi,video_url,foto_vault,is_catalog,status&limit=1`,
+      `${SUPABASE_URL}/rest/v1/products?id=eq.${encodeURIComponent(normalizedId)}&status=eq.active&select=id,nama_produk,tier,harga,bunga,deskripsi,bahan,ukuran,nama_pembeli,dari,pesan_personal,foto_produk,foto_qr,audio_url,audio_durasi,video_url,foto_vault,is_catalog,status&limit=1`,
       { headers: supabaseHeaders() }
     );
     if (!res.ok) return null;
@@ -687,6 +850,7 @@ export async function createPreOrder(
     body: JSON.stringify({
       customer_name: order.customer_name.trim(),
       whatsapp: normalizeWhatsApp(order.whatsapp),
+      recipient_whatsapp: normalizeWhatsApp(order.recipient_whatsapp || ""),
       product_id: order.product_id.trim(),
       product_name: (order.product_name || "").trim(),
       custom_request: (order.custom_request || "").trim(),
@@ -733,7 +897,7 @@ function isTierConstraintError(message: string): boolean {
 
 // Kolom eksplisit (bukan select=*). updated_at tidak dipakai UI.
 const PREORDER_SELECT =
-  "id,customer_name,whatsapp,product_id,product_name,custom_request,recipient_name,sender_name,personal_message,status,created_at";
+  "id,order_number,customer_name,whatsapp,product_id,product_name,custom_request,recipient_name,sender_name,personal_message,recipient_whatsapp,foto_vault,audio_url,audio_durasi,video_url,vault_submitted_at,status,created_at";
 
 export interface PreOrderPage {
   orders: PreOrder[];

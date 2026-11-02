@@ -24,6 +24,7 @@ import {
   fetchPreOrderStatusCounts,
   fetchWhatsAppNumber,
   hasSupabaseConfig,
+  notifyDpConfirmed,
   signInAdmin,
   signOutAdmin,
   statusAdminSession,
@@ -81,10 +82,13 @@ interface FormState {
   bahan: string;
   ukuran: string;
   namaPembeli: string;
+  recipientWhatsapp: string;
+  orderId: string;
   dari: string;
   pesan: string;
   fotoProduk: string;
   audioUrl: string;
+  audioDurasi: number;
   videoUrl: string;
   fotoVault: string;
   isCatalog: boolean;
@@ -100,10 +104,13 @@ const EMPTY: FormState = {
   bahan: "",
   ukuran: "",
   namaPembeli: "",
+  recipientWhatsapp: "",
+  orderId: "",
   dari: "",
   pesan: "",
   fotoProduk: "",
   audioUrl: "",
+  audioDurasi: 0,
   videoUrl: "",
   fotoVault: "",
   isCatalog: false,
@@ -120,10 +127,13 @@ function productToForm(product: Product): FormState {
     bahan: product.bahan,
     ukuran: product.ukuran,
     namaPembeli: product.nama_pembeli,
+    recipientWhatsapp: product.recipient_whatsapp || "",
+    orderId: product.order_id || "",
     dari: product.dari,
     pesan: product.pesan_personal,
     fotoProduk: product.foto_produk,
     audioUrl: product.audio_url || "",
+    audioDurasi: product.audio_durasi || 0,
     videoUrl: product.video_url || "",
     fotoVault: product.foto_vault || "",
     isCatalog: Boolean(product.is_catalog),
@@ -521,7 +531,7 @@ export default function Admin() {
   const productFromForm = (): Product => {
     const existing = editingId ? managedProducts.find(p => p.id === editingId) : null;
     return {
-      id: form.id,
+      id: form.id.trim().toUpperCase(),
       nama_produk: form.nama,
       tier: form.tier,
       harga: form.harga,
@@ -530,27 +540,18 @@ export default function Admin() {
       bahan: form.bahan,
       ukuran: form.ukuran,
       nama_pembeli: form.isCatalog ? "" : form.namaPembeli,
+      recipient_whatsapp: form.isCatalog ? "" : form.recipientWhatsapp,
+      order_id: form.isCatalog ? null : (form.orderId || null),
       dari: form.isCatalog ? "" : form.dari,
       pesan_personal: form.isCatalog ? "" : form.pesan,
       foto_produk: form.fotoProduk,
       foto_qr: "",
       audio_url: form.isCatalog ? "" : form.audioUrl.trim(),
-      audio_durasi: form.isCatalog ? 0 : (existing?.audio_durasi || 0),
+      audio_durasi: form.isCatalog ? 0 : (form.audioDurasi || existing?.audio_durasi || 0),
       video_url: form.isCatalog ? "" : form.videoUrl.trim(),
       foto_vault: form.isCatalog ? "" : form.fotoVault.trim(),
       is_catalog: form.isCatalog,
     };
-  };
-
-  const generateQR = () => {
-    const url = getPreviewUrl();
-    if (!url) {
-      showToast("Isi ID Produk dan Base URL terlebih dahulu");
-      return;
-    }
-    setGeneratedUrl(url);
-    setQrVisible(true);
-    showToast("QR Code berhasil dibuat");
   };
 
   const saveProductAndGenerateQR = async () => {
@@ -575,10 +576,12 @@ export default function Admin() {
       if (editingId) await updateProduct(editingId, productFromForm());
       else await createProduct(productFromForm());
       await loadProducts();
-      const url = getPreviewUrl();
-      if (url) {
-        setGeneratedUrl(url);
-        setQrVisible(true);
+      if (!form.isCatalog) {
+        const url = getPreviewUrl();
+        if (url) {
+          setGeneratedUrl(url);
+          setQrVisible(true);
+        }
       }
       showToast(editingId ? "Produk diperbarui" : "Produk tersimpan");
     } catch (error) {
@@ -656,12 +659,15 @@ export default function Admin() {
       ukuran: linkedProduct?.ukuran || "",
       deskripsi: order.custom_request ? `Catatan kustom: ${order.custom_request}` : (linkedProduct?.deskripsi || ""),
       namaPembeli: order.recipient_name || order.customer_name || "",
+      recipientWhatsapp: order.recipient_whatsapp || "",
+      orderId: order.id || "",
       dari: order.sender_name || order.customer_name || "",
       pesan: order.personal_message || order.custom_request || "",
       fotoProduk: linkedProduct?.foto_produk || "",
-      audioUrl: "",
-      videoUrl: "",
-      fotoVault: "",
+      audioUrl: order.audio_url || "",
+      audioDurasi: order.audio_durasi || 0,
+      videoUrl: order.video_url || "",
+      fotoVault: order.foto_vault || "",
     });
 
     setProductFormOpen(true);
@@ -691,6 +697,12 @@ export default function Admin() {
         });
         if (previousStatus === "new" && nextStatus !== "new") setNewOrderCount(count => Math.max(0, count - 1));
         if (previousStatus !== "new" && nextStatus === "new") setNewOrderCount(count => count + 1);
+        if (previousStatus !== "in_production" && nextStatus === "in_production") {
+          void notifyDpConfirmed(order.id).catch(error => {
+            console.error("[DP_NOTIFICATION_ERROR]", error);
+            showToast(error instanceof Error ? error.message : "Gagal mengirim notifikasi konfirmasi DP", "alert");
+          });
+        }
       }
       const statusLabel = ORDER_STATUSES.find(option => option.value === status)?.label || status;
       showToast(`Status pesanan diperbarui: ${statusLabel}`, "success");
@@ -812,8 +824,8 @@ export default function Admin() {
       "created_at",
       "custom_request",
     ];
-    const escapeCsv = (value: string | undefined) => {
-      const text = value || "";
+    const escapeCsv = (value: string | number | undefined) => {
+      const text = String(value ?? "");
       const safeText = /^[\t\r ]*[=+\-@]/.test(text) ? `'${text}` : text;
       return `"${safeText.replace(/"/g, '""')}"`;
     };
@@ -962,7 +974,7 @@ export default function Admin() {
           <button
             type="button"
             className={`admin-type-pill${form.isCatalog ? " active" : ""}`}
-            onClick={() => setForm(f => ({ ...f, isCatalog: true }))}
+            onClick={() => { setForm(f => ({ ...f, isCatalog: true })); setQrVisible(false); setGeneratedUrl(""); }}
           >
             🛍️ Katalog Toko Publik
           </button>
@@ -985,7 +997,7 @@ export default function Admin() {
         <div className="admin-form-group">
           <label className="admin-form-label">ID Produk <span className="required-star">*</span></label>
           <input className="admin-form-input" type="text" placeholder="Contoh: ROSA-001"
-            value={form.id} disabled={Boolean(editingId)} onChange={e => setForm(f => ({ ...f, id: e.target.value }))} />
+            value={form.id} disabled={Boolean(editingId)} onChange={e => setForm(f => ({ ...f, id: e.target.value.toUpperCase() }))} />
           <p className="form-hint">{editingId ? "ID dikunci saat edit agar QR lama tetap valid." : "Kode unik per produk."}</p>
         </div>
         <div className="admin-form-group">
@@ -1182,12 +1194,15 @@ export default function Admin() {
       <div className="admin-panel-card admin-product-form-card">
         <div className="admin-form-actions">
           <button type="button" className="btn-generate" onClick={saveProductAndGenerateQR} disabled={savingProduct}>
-            {savingProduct ? "Menyimpan..." : editingId ? "Update Produk" : "Simpan Produk"}
+            {savingProduct
+              ? "Menyimpan..."
+              : form.isCatalog
+                ? (editingId ? "Update Katalog" : "Simpan ke Katalog")
+                : (editingId ? "Update & Tampilkan QR" : "Simpan & Tampilkan QR")}
           </button>
-          <button type="button" className="btn-secondary-admin" onClick={generateQR}>Generate QR</button>
           <button type="button" className="btn-reset" onClick={resetForm}>Bersihkan</button>
         </div>
-        {qrVisible && (
+        {!form.isCatalog && qrVisible && (
           <div className="admin-inline-qr">
             <div ref={qrRef}>
               <QRCode
@@ -1531,6 +1546,29 @@ export default function Admin() {
               value={baseUrl} onChange={e => setBaseUrl(e.target.value)} />
             <button type="button" className="btn-save-config" onClick={useAutoUrl} title="Set ke domain produksi">Produksi</button>
             <button type="button" className="admin-outline-btn" onClick={useLocalUrl} title="Set ke host browser saat ini (dev mode)">Lokal</button>
+            <button
+              type="button"
+              className="admin-outline-btn"
+              onClick={() => {
+                const ip = window.prompt(
+                  "Masukkan alamat IP lokal (contoh: 192.168.1.10:5173):",
+                  "192.168.1.10:5173"
+                );
+                if (ip) {
+                  const url = `http://${ip.replace(/^https?:\/\//, "")}`;
+                  setBaseUrl(url);
+                  localStorage.setItem(BASE_URL_KEY, url);
+                  showToast(`Base URL diset ke IP lokal (${url})`, "alert");
+                }
+              }}
+              title="Isi IP LAN untuk test langsung dari HP"
+            >
+              IP Lokal
+            </button>
+          </div>
+          <div style={{ marginTop: "6px", fontSize: "0.8rem", color: "#4f557d", wordBreak: "break-all" }}>
+            <strong>URL aktif di QR:</strong>{" "}
+            {(baseUrl || PRODUCTION_SITE_URL).replace(/\/+$/, "")}/produk?id=<em>&lt;ID produk&gt;</em>
           </div>
           <small style={{ display: "block", marginTop: "4px", color: "#697099", fontSize: "0.75rem" }}>
             Default selalu mengarah ke <strong>{PRODUCTION_SITE_URL}</strong> agar QR fisik yang dicetak tidak memuat link localhost.

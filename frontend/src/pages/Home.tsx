@@ -158,6 +158,7 @@ export default function Home() {
   const [orderForm, setOrderForm] = useState({
     nama: "",
     wa: "",
+    recipientWhatsapp: "",
     pesan: "",
     produk: "",
     namaPenerima: "",
@@ -295,6 +296,7 @@ export default function Home() {
         {
           customer_name: orderForm.nama,
           whatsapp: wa,
+          recipient_whatsapp: orderForm.recipientWhatsapp,
           product_id: orderForm.produk,
           product_name: selected?.nama_produk || orderForm.produk,
           custom_request: orderForm.pesan,
@@ -308,7 +310,7 @@ export default function Home() {
         }
       );
       formStartRef.current = Date.now();
-      setOrderForm({ nama: "", wa: "", pesan: "", produk: "", namaPenerima: "", dari: "", pesanPersonal: "", website: "" });
+      setOrderForm({ nama: "", wa: "", recipientWhatsapp: "", pesan: "", produk: "", namaPenerima: "", dari: "", pesanPersonal: "", website: "" });
       setPrefilledProductName("");
       setOrderStep(1);
       const waNumber = normalizeWhatsApp(await fetchWhatsAppNumber());
@@ -688,6 +690,23 @@ export default function Home() {
                       aria-describedby="order-wa-hint" value={orderForm.wa} onChange={e => setOrderForm(f => ({ ...f, wa: e.target.value }))} />
                     <span className="form-field-hint" id="order-wa-hint">Gunakan format nomor Indonesia 08xx atau 62xx.</span>
                   </div>
+                </div>
+                <div className="form-group">
+                  <label className="form-label" htmlFor="order-recipient-whatsapp">Nomor WhatsApp Penerima Kado (opsional)</label>
+                  <input
+                    id="order-recipient-whatsapp"
+                    className="form-input"
+                    type="tel"
+                    inputMode="tel"
+                    placeholder="08xx... — untuk notifikasi kado ke penerima"
+                    maxLength={20}
+                    aria-describedby="order-recipient-whatsapp-hint"
+                    value={orderForm.recipientWhatsapp}
+                    onChange={e => setOrderForm(f => ({ ...f, recipientWhatsapp: normalizeWhatsApp(e.target.value) }))}
+                  />
+                  <span className="form-field-hint" id="order-recipient-whatsapp-hint">
+                    Diisi oleh Kakak (pengirim) jika ingin penerima mendapat notifikasi WhatsApp saat kado tiba.
+                  </span>
                 </div>
                 <div className="form-group">
                   <label className="form-label" htmlFor="order-produk">Pilih Produk</label>

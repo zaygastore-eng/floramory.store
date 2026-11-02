@@ -9,6 +9,7 @@ import ErrorBoundary from "@/components/ErrorBoundary";
 // All admin logic, CRUD operations, lucide-react, qrcode.react, and Supabase
 // session management live inside Admin.tsx and are never downloaded by public visitors.
 const Admin = lazy(() => import("./pages/Admin"));
+const VaultSetup = lazy(() => import("./pages/VaultSetup"));
 
 function LoadingPage() {
   return (
@@ -24,6 +25,11 @@ function Router() {
     <Switch>
       <Route path="/" component={Home} />
       <Route path="/produk" component={Produk} />
+      <Route path="/vault-setup">
+        <Suspense fallback={<LoadingPage />}>
+          <VaultSetup />
+        </Suspense>
+      </Route>
       <Route path="/admin">
         <Suspense fallback={<LoadingPage />}>
           <Admin />

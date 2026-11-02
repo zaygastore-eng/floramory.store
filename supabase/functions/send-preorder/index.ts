@@ -22,8 +22,9 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "";
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
-const WA_GATEWAY_URL = Deno.env.get("WA_GATEWAY_URL") || "";
-const WA_API_KEY = Deno.env.get("WA_API_KEY") || "";
+// TODO: Configure FONNTE_API_TOKEN in Supabase secrets before enabling WhatsApp dispatch.
+const FONNTE_API_TOKEN = Deno.env.get("FONNTE_API_TOKEN") || "";
+const FONNTE_ENDPOINT = "https://api.fonnte.com/send";
 const BANK_NAME = Deno.env.get("BANK_NAME") || "";
 const BANK_ACCOUNT_NUMBER = Deno.env.get("BANK_ACCOUNT_NUMBER") || "";
 const BANK_ACCOUNT_HOLDER = Deno.env.get("BANK_ACCOUNT_HOLDER") || "";
@@ -46,6 +47,7 @@ const WA_DISPATCH_TIMEOUT_MS = 9_000;
 const MAX_LENGTH: Record<string, number> = {
   customer_name: 120,
   whatsapp: 20,
+  recipient_whatsapp: 20,
   product_id: 120,
   product_name: 160,
   custom_request: 2000,
@@ -129,54 +131,47 @@ function createPaymentMessage(input: {
   dpAmount: number;
 }): string {
   return [
-    `Halo ${cleanMessageField(input.customerName)}, terima kasih telah memesan di Floramory!`,
+    `Halo Kak ${cleanMessageField(input.customerName)}, terima kasih telah memesan karya botani di Floramory 🌸`,
     "",
-    `Konfirmasi pesanan #${input.orderNumber}`,
+    `Pesanan Anda telah kami terima dengan ID: #${cleanMessageField(input.orderNumber)}`,
     `Produk: ${cleanMessageField(input.productName)}`,
-    `Total harga: ${formatIdr(input.totalAmount)}`,
-    `DP 50%: ${formatIdr(input.dpAmount)}`,
+    `Total: ${formatIdr(input.totalAmount)} (DP 50%: ${formatIdr(input.dpAmount)})`,
     "",
-    "Silakan transfer DP ke rekening resmi berikut:",
-    `Bank: ${cleanMessageField(BANK_NAME)}`,
-    `Nomor rekening: ${cleanMessageField(BANK_ACCOUNT_NUMBER)}`,
-    `Atas nama: ${cleanMessageField(BANK_ACCOUNT_HOLDER)}`,
+    "Silakan melakukan pembayaran DP melalui:",
+    `${cleanMessageField(BANK_NAME)}: ${cleanMessageField(BANK_ACCOUNT_NUMBER)} a/n ${cleanMessageField(BANK_ACCOUNT_HOLDER)}`,
     "",
-    "Setelah transfer, balas pesan ini dengan foto atau screenshot bukti pembayaran. Terima kasih!",
+    "Setelah DP terkonfirmasi, sistem kami akan langsung mengirimkan link privat",
+    "untuk mengisi Memory Vault (pesan kenangan, foto & audio) khusus untuk",
+    "penerima kado Anda.",
+    "",
+    "Balas pesan ini dengan bukti transfer untuk konfirmasi. Terima kasih! 🌿",
   ].join("\n");
 }
 
 async function dispatchWhatsApp(to: string, message: string): Promise<boolean> {
-  if (!WA_GATEWAY_URL || !WA_API_KEY || !BANK_NAME || !BANK_ACCOUNT_NUMBER || !BANK_ACCOUNT_HOLDER) {
-    console.error("[WA_DISPATCH_ERROR] WhatsApp gateway or payment details are not fully configured.");
-    return false;
-  }
-
-  let gatewayUrl: URL;
-  try {
-    gatewayUrl = new URL(WA_GATEWAY_URL);
-  } catch {
-    console.error("[WA_DISPATCH_ERROR] WA_GATEWAY_URL is not a valid URL.");
-    return false;
-  }
-  if (gatewayUrl.protocol !== "https:") {
-    console.error("[WA_DISPATCH_ERROR] WA_GATEWAY_URL must use HTTPS.");
+  if (!FONNTE_API_TOKEN) {
+    console.warn("[WA_DISPATCH_SKIPPED] FONNTE_API_TOKEN is not configured.");
     return false;
   }
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), WA_DISPATCH_TIMEOUT_MS);
   try {
-    const response = await fetch(gatewayUrl, {
+    const response = await fetch(FONNTE_ENDPOINT, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${WA_API_KEY}`,
+        Authorization: FONNTE_API_TOKEN,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ to, message }),
+      body: JSON.stringify({ target: to, message }),
       signal: controller.signal,
     });
     if (!response.ok) {
-      console.error(`[WA_DISPATCH_ERROR] WhatsApp gateway returned HTTP ${response.status}.`);
+      console.error(`[WA_DISPATCH_ERROR] Fonnte returned HTTP ${response.status}.`);
+      return false;
+    }
+    if (response.status !== 200) {
+      console.error(`[WA_DISPATCH_ERROR] Fonnte returned unexpected HTTP ${response.status}.`);
       return false;
     }
     return true;
@@ -206,6 +201,11 @@ function validatePayload(payload: Record<string, unknown>): string[] {
   const whatsapp = normalizeWhatsApp(getStr(payload, "whatsapp"));
   if (!WA_REGEX.test(whatsapp)) {
     errors.push("Nomor WhatsApp tidak valid. Gunakan format 08xx atau 62xx.");
+  }
+
+  const recipientWhatsapp = normalizeWhatsApp(getStr(payload, "recipient_whatsapp"));
+  if (recipientWhatsapp && !WA_REGEX.test(recipientWhatsapp)) {
+    errors.push('Kolom "recipient_whatsapp" tidak valid. Gunakan format 08xx atau 62xx.');
   }
 
   const productId = getStr(payload, "product_id").trim();
@@ -328,6 +328,7 @@ Deno.serve(async (req: Request) => {
     .insert({
       customer_name: getStr(body, "customer_name").trim(),
       whatsapp,
+      recipient_whatsapp: normalizeWhatsApp(getStr(body, "recipient_whatsapp")),
       product_id: productId,
       product_name: String(product.nama_produk || "").trim(),
       custom_request: getStr(body, "custom_request").trim(),
