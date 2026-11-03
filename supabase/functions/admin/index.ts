@@ -76,6 +76,15 @@ function json(
   setCookies: string[] = [],
   extraHeaders: HeadersInit = {}
 ): Response {
+  if (status === 204 || status === 205 || status === 304) {
+    const headers = new Headers();
+    for (const cookie of setCookies) headers.append("Set-Cookie", cookie);
+    for (const [key, value] of Object.entries(extraHeaders)) {
+      if (value !== undefined && value !== null) headers.set(key, String(value));
+    }
+    return new Response(null, { status, headers });
+  }
+
   const headers = new Headers({ "Content-Type": "application/json" });
   for (const cookie of setCookies) headers.append("Set-Cookie", cookie);
   for (const [key, value] of Object.entries(extraHeaders)) {
@@ -368,6 +377,10 @@ async function handleProxy(req: Request, body: Record<string, unknown>): Promise
     resp = await fetch(url, { method, headers, body: fetchBody });
   } catch {
     return json({ message: "Gagal menghubungi database." }, 502, session.setCookies);
+  }
+
+  if (resp.status === 204) {
+    return json({ ok: true }, 200, session.setCookies);
   }
 
   const text = await resp.text().catch(() => "");

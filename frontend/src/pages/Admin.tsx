@@ -626,9 +626,10 @@ export default function Admin() {
 
     try {
       await deleteProduct(product.id);
+      setManagedProducts(products => products.filter(item => item.id !== product.id));
       if (editingId === product.id) resetForm();
       await loadProducts();
-      showToast("Produk berhasil dihapus permanen.", "success");
+      showToast("Produk berhasil dihapus secara permanen", "success");
     } catch (error) {
       showToast(error instanceof Error ? error.message : "Gagal menghapus produk");
     }
