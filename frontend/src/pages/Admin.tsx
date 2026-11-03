@@ -598,9 +598,15 @@ export default function Admin() {
   // URL Storage yang dihasilkan otomatis di-optimasi CDN saat ditampilkan.
   const handleImageUpload = async (file: File) => {
     if (uploadingImage) return;
+    const trimmedId = form.id.trim();
+    if (!trimmedId) {
+      showToast("Harap isi ID Produk terlebih dahulu sebelum mengunggah foto.", "alert");
+      return;
+    }
+
     setUploadingImage(true);
     try {
-      const url = await uploadProductImage(form.id, "produk", file);
+      const url = await uploadProductImage(trimmedId, "produk", file);
       setForm(f => ({ ...f, fotoProduk: url }));
       showToast("Foto produk terunggah (WebP, otomatis dioptimasi)");
     } catch (error) {

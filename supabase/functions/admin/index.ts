@@ -60,6 +60,16 @@ const STORAGE_OBJECT_PREFIX = `/storage/v1/object/${STORAGE_BUCKET}/`;
 // file asli 5 MB; edge memberi sedikit toleransi untuk hasil kompresi.
 const UPLOAD_MAX_BYTES = 6 * 1024 * 1024;
 
+function decodeBase64ToUint8Array(base64: string): Uint8Array {
+  const cleanBase64 = base64.replace(/\s/g, "");
+  const binary = atob(cleanBase64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes;
+}
+
 function isAllowedProxyPath(path: string): boolean {
   if (PROXY_PATHS.has(path)) return true;
   return path.startsWith(STORAGE_OBJECT_PREFIX);
@@ -354,9 +364,11 @@ async function handleProxy(req: Request, body: Record<string, unknown>): Promise
 
       let bytes: Uint8Array;
       try {
-        bytes = Uint8Array.fromBase64(typeof body.body === "string" ? body.body : "");
+        const rawBody = typeof body.body === "string" ? body.body : "";
+        if (!rawBody) throw new Error("Empty body");
+        bytes = decodeBase64ToUint8Array(rawBody);
       } catch {
-        return json({ message: "Data gambar tidak valid." }, 400, session.setCookies);
+        return json({ message: "Data gambar tidak valid atau format base64 salah." }, 400, session.setCookies);
       }
       if (bytes.byteLength > UPLOAD_MAX_BYTES) {
         return json({ message: "Ukuran gambar melebihi batas (maks. 5 MB)." }, 413, session.setCookies);
