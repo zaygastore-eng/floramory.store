@@ -1,14 +1,8 @@
-// Utilitas pemrosesan gambar: semua URL public Supabase Storage
-// diteruskan ke Image Transform CDN (WebP/AVIF via format=auto) agar
-// browser tidak menerima gambar asli berukuran besar. URL eksternal
-// non-storage tidak bisa diubah-ubah muatannya — disarankan memakai
-// Supabase Storage (lihat tombol unggah di panel admin).
+// Utilitas URL gambar produk.
 
 export type ProductImageSize = "thumb" | "large";
 
 const STORAGE_PUBLIC_PATTERN = /\/storage\/v1\/object\/public\//;
-const PRODUCT_IMAGES_PUBLIC_PATTERN = /\/storage\/v1\/object\/public\/product-images\//;
-
 export function isSupabaseStorageUrl(url: string): boolean {
   return STORAGE_PUBLIC_PATTERN.test(url);
 }
@@ -38,17 +32,7 @@ export function validateImageUrl(raw: string): string | null {
   return null;
 }
 
-// Branding lebar tetap di HTML attribute sebagai petunjuk layout.
-// CDN hanya mengirim versi yang dipotong/diubah sesuai konteks.
-export function productImageUrl(url: string, size: ProductImageSize = "thumb"): string {
-  if (!url || !PRODUCT_IMAGES_PUBLIC_PATTERN.test(url)) return url;
-  // URL yang sudah memuat parameter transform (atau sudah di-optimasi)
-  // dikembalikan apa adanya, hindari parameter ganda.
-  if (/([?&])width=/.test(url)) return url;
-  const opts =
-    size === "large"
-      ? { width: 1200, height: 1200, quality: 85 }
-      : { width: 600, height: 600, quality: 80 };
-  const sep = url.includes("?") ? "&" : "?";
-  return `${url}${sep}width=${opts.width}&height=${opts.height}&resize=cover&format=auto&quality=${opts.quality}`;
+export function productImageUrl(url: string, _size: ProductImageSize = "thumb"): string {
+  if (!url) return "";
+  return url.trim();
 }

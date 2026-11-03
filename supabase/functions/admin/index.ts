@@ -61,8 +61,25 @@ const STORAGE_OBJECT_PREFIX = `/storage/v1/object/${STORAGE_BUCKET}/`;
 const UPLOAD_MAX_BYTES = 6 * 1024 * 1024;
 
 function decodeBase64ToUint8Array(base64: string): Uint8Array {
-  const cleanBase64 = base64.replace(/\s/g, "");
-  const binary = atob(cleanBase64);
+  const withoutDataUrl = base64.trim().replace(/^data:[^,]*;base64,/i, "");
+  const cleanBase64 = withoutDataUrl
+    .replace(/\s/g, "")
+    .replace(/-/g, "+")
+    .replace(/_/g, "/");
+  if (!cleanBase64 || !/^[A-Za-z0-9+/]*={0,2}$/.test(cleanBase64)) {
+    throw new Error("Invalid base64 data");
+  }
+
+  const unpaddedBase64 = cleanBase64.replace(/=+$/, "");
+  const remainder = unpaddedBase64.length % 4;
+  if (remainder === 1) throw new Error("Invalid base64 length");
+  const padding = (4 - remainder) % 4;
+  const existingPadding = cleanBase64.length - unpaddedBase64.length;
+  if (existingPadding > 0 && (cleanBase64.length % 4 !== 0 || existingPadding !== padding)) {
+    throw new Error("Invalid base64 padding");
+  }
+
+  const binary = atob(unpaddedBase64 + "=".repeat(padding));
   const bytes = new Uint8Array(binary.length);
   for (let i = 0; i < binary.length; i++) {
     bytes[i] = binary.charCodeAt(i);
