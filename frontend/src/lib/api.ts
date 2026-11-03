@@ -304,10 +304,15 @@ async function adminRequest(
   path: string,
   opts: { query?: string; body?: unknown; prefer?: string } = {}
 ): Promise<any> {
+  const queryIndex = path.indexOf("?");
+  const cleanPath = (queryIndex >= 0 ? path.slice(0, queryIndex) : path).trim();
+  const pathQuery = queryIndex >= 0 ? path.slice(queryIndex + 1).trim() : "";
+  const optionQuery = (opts.query || "").replace(/^\?/, "").trim();
+  const query = [pathQuery, optionQuery].filter(Boolean).join("&");
   const { status, data } = await adminCall("proxy", {
     method,
-    path,
-    query: opts.query || "",
+    path: cleanPath,
+    query,
     body: opts.body !== undefined ? opts.body : null,
     prefer: opts.prefer || "",
   });
@@ -315,17 +320,29 @@ async function adminRequest(
   if (status === 401) {
     throw new Error("Sesi admin sudah kadaluarsa. Silakan login kembali.");
   }
-  if (status === 403) {
-    throw new Error(
-      typeof data.message === "string" ? data.message : "Akses admin ditolak."
-    );
-  }
   if (status >= 400) {
-    const msg = String(data.message || data.details || data.hint || "");
-    throw new Error(msg || "Gagal memproses permintaan admin.");
+    const fallback = status === 403 ? "Akses admin ditolak." : "Gagal memproses permintaan admin.";
+    throw new Error(extractErrorMessage(data, fallback));
   }
 
   return data;
+}
+
+function extractErrorMessage(data: unknown, fallback: string): string {
+  if (typeof data === "string" && data.trim()) return data.trim();
+  if (data && typeof data === "object" && !Array.isArray(data)) {
+    const details = data as Record<string, unknown>;
+    const parts = [
+      details.message,
+      details.error,
+      details.error_description,
+      details.details,
+      details.hint,
+      details.code ? `[Code: ${details.code}]` : null,
+    ].filter(Boolean);
+    if (parts.length > 0) return parts.map(String).join(" — ");
+  }
+  return fallback;
 }
 
 export async function notifyDpConfirmed(orderId: string): Promise<void> {
@@ -802,7 +819,8 @@ export async function updateProduct(id: string, product: Product): Promise<Produ
   };
 
   try {
-    const data = await adminRequest("PATCH", `/rest/v1/products?id=eq.${encodeURIComponent(id)}`, {
+    const data = await adminRequest("PATCH", "/rest/v1/products", {
+      query: `id=eq.${encodeURIComponent(id)}`,
       prefer: "return=representation",
       body,
     });
@@ -811,7 +829,8 @@ export async function updateProduct(id: string, product: Product): Promise<Produ
   } catch (error) {
     const errorText = error instanceof Error ? error.message : "";
     if (isTierConstraintError(errorText)) {
-      const retry = await adminRequest("PATCH", `/rest/v1/products?id=eq.${encodeURIComponent(id)}`, {
+      const retry = await adminRequest("PATCH", "/rest/v1/products", {
+        query: `id=eq.${encodeURIComponent(id)}`,
         prefer: "return=representation",
         body: {
           ...productPayload(product, product.status || "active", true),
@@ -831,11 +850,8 @@ export async function deleteProduct(id: string): Promise<void> {
     throw new Error("Hapus produk hanya tersedia saat Supabase aktif");
   }
 
-  await adminRequest("PATCH", `/rest/v1/products?id=eq.${encodeURIComponent(id)}`, {
-    body: {
-      status: "archived",
-      updated_at: new Date().toISOString(),
-    },
+  await adminRequest("DELETE", "/rest/v1/products", {
+    query: `id=eq.${encodeURIComponent(id)}`,
   });
   invalidateProductCaches();
 }
@@ -919,10 +935,9 @@ export interface PreOrderPage {
 }
 
 export interface PreOrderStatusCounts {
-  new: number;
   waiting_dp: number;
-  in_production: number;
   completed: number;
+  cancelled: number;
 }
 
 function parseContentRangeTotal(value: string | null): number | null {
@@ -988,16 +1003,15 @@ export async function fetchNewPreOrderCount(): Promise<number> {
 
 export async function fetchPreOrderStatusCounts(): Promise<PreOrderStatusCounts> {
   if (!isSupabaseConfigured()) {
-    return { new: 0, waiting_dp: 0, in_production: 0, completed: 0 };
+    return { waiting_dp: 0, completed: 0, cancelled: 0 };
   }
 
   const statusFilters: Record<keyof PreOrderStatusCounts, string> = {
-    new: "new",
-    waiting_dp: "waiting_dp",
-    in_production: "in_production,in_progress,dp_verified,paid,contacted",
-    completed: "completed",
+    waiting_dp: "new,waiting_dp",
+    completed: "in_production,in_progress,dp_verified,paid,contacted,completed",
+    cancelled: "cancelled",
   };
-  const statusKeys = ["new", "waiting_dp", "in_production", "completed"] as const;
+  const statusKeys = ["waiting_dp", "completed", "cancelled"] as const;
   const counts = await Promise.all(
     statusKeys.map(async statusKey => {
       const { status, data, headers } = await adminCall("proxy", {
@@ -1015,7 +1029,7 @@ export async function fetchPreOrderStatusCounts(): Promise<PreOrderStatusCounts>
       return [statusKey, total] as const;
     })
   );
-  const result: PreOrderStatusCounts = { new: 0, waiting_dp: 0, in_production: 0, completed: 0 };
+  const result: PreOrderStatusCounts = { waiting_dp: 0, completed: 0, cancelled: 0 };
   for (const [statusKey, count] of counts) result[statusKey] = count;
   return result;
 }
@@ -1025,7 +1039,8 @@ export async function updatePreOrderStatus(id: string, status: string): Promise<
     throw new Error("Supabase belum dikonfigurasi");
   }
 
-  await adminRequest("PATCH", `/rest/v1/preorder_orders?id=eq.${encodeURIComponent(id)}`, {
+  await adminRequest("PATCH", "/rest/v1/preorder_orders", {
+    query: `id=eq.${encodeURIComponent(id)}`,
     body: {
       status,
       updated_at: new Date().toISOString(),

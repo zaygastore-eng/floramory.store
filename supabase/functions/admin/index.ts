@@ -49,6 +49,7 @@ const PROXY_PATHS = new Set([
   "/rest/v1/app_settings",
   "/functions/v1/notify-dp-confirmed",
 ]);
+const ALLOWED_PROXY_METHODS = new Set(["GET", "POST", "PATCH", "DELETE", "PUT"]);
 
 // Supabase Storage: hanya bucket product-images yang boleh diakses via
 // proxy (unggah foto produk/QR). Baca publik tetap lewat CDN langsung.
@@ -311,23 +312,26 @@ async function handleProxy(req: Request, body: Record<string, unknown>): Promise
   }
 
   const method = String(body.method || "GET").toUpperCase();
-  const path = String(body.path || "");
-  if (!isAllowedProxyPath(path)) {
+  const rawPath = String(body.path || "");
+  const cleanPath = rawPath.split("?")[0].trim();
+  if (!isAllowedProxyPath(cleanPath)) {
     return json({ message: "Jalur tidak diizinkan." }, 403, session.setCookies);
   }
-  if (!/^(GET|POST|PATCH|DELETE|PUT)$/.test(method)) {
+  if (!ALLOWED_PROXY_METHODS.has(method)) {
     return json({ message: "Metode tidak diizinkan." }, 405, session.setCookies);
   }
 
-  const query = typeof body.query === "string" ? body.query : "";
-  const url = `${SUPABASE_URL}${path}${query ? `?${query}` : ""}`;
+  const pathQuery = rawPath.includes("?") ? rawPath.slice(rawPath.indexOf("?") + 1) : "";
+  const bodyQuery = typeof body.query === "string" ? body.query.replace(/^\?/, "").trim() : "";
+  const query = [pathQuery.trim(), bodyQuery].filter(Boolean).join("&");
+  const url = `${SUPABASE_URL}${cleanPath}${query ? `?${query}` : ""}`;
 
   const headers: Record<string, string> = {
     apikey: ANON_KEY,
     Authorization: `Bearer ${session.token}`,
   };
   const isStorageUpload =
-    path.startsWith(STORAGE_OBJECT_PREFIX) &&
+    cleanPath.startsWith(STORAGE_OBJECT_PREFIX) &&
     (method === "POST" || method === "PUT" || method === "PATCH");
 
   let fetchBody: BodyInit | undefined;

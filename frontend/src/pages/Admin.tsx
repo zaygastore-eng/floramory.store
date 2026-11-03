@@ -52,22 +52,21 @@ const TIER_OPTIONS = [
 ];
 
 const ORDER_STATUSES = [
-  { value: "new", label: "Pesanan Baru" },
   { value: "waiting_dp", label: "Menunggu DP" },
-  { value: "in_production", label: "Dalam Produksi" },
   { value: "completed", label: "Selesai / Terkirim" },
   { value: "cancelled", label: "Dibatalkan" },
 ] as const;
 
 function getOrderStatus(status?: string): typeof ORDER_STATUSES[number]["value"] {
   const normalized = (status || "").toLowerCase();
-  if (["contacted", "paid", "dp_verified", "in_progress"].includes(normalized)) return "in_production";
-  return ORDER_STATUSES.find(option => option.value === normalized)?.value || "new";
+  if (["new", "waiting_dp"].includes(normalized)) return "waiting_dp";
+  if (["contacted", "paid", "dp_verified", "in_progress", "in_production"].includes(normalized)) return "completed";
+  return ORDER_STATUSES.find(option => option.value === normalized)?.value || "waiting_dp";
 }
 
 function isDpReceivedStatus(status?: string): boolean {
   const normalized = (status || "").toLowerCase();
-  return ["paid", "dp_verified", "in_production"].includes(normalized);
+  return ["paid", "dp_verified", "in_production", "in_progress", "completed"].includes(normalized);
 }
 
 type AdminTab = "dashboard" | "produk" | "pesanan" | "keuangan" | "pengaturan";
@@ -277,12 +276,10 @@ export default function Admin() {
   const [loadingOrders, setLoadingOrders] = useState(false);
   const [preOrderOffset, setPreOrderOffset] = useState(0);
   const [hasMorePreOrders, setHasMorePreOrders] = useState(false);
-  const [newOrderCount, setNewOrderCount] = useState(0);
   const [operationalCounts, setOperationalCounts] = useState<PreOrderStatusCounts>({
-    new: 0,
     waiting_dp: 0,
-    in_production: 0,
     completed: 0,
+    cancelled: 0,
   });
   const [orderSearch, setOrderSearch] = useState("");
   const [orderFilterStatus, setOrderFilterStatus] = useState<"all" | typeof ORDER_STATUSES[number]["value"]>("all");
@@ -404,7 +401,6 @@ export default function Admin() {
       setPreOrderOffset(page.orders.length);
       setHasMorePreOrders(page.hasMore);
       setOperationalCounts(counts);
-      setNewOrderCount(counts.new);
     } catch (error) {
       showToast(error instanceof Error ? error.message : "Gagal memuat pre-order");
     } finally {
@@ -432,7 +428,6 @@ export default function Admin() {
       setPreOrderOffset(orders.length);
       setHasMorePreOrders(false);
       setOperationalCounts(counts);
-      setNewOrderCount(counts.new);
     } catch (error) {
       showToast(error instanceof Error ? error.message : "Gagal memuat data laporan keuangan");
     } finally {
@@ -625,15 +620,15 @@ export default function Admin() {
     showToast(`Mode edit: ${product.id}`);
   };
 
-  const archiveProduct = async (product: Product) => {
-    const ok = window.confirm(`Hapus produk ${product.id}? Produk akan disembunyikan dari halaman utama dan QR.`);
+  const handleDeleteProduct = async (product: Product) => {
+    const ok = window.confirm(`Hapus permanen produk ${product.id}? Produk dan data terkait akan dihapus dari sistem.`);
     if (!ok) return;
 
     try {
       await deleteProduct(product.id);
       if (editingId === product.id) resetForm();
       await loadProducts();
-      showToast("Produk berhasil dihapus dari tampilan publik");
+      showToast("Produk berhasil dihapus permanen.", "success");
     } catch (error) {
       showToast(error instanceof Error ? error.message : "Gagal menghapus produk");
     }
@@ -659,7 +654,7 @@ export default function Admin() {
       ukuran: linkedProduct?.ukuran || "",
       deskripsi: order.custom_request ? `Catatan kustom: ${order.custom_request}` : (linkedProduct?.deskripsi || ""),
       namaPembeli: order.recipient_name || order.customer_name || "",
-      recipientWhatsapp: order.recipient_whatsapp || "",
+      recipientWhatsapp: order.recipient_whatsapp || order.whatsapp || "",
       orderId: order.id || "",
       dari: order.sender_name || order.customer_name || "",
       pesan: order.personal_message || order.custom_request || "",
@@ -681,27 +676,30 @@ export default function Admin() {
 
   const setOrderStatus = async (order: PreOrder, status: string) => {
     if (!order.id) return;
+    const previousStatus = getOrderStatus(order.status);
+    const nextStatus = getOrderStatus(status);
     try {
       await updatePreOrderStatus(order.id, status);
-      const previousStatus = getOrderStatus(order.status);
       setPreOrders(orders => orders.map(item => item.id === order.id ? { ...item, status } : item));
-      const nextStatus = getOrderStatus(status);
       if (previousStatus !== nextStatus) {
         setOperationalCounts(counts => {
           const updated = { ...counts };
-          if (previousStatus !== "cancelled") {
-            updated[previousStatus] = Math.max(0, counts[previousStatus] - 1);
-          }
-          if (nextStatus !== "cancelled") updated[nextStatus] = counts[nextStatus] + 1;
+          updated[previousStatus] = Math.max(0, counts[previousStatus] - 1);
+          updated[nextStatus] = counts[nextStatus] + 1;
           return updated;
         });
-        if (previousStatus === "new" && nextStatus !== "new") setNewOrderCount(count => Math.max(0, count - 1));
-        if (previousStatus !== "new" && nextStatus === "new") setNewOrderCount(count => count + 1);
-        if (previousStatus !== "in_production" && nextStatus === "in_production") {
-          void notifyDpConfirmed(order.id).catch(error => {
+        if (previousStatus === "waiting_dp" && nextStatus === "completed") {
+          try {
+            await notifyDpConfirmed(order.id);
+            showToast("DP dikonfirmasi. Notifikasi WhatsApp berhasil dipicu.", "success");
+          } catch (error) {
             console.error("[DP_NOTIFICATION_ERROR]", error);
-            showToast(error instanceof Error ? error.message : "Gagal mengirim notifikasi konfirmasi DP", "alert");
-          });
+            showToast(
+              `Status diperbarui, tetapi notifikasi DP gagal: ${error instanceof Error ? error.message : "Gagal memicu notifikasi."}`,
+              "alert"
+            );
+          }
+          return;
         }
       }
       const statusLabel = ORDER_STATUSES.find(option => option.value === status)?.label || status;
@@ -911,7 +909,7 @@ export default function Admin() {
   }));
   const previewUrl = getPreviewUrl();
   const financialTransactions = useMemo(() => preOrders
-    .filter(order => ["completed", "in_production"].includes(getOrderStatus(order.status)))
+    .filter(order => ["completed"].includes(getOrderStatus(order.status)))
     .map(order => {
       const product = managedProducts.find(item => item.id === order.product_id)
         || managedProducts.find(item => item.nama_produk.toLowerCase() === order.product_name.toLowerCase());
@@ -1257,7 +1255,7 @@ export default function Admin() {
                     </button>
                   </>
                 )}
-                <button type="button" className="danger" onClick={() => archiveProduct(product)}>Hapus</button>
+                <button type="button" className="danger" onClick={() => handleDeleteProduct(product)}>Hapus</button>
               </div>
             </div>
           );
@@ -1271,7 +1269,7 @@ export default function Admin() {
       <div className="admin-panel-head">
         <div>
           <h2>Pesanan Pre-order</h2>
-          <p>{newOrderCount} pesanan baru dari form pelanggan.</p>
+          <p>{operationalCounts.waiting_dp} pesanan menunggu DP.</p>
         </div>
         <div className="admin-panel-head-actions">
           <button className="admin-outline-btn" onClick={exportPreOrders}>
@@ -1352,6 +1350,34 @@ export default function Admin() {
               )}
             </div>
             <div className="admin-list-actions">
+              <button
+                type="button"
+                aria-label={`Salin link Vault untuk pesanan ${order.order_number || order.id || customerName}`}
+                disabled={!order.id}
+                onClick={() => void (async () => {
+                  const vaultUrl = `https://floramory.store/vault-setup?order=${encodeURIComponent(order.id || "")}`;
+                  try {
+                    await navigator.clipboard.writeText(vaultUrl);
+                    showToast("Link Vault berhasil disalin.", "success");
+                  } catch (error) {
+                    console.error("[VAULT_LINK_COPY_ERROR]", error);
+                    showToast("Gagal menyalin link Vault. Periksa izin clipboard browser.", "alert");
+                  }
+                })()}
+              >
+                Salin Link Vault
+              </button>
+              <a
+                aria-label={`Kirim link Vault melalui WhatsApp kepada ${customerName}`}
+                aria-disabled={!order.id}
+                href={`https://wa.me/${normalizeWhatsApp(order.whatsapp)}?text=${encodeURIComponent(
+                  `Halo ${customerName}, berikut link rahasia untuk mengisi Memory Vault pesanan ${order.order_number || order.id}: https://floramory.store/vault-setup?order=${encodeURIComponent(order.id || "")}`
+                )}`}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Kirim Link WA
+              </a>
               <button type="button" className="admin-order-sync-btn" onClick={() => processOrderToProduct(order)}>
                 ✦ Proses jadi Produk &amp; Cetak QR
               </button>
@@ -1439,7 +1465,7 @@ export default function Admin() {
         {tierCounts.map(tier => (
           <div className="admin-stat-card" key={tier.value}><span>{tier.count}</span><p>{tier.label}</p></div>
         ))}
-        <div className="admin-stat-card"><span>{newOrderCount}</span><p>Pesanan baru</p></div>
+        <div className="admin-stat-card"><span>{operationalCounts.waiting_dp}</span><p>Menunggu DP</p></div>
       </section>
       <div className="admin-panel-card">
         <div className="admin-panel-head">

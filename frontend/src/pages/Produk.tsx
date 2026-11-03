@@ -234,9 +234,14 @@ export default function Produk() {
                   <form onSubmit={handleVerifyOtp} style={{ margin: "1.5rem auto 0", maxWidth: "22rem" }}>
                     <p style={{ margin: "0 0 0.9rem", color: "#69705d" }}>
                       {otpTargetType === "buyer"
-                        ? `Kode rahasia telah dikirim ke WhatsApp pengirim kado (${otpMaskedPhone}). Silakan minta kode kepada pengirim untuk membuka kado.`
-                        : `Kode rahasia telah dikirim ke WhatsApp Anda (${otpMaskedPhone}).`}
+                        ? "Kode dikirim ke nomor WhatsApp pemesan."
+                        : `Kode 6 digit telah dikirim ke WhatsApp ${otpMaskedPhone || "penerima kado"}.`}
                     </p>
+                    {otpTargetType === "buyer" && otpMaskedPhone && (
+                      <p style={{ margin: "0 0 0.9rem", color: "#69705d" }}>
+                        Kode 6 digit dikirim ke WhatsApp {otpMaskedPhone}.
+                      </p>
+                    )}
                     <div style={{ display: "flex", justifyContent: "center", gap: "0.5rem", marginBottom: "1rem" }}>
                       {Array.from({ length: 6 }, (_, index) => (
                         <input
@@ -275,6 +280,17 @@ export default function Produk() {
                         {otpMessage}
                       </p>
                     )}
+                    <a
+                      className="specimen-order-button"
+                      href={`https://wa.me/${waDigits}?text=${encodeURIComponent(
+                        `Halo Bantuan Floramory, saya tidak menerima kode OTP untuk membuka Vault produk ${product.id}. Mohon bantu periksa nomor WhatsApp tujuan.`
+                      )}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{ display: "inline-block", marginTop: "1rem", textDecoration: "none" }}
+                    >
+                      Tidak menerima kode? Hubungi Bantuan Floramory
+                    </a>
                   </form>
                 )}
               </div>

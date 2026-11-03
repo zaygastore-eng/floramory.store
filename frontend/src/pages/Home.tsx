@@ -151,7 +151,9 @@ export default function Home() {
   const { toastMsg, toastVisible, showToast } = useToast(3500);
   const [orderSubmitting, setOrderSubmitting] = useState(false);
   const [lastOrderWaUrl, setLastOrderWaUrl] = useState<string | null>(null);
-  const [orderStep, setOrderStep] = useState<1 | 2>(1);
+  const [orderStep, setOrderStep] = useState<1 | 2 | 3>(1);
+  const [submittedOrderId, setSubmittedOrderId] = useState("");
+  const [submittedOrderNumber, setSubmittedOrderNumber] = useState("");
   const [prefilledProductName, setPrefilledProductName] = useState("");
   const [whatsappNumber, setWhatsappNumber] = useState("6285235242425");
   const [vaultSimTab, setVaultSimTab] = useState<"foto" | "audio" | "surat" | "botani">("foto");
@@ -292,7 +294,7 @@ export default function Home() {
     setLastOrderWaUrl(null);
     setOrderSubmitting(true);
     try {
-      await createPreOrder(
+      const result = await createPreOrder(
         {
           customer_name: orderForm.nama,
           whatsapp: wa,
@@ -310,21 +312,16 @@ export default function Home() {
         }
       );
       formStartRef.current = Date.now();
-      setOrderForm({ nama: "", wa: "", recipientWhatsapp: "", pesan: "", produk: "", namaPenerima: "", dari: "", pesanPersonal: "", website: "" });
-      setPrefilledProductName("");
-      setOrderStep(1);
-      const waNumber = normalizeWhatsApp(await fetchWhatsAppNumber());
+      setSubmittedOrderId(result.orderId || result.id || "");
+      setSubmittedOrderNumber(result.orderNumber || result.order_number || "");
+      const waDigits = normalizeWhatsApp(whatsappNumber) || "6285235242425";
       const waMessage = encodeURIComponent(
-        `Halo Floramory, saya ingin konfirmasi pre-order atas nama ${orderForm.nama}${selected ? ` untuk produk ${selected.nama_produk}` : ""}.`
+        `Halo Floramory, saya ingin konfirmasi pembayaran DP 50% untuk pesanan #${result.orderNumber || result.orderId || result.id} atas nama ${orderForm.nama}${selected ? ` untuk produk ${selected.nama_produk}` : ""}.`
       );
-      const waUrl = `https://wa.me/${waNumber}?text=${waMessage}`;
-      const opened = window.open(waUrl, "_blank", "noopener,noreferrer");
+      const waUrl = `https://wa.me/${waDigits}?text=${waMessage}`;
       setLastOrderWaUrl(waUrl);
-      if (!opened || opened.closed || typeof opened.closed === "undefined") {
-        showToast("Pre-order tersimpan! Klik tombol di bawah untuk konfirmasi WhatsApp.");
-      } else {
-        showToast("Pre-order terkirim! Mengarahkan ke WhatsApp...");
-      }
+      setOrderStep(3);
+      showToast("Pre-order berhasil tersimpan. Lanjutkan konfirmasi DP melalui WhatsApp.");
     } catch (error) {
       showToast(error instanceof Error ? error.message : "Gagal mengirim pre-order. Silakan coba lagi.");
     } finally {
@@ -662,6 +659,43 @@ export default function Home() {
           </div>
 
           <form className="order-form-card" onSubmit={submitOrder}>
+            {orderStep === 3 ? (
+              <div className="order-success-screen" role="status">
+                <span aria-hidden="true" style={{ fontSize: "2.5rem" }}>🌸</span>
+                <h3 style={{ margin: "0.75rem 0", color: "#4b503b", fontFamily: "var(--font-heading, Georgia, serif)" }}>
+                  Terima kasih sudah memesan di Floramory 🌸
+                </h3>
+                <div className="order-review-note">
+                  Pesanan <strong>#{submittedOrderNumber || submittedOrderId}</strong> atas nama <strong>{orderForm.nama}</strong>
+                </div>
+                <ol style={{ display: "grid", gap: "1rem", paddingLeft: "1.5rem", color: "#69705d", lineHeight: 1.7 }}>
+                  <li><strong>Bayar DP 50% via WhatsApp.</strong> Tim Floramory akan membantu konfirmasi pembayaran dan detail pesanan.</li>
+                  <li>Dapatkan Link Rahasia untuk mengisi video, foto polaroid, dan audio kenangan.</li>
+                  <li>Kado botani abadi dan QR Memory Vault mulai dirangkai.</li>
+                </ol>
+                {lastOrderWaUrl && (
+                  <a href={lastOrderWaUrl} target="_blank" rel="noopener noreferrer" className="btn-wa-confirm">
+                    Buka WhatsApp Floramory
+                  </a>
+                )}
+                <button
+                  type="button"
+                  className="order-back-button"
+                  onClick={() => {
+                    setOrderForm({ nama: "", wa: "", recipientWhatsapp: "", pesan: "", produk: "", namaPenerima: "", dari: "", pesanPersonal: "", website: "" });
+                    setPrefilledProductName("");
+                    setSubmittedOrderId("");
+                    setSubmittedOrderNumber("");
+                    setLastOrderWaUrl(null);
+                    setOrderStep(1);
+                    formStartRef.current = Date.now();
+                  }}
+                >
+                  Buat Pesanan Baru
+                </button>
+              </div>
+            ) : (
+              <>
             <div className="order-stepper" aria-label={`Langkah ${orderStep} dari 2`}>
               {[1, 2].map(step => (
                 <div className={`order-stepper-item${orderStep === step ? " active" : ""}${orderStep > step ? " complete" : ""}`} key={step}>
@@ -787,12 +821,9 @@ export default function Home() {
                 {orderSubmitting ? "Mengirim..." : orderStep === 1 ? "Lanjut ke Personalisasi →" : "Kirim Pre-Order →"}
               </button>
             </div>
-            {lastOrderWaUrl && (
-              <a href={lastOrderWaUrl} target="_blank" rel="noopener noreferrer" className="btn-wa-confirm">
-                💬 Buka WhatsApp untuk Konfirmasi Pesanan →
-              </a>
-            )}
             <p className="form-note">Data Anda aman. Tim kami akan menghubungi Anda via WhatsApp dalam 1×24 jam.</p>
+              </>
+            )}
           </form>
         </div>
       </section>
