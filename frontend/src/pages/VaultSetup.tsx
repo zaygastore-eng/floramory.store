@@ -1,6 +1,7 @@
 import { useEffect, useState, type DragEvent, type ChangeEvent, type FormEvent } from "react";
 import BrandLogo from "@/components/BrandLogo";
 import { fetchVaultSetup, saveVaultSetup, uploadVaultMedia, type PreOrder } from "@/lib/api";
+import { classifyMedia, parseSpotifyEmbedUrl } from "@/lib/media";
 import { pageUrl } from "@/lib/site";
 
 const cardStyle = {
@@ -37,6 +38,8 @@ export default function VaultSetup() {
   const [audioUrl, setAudioUrl] = useState("");
   const [audioPreview, setAudioPreview] = useState("");
   const [audioDuration, setAudioDuration] = useState(0);
+  const [audioMode, setAudioMode] = useState<"voice" | "spotify">("voice");
+  const [spotifyUrl, setSpotifyUrl] = useState("");
   const [videoUrl, setVideoUrl] = useState("");
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [uploadingAudio, setUploadingAudio] = useState(false);
@@ -65,9 +68,18 @@ export default function VaultSetup() {
         setPersonalMessage(result.order.personal_message || "");
         setPhotoUrl(result.order.foto_vault || "");
         setPhotoPreview(result.order.foto_vault || "");
-        setAudioUrl(result.order.audio_url || "");
-        setAudioPreview(result.order.audio_url || "");
-        setAudioDuration(result.order.audio_durasi || 0);
+        const existingAudioUrl = result.order.audio_url || "";
+        if (classifyMedia(existingAudioUrl).type === "spotify") {
+          setAudioMode("spotify");
+          setSpotifyUrl(existingAudioUrl);
+          setAudioUrl("");
+          setAudioPreview("");
+          setAudioDuration(0);
+        } else {
+          setAudioUrl(existingAudioUrl);
+          setAudioPreview(existingAudioUrl);
+          setAudioDuration(result.order.audio_durasi || 0);
+        }
         setVideoUrl(result.order.video_url || "");
       })
       .catch(error => {
@@ -93,6 +105,7 @@ export default function VaultSetup() {
 
   const uploadFile = async (file: File, type: "photo" | "audio") => {
     const isPhoto = type === "photo";
+    if (!isPhoto) setAudioMode("voice");
     const setUploading = isPhoto ? setUploadingPhoto : setUploadingAudio;
     const setPreview = isPhoto ? setPhotoPreview : setAudioPreview;
     const setUrl = isPhoto ? setPhotoUrl : setAudioUrl;
@@ -154,14 +167,18 @@ export default function VaultSetup() {
   const handleSave = async (event: FormEvent) => {
     event.preventDefault();
     if (!orderId || saving) return;
+    if (audioMode === "spotify" && spotifyUrl.trim() && !parseSpotifyEmbedUrl(spotifyUrl)) {
+      setUploadError("Periksa kembali link Spotify. Gunakan tautan track, album, atau playlist yang valid.");
+      return;
+    }
     setSaving(true);
     setUploadError("");
     try {
       const result = await saveVaultSetup(orderId, {
         personal_message: personalMessage,
         foto_vault: photoUrl,
-        audio_url: audioUrl,
-        audio_durasi: audioDuration,
+        audio_url: audioMode === "spotify" ? spotifyUrl.trim() : audioUrl,
+        audio_durasi: audioMode === "spotify" ? 0 : audioDuration,
         video_url: videoUrl.trim(),
       });
       if (!result.ok) throw new Error(result.message);
@@ -174,6 +191,7 @@ export default function VaultSetup() {
   };
 
   const orderLabel = order?.order_number || order?.id || orderId;
+  const spotifyEmbedPreviewUrl = parseSpotifyEmbedUrl(spotifyUrl);
 
   return (
     <main style={{
@@ -214,7 +232,7 @@ export default function VaultSetup() {
               Kenangan tersimpan
             </h1>
             <p style={{ margin: "0 auto", maxWidth: "38rem", color: "#697099", lineHeight: 1.8 }}>
-              Kenangan Anda telah tersimpan dengan aman di Memory Vault Floramory. Tim atelier kami akan merangkainya secara fisik ke dalam kado botani.
+              Kenangan Anda berhasil dikunci dengan aman! Tim Floramory akan menyematkan PIN rahasia pada kartu fisik di dalam boks kado bunga yang akan diterima oleh orang tersayang Anda.
             </p>
           </section>
         ) : (
@@ -277,22 +295,71 @@ export default function VaultSetup() {
               </section>
 
               <section style={cardStyle}>
-                <span style={{ color: "#9b8a60", fontSize: "0.78rem", letterSpacing: "0.1em", textTransform: "uppercase" }}>03 · Pesan suara</span>
-                <h2 style={{ margin: "0.4rem 0 1rem", color: "#4f557d", fontFamily: "'Cormorant Garamond', Georgia, serif", fontSize: "1.8rem" }}>Voice note</h2>
-                <label htmlFor="vault-audio" style={labelStyle}>{uploadingAudio ? "Mengunggah audio..." : "Pilih rekaman suara"}</label>
-                <input id="vault-audio" type="file" accept="audio/mpeg,audio/mp4,audio/x-m4a,audio/ogg,audio/wav,audio/webm" onChange={handleAudioChange} disabled={uploadingAudio} />
-                <span style={hintStyle}>MP3, M4A, WAV, OGG, atau WebM · Maks. 10 MB</span>
-                {audioPreview && (
-                  <audio
-                    controls
-                    preload="metadata"
-                    src={audioPreview}
-                    onLoadedMetadata={event => {
-                      const duration = event.currentTarget.duration;
-                      if (Number.isFinite(duration)) setAudioDuration(Math.round(duration));
-                    }}
-                    style={{ display: "block", width: "100%", marginTop: "1rem" }}
-                  />
+                <span style={{ color: "#9b8a60", fontSize: "0.78rem", letterSpacing: "0.1em", textTransform: "uppercase" }}>03 · Audio / Lagu</span>
+                <h2 style={{ margin: "0.4rem 0 1rem", color: "#4f557d", fontFamily: "'Cormorant Garamond', Georgia, serif", fontSize: "1.8rem" }}>Suara atau lagu kenangan</h2>
+                <div role="group" aria-label="Pilih jenis audio" style={{ display: "flex", flexWrap: "wrap", gap: "0.55rem", marginBottom: "1rem" }}>
+                  <button
+                    type="button"
+                    aria-pressed={audioMode === "voice"}
+                    onClick={() => setAudioMode("voice")}
+                    style={{ border: "1px solid #c9cddd", borderRadius: "999px", padding: "0.65rem 0.9rem", background: audioMode === "voice" ? "#4f557d" : "#fff", color: audioMode === "voice" ? "#fff" : "#4f557d", font: "inherit", fontWeight: 600, cursor: "pointer" }}
+                  >
+                    Unggah Rekaman Suara (VN)
+                  </button>
+                  <button
+                    type="button"
+                    aria-pressed={audioMode === "spotify"}
+                    onClick={() => { setAudioMode("spotify"); setAudioDuration(0); }}
+                    style={{ border: "1px solid #c9cddd", borderRadius: "999px", padding: "0.65rem 0.9rem", background: audioMode === "spotify" ? "#4f557d" : "#fff", color: audioMode === "spotify" ? "#fff" : "#4f557d", font: "inherit", fontWeight: 600, cursor: "pointer" }}
+                  >
+                    Tempel Link Lagu Spotify
+                  </button>
+                </div>
+                {audioMode === "spotify" ? (
+                  <>
+                    <label htmlFor="vault-spotify" style={labelStyle}>Link Spotify</label>
+                    <input
+                      id="vault-spotify"
+                      type="url"
+                      value={spotifyUrl}
+                      onChange={event => { setSpotifyUrl(event.target.value); setAudioDuration(0); }}
+                      placeholder="https://open.spotify.com/track/..."
+                      style={{ width: "100%", boxSizing: "border-box", padding: "0.9rem 1rem", borderRadius: "12px", border: "1px solid #dfe1ec", font: "inherit", color: "#292d49" }}
+                    />
+                    <span style={hintStyle}>Tempel link lagu, album, atau playlist Spotify.</span>
+                    {spotifyEmbedPreviewUrl && (
+                      <iframe
+                        title="Pratinjau Lagu Kenangan Spotify"
+                        src={spotifyEmbedPreviewUrl}
+                        width="100%"
+                        height="152"
+                        allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+                        loading="lazy"
+                        style={{ display: "block", marginTop: "1rem", borderRadius: "14px", border: "none" }}
+                      />
+                    )}
+                    {spotifyUrl.trim() && !spotifyEmbedPreviewUrl && (
+                      <span role="status" style={{ ...hintStyle, color: "#9d3e32" }}>Link Spotify belum valid. Tempel tautan track, album, atau playlist Spotify.</span>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <label htmlFor="vault-audio" style={labelStyle}>{uploadingAudio ? "Mengunggah audio..." : "Pilih rekaman suara"}</label>
+                    <input id="vault-audio" type="file" accept="audio/mpeg,audio/mp4,audio/x-m4a,audio/ogg,audio/wav,audio/webm" onChange={handleAudioChange} disabled={uploadingAudio} />
+                    <span style={hintStyle}>MP3, M4A, WAV, OGG, atau WebM · Maks. 10 MB</span>
+                    {audioPreview && (
+                      <audio
+                        controls
+                        preload="metadata"
+                        src={audioPreview}
+                        onLoadedMetadata={event => {
+                          const duration = event.currentTarget.duration;
+                          if (Number.isFinite(duration)) setAudioDuration(Math.round(duration));
+                        }}
+                        style={{ display: "block", width: "100%", marginTop: "1rem" }}
+                      />
+                    )}
+                  </>
                 )}
               </section>
 

@@ -4,6 +4,7 @@ import { QRCodeCanvas as QRCode } from "qrcode.react";
 import {
   Box,
   ClipboardList,
+  Copy,
   DollarSign,
   Download,
   LayoutDashboard,
@@ -90,6 +91,7 @@ interface FormState {
   audioDurasi: number;
   videoUrl: string;
   fotoVault: string;
+  vaultPin: string;
   isCatalog: boolean;
 }
 
@@ -112,6 +114,7 @@ const EMPTY: FormState = {
   audioDurasi: 0,
   videoUrl: "",
   fotoVault: "",
+  vaultPin: "",
   isCatalog: false,
 };
 
@@ -135,6 +138,7 @@ function productToForm(product: Product): FormState {
     audioDurasi: product.audio_durasi || 0,
     videoUrl: product.video_url || "",
     fotoVault: product.foto_vault || "",
+    vaultPin: product.vault_pin || "",
     isCatalog: Boolean(product.is_catalog),
   };
 }
@@ -535,7 +539,7 @@ export default function Admin() {
       bahan: form.bahan,
       ukuran: form.ukuran,
       nama_pembeli: form.isCatalog ? "" : form.namaPembeli,
-      recipient_whatsapp: form.isCatalog ? "" : form.recipientWhatsapp,
+      recipient_whatsapp: form.isCatalog ? "" : form.recipientWhatsapp.trim(),
       order_id: form.isCatalog ? null : (form.orderId || null),
       dari: form.isCatalog ? "" : form.dari,
       pesan_personal: form.isCatalog ? "" : form.pesan,
@@ -545,6 +549,7 @@ export default function Admin() {
       audio_durasi: form.isCatalog ? 0 : (form.audioDurasi || existing?.audio_durasi || 0),
       video_url: form.isCatalog ? "" : form.videoUrl.trim(),
       foto_vault: form.isCatalog ? "" : form.fotoVault.trim(),
+      vault_pin: form.isCatalog ? "" : form.vaultPin.trim(),
       is_catalog: form.isCatalog,
     };
   };
@@ -631,7 +636,7 @@ export default function Admin() {
     if (!ok) return;
 
     try {
-      await deleteProduct(product.id);
+      await deleteProduct(product.id, [product.foto_produk, product.foto_qr, product.foto_vault]);
       setManagedProducts(products => products.filter(item => item.id !== product.id));
       if (editingId === product.id) resetForm();
       await loadProducts();
@@ -670,6 +675,7 @@ export default function Admin() {
       audioDurasi: order.audio_durasi || 0,
       videoUrl: order.video_url || "",
       fotoVault: order.foto_vault || "",
+      vaultPin: order.vault_pin || "",
     });
 
     setProductFormOpen(true);
@@ -696,16 +702,10 @@ export default function Admin() {
           return updated;
         });
         if (previousStatus === "waiting_dp" && nextStatus === "completed") {
-          try {
-            await notifyDpConfirmed(order.id);
-            showToast("DP dikonfirmasi. Notifikasi WhatsApp berhasil dipicu.", "success");
-          } catch (error) {
-            console.error("[DP_NOTIFICATION_ERROR]", error);
-            showToast(
-              `Status diperbarui, tetapi notifikasi DP gagal: ${error instanceof Error ? error.message : "Gagal memicu notifikasi."}`,
-              "alert"
-            );
-          }
+          void notifyDpConfirmed(order.id).catch(error => {
+            console.warn("[DP_NOTIFICATION_AUDIT_ERROR]", error);
+          });
+          showToast("DP dikonfirmasi. Gunakan tombol 'Kirim Link WA' untuk mengirim tautan ke pemesan.", "success");
           return;
         }
       }
@@ -1062,12 +1062,66 @@ export default function Admin() {
               <p>Isi pesan personal dan media kenangan yang tampil saat QR fisik dipindai.</p>
             </div>
           </div>
+          <div className="admin-form-group">
+            <label className="admin-form-label" htmlFor="vault-pin">PIN Kartu Fisik (6 Digit)</label>
+            <div className="admin-upload-row">
+              <input
+                id="vault-pin"
+                className="admin-form-input"
+                type="text"
+                inputMode="numeric"
+                maxLength={6}
+                placeholder="Contoh: 749201"
+                value={form.vaultPin}
+                onChange={event => setForm(f => ({
+                  ...f,
+                  vaultPin: event.target.value.replace(/\D/g, "").slice(0, 6),
+                }))}
+                style={{ fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", letterSpacing: "0.12em" }}
+              />
+              <button
+                type="button"
+                className="admin-outline-btn"
+                onClick={() => setForm(f => ({
+                  ...f,
+                  vaultPin: String(Math.floor(100000 + Math.random() * 900000)),
+                }))}
+              >
+                Acak PIN
+              </button>
+            </div>
+            <p className="form-hint">
+              PIN rahasia di balik stiker gosok kartu ucapan. Pembeli/penerima memasukkan PIN ini untuk membuka Memory Vault.
+            </p>
+          </div>
           <div className="admin-form-row">
             <div className="admin-form-group">
               <label className="admin-form-label">Nama Penerima</label>
               <input className="admin-form-input" type="text" placeholder="Nama di kartu QR"
                 value={form.namaPembeli} onChange={e => setForm(f => ({ ...f, namaPembeli: e.target.value }))} />
             </div>
+            <div className="admin-form-group">
+              <label className="admin-form-label" htmlFor="recipient-whatsapp">
+                WhatsApp Penerima (Opsional)
+              </label>
+              <input
+                id="recipient-whatsapp"
+                className="admin-form-input"
+                type="tel"
+                inputMode="tel"
+                placeholder="Contoh: 08123456789 atau 628..."
+                value={form.recipientWhatsapp}
+                onChange={e => setForm(f => ({
+                  ...f,
+                  recipientWhatsapp: e.target.value.replace(/[^\d+ -]/g, ""),
+                }))}
+              />
+              <p className="form-hint">
+                Nomor kontak penerima untuk keperluan konfirmasi kurir atau bantuan fisik kado.
+              </p>
+            </div>
+          </div>
+          <div className="admin-form-row">
             <div className="admin-form-group">
               <label className="admin-form-label">Dari / Pengirim</label>
               <input className="admin-form-input" type="text" placeholder="Contoh: Keluarga Putri"
@@ -1236,6 +1290,7 @@ export default function Admin() {
         ) : filteredProducts.map(product => {
           const base = (localStorage.getItem(BASE_URL_KEY) || baseUrl || PRODUCTION_SITE_URL).trim().replace(/\/+$/, "");
           const productUrl = `${base}/produk?id=${encodeURIComponent(product.id)}`;
+          const recipientWhatsapp = normalizeWhatsApp(product.recipient_whatsapp || "");
           return (
             <div className={`admin-list-item admin-product-row${editingId === product.id ? " active" : ""}`} key={product.id}>
               <div className="admin-list-main">
@@ -1244,6 +1299,19 @@ export default function Admin() {
                   #{product.id}
                   {!product.is_catalog && product.nama_pembeli && ` · Penerima: ${product.nama_pembeli}`}
                 </span>
+                {!product.is_catalog && recipientWhatsapp && (
+                  <span>
+                    · 📱 WA:{" "}
+                    <a
+                      href={`https://wa.me/${recipientWhatsapp}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      aria-label={`Hubungi penerima ${product.nama_pembeli || product.id} melalui WhatsApp`}
+                    >
+                      {product.recipient_whatsapp}
+                    </a>
+                  </span>
+                )}
               </div>
               <span className={`admin-tier-badge tier-${product.tier.toLowerCase()}`}>
                 {TIER_OPTIONS.find(option => option.value === product.tier.toLowerCase())?.label || product.tier}
@@ -1335,6 +1403,34 @@ export default function Admin() {
                 <strong>{order.customer_name || "Tanpa nama"}</strong>
                 <span className="admin-order-meta">WhatsApp: {order.whatsapp || "Tidak tersedia"} / {order.product_name || order.product_id || "Produk belum dipilih"}</span>
                 <span>{order.created_at ? new Date(order.created_at).toLocaleDateString("id-ID") : ""}</span>
+                <div className="admin-order-pin-row">
+                  <span className={`admin-order-pin-status ${order.vault_pin ? "ready" : "pending"}`}>
+                    {order.vault_pin ? "Siap Cetak / Pasang Stiker Gosok" : "Menunggu Pengisian Kenangan"}
+                  </span>
+                  {order.vault_pin && (
+                    <span className="admin-order-pin">
+                      PIN Kartu: <strong>{order.vault_pin}</strong>
+                      <button
+                        type="button"
+                        className="admin-order-pin-copy"
+                        aria-label={`Salin PIN kartu pesanan ${order.order_number || order.id || customerName}`}
+                        title="Salin PIN"
+                        onClick={() => void (async () => {
+                          try {
+                            await navigator.clipboard.writeText(order.vault_pin || "");
+                            showToast("PIN kartu berhasil disalin.", "success");
+                          } catch (error) {
+                            console.error("[VAULT_PIN_COPY_ERROR]", error);
+                            showToast("Gagal menyalin PIN. Periksa izin clipboard browser.", "alert");
+                          }
+                        })()}
+                      >
+                        <Copy size={14} aria-hidden="true" />
+                        <span>Salin PIN</span>
+                      </button>
+                    </span>
+                  )}
+                </div>
               </div>
               <select
                 className={`admin-order-status-select status-${currentStatus}`}
@@ -1378,7 +1474,7 @@ export default function Admin() {
                 aria-label={`Kirim link Vault melalui WhatsApp kepada ${customerName}`}
                 aria-disabled={!order.id}
                 href={`https://wa.me/${normalizeWhatsApp(order.whatsapp)}?text=${encodeURIComponent(
-                  `Halo ${customerName}, berikut link rahasia untuk mengisi Memory Vault pesanan ${order.order_number || order.id}: https://floramory.store/vault-setup?order=${encodeURIComponent(order.id || "")}`
+                  `Halo ${customerName}, DP untuk pesanan ${order.order_number || order.id} sudah dikonfirmasi. Berikut link rahasia Memory Vault Floramory: https://floramory.store/vault-setup?order=${encodeURIComponent(order.id || "")}`
                 )}`}
                 target="_blank"
                 rel="noopener noreferrer"

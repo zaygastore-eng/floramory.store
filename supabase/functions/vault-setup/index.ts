@@ -36,10 +36,16 @@ function cleanText(value: unknown, maxLength: number): string {
   return String(value || "").trim().slice(0, maxLength);
 }
 
+function generateSecurePin(): string {
+  const buffer = new Uint32Array(1);
+  crypto.getRandomValues(buffer);
+  return String(100_000 + (buffer[0] % 900_000));
+}
+
 async function loadOrder(admin: ReturnType<typeof createClient>, orderId: string) {
   const { data: order, error } = await admin
     .from("preorder_orders")
-    .select("id,order_number,customer_name,recipient_name,sender_name,product_name,personal_message,foto_vault,audio_url,audio_durasi,video_url,status,vault_submitted_at")
+    .select("id,order_number,customer_name,recipient_name,sender_name,product_name,personal_message,foto_vault,audio_url,audio_durasi,video_url,status,vault_submitted_at,vault_pin")
     .eq("id", orderId)
     .maybeSingle();
   if (error) {
@@ -58,7 +64,9 @@ async function handleGet(admin: ReturnType<typeof createClient>, orderId: string
   if (!result.order) {
     return json({ ok: false, message: "Pesanan tidak ditemukan atau sudah dibatalkan." }, 404);
   }
-  return json({ ok: true, order: result.order });
+  const order = { ...result.order };
+  Reflect.deleteProperty(order, "vault_pin");
+  return json({ ok: true, order });
 }
 
 async function handleUpload(
@@ -125,6 +133,9 @@ async function handleSave(
     return json({ ok: false, message: "Pesanan tidak ditemukan atau sudah dibatalkan." }, 404);
   }
 
+  const existingPin = typeof result.order.vault_pin === "string" ? result.order.vault_pin.trim() : "";
+  const pin = /^\d{6}$/.test(existingPin) ? existingPin : generateSecurePin();
+
   const audioDuration = Number(body.audio_durasi);
   const update = {
     personal_message: cleanText(body.personal_message, 2000),
@@ -133,6 +144,7 @@ async function handleSave(
     audio_durasi: Number.isFinite(audioDuration) ? Math.max(0, Math.min(86_400, Math.round(audioDuration))) : 0,
     video_url: cleanText(body.video_url, 2048),
     vault_submitted_at: new Date().toISOString(),
+    vault_pin: pin,
   };
   const { error: updateError } = await admin
     .from("preorder_orders")
@@ -151,6 +163,7 @@ async function handleSave(
       audio_durasi: update.audio_durasi,
       video_url: update.video_url,
       pesan_personal: update.personal_message,
+      vault_pin: pin,
     })
     .eq("order_id", orderId);
   if (productError) {
@@ -158,12 +171,16 @@ async function handleSave(
     return json({ ok: false, message: "Kenangan tersimpan, tetapi sinkronisasi produk gagal. Hubungi atelier Floramory." }, 500);
   }
 
-  return json({ ok: true, message: "Kenangan berhasil disimpan ke Memory Vault!" });
+  return json({
+    ok: true,
+    message: "Kenangan berhasil disimpan ke Memory Vault!",
+    pin,
+  });
 }
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
-    return new Response("ok", { status: 204, headers: CORS_HEADERS });
+    return new Response(null, { status: 204, headers: CORS_HEADERS });
   }
   if (req.method !== "POST") return json({ ok: false, message: "Method tidak diizinkan." }, 405);
   if (!SUPABASE_URL || !SERVICE_ROLE_KEY) {

@@ -1545,6 +1545,48 @@
 .admin-order-status-select.status-completed { background: #dcfce7; color: #16a34a; }
 .admin-order-status-select.status-cancelled { background: #f3f4f6; color: #4b5563; }
 .admin-shell .admin-list-actions { flex-wrap: wrap; }
+.admin-order-pin-row {
+  display: flex;
+  flex-basis: 100%;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.admin-order-pin-status {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  border-radius: 999px;
+  padding: 0.2rem 0.55rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+.admin-order-pin-status.ready { background: #dcfce7; color: #15803d; }
+.admin-order-pin-status.pending { background: #fef3c7; color: #92400e; }
+.admin-order-pin {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: #4b5563;
+  font-size: 0.78rem;
+}
+.admin-order-pin strong {
+  margin: 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.08em;
+}
+.admin-shell .admin-order-primary .admin-order-pin-copy {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.2rem 0.4rem;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  background: #fff;
+  color: #4b5563;
+  cursor: pointer;
+  font-size: 0.68rem;
+}
 
 @media (max-width: 768px) {
   .admin-shell .admin-list-item.admin-order-row { grid-template-columns: minmax(0, 1fr); gap: 0.55rem; }

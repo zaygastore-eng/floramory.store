@@ -3,10 +3,6 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "";
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") || "";
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
-// TODO: Configure FONNTE_API_TOKEN in Supabase secrets before enabling WhatsApp dispatch.
-const FONNTE_API_TOKEN = Deno.env.get("FONNTE_API_TOKEN") || "";
-const FONNTE_ENDPOINT = "https://api.fonnte.com/send";
-const DISPATCH_TIMEOUT_MS = 9_000;
 
 function json(data: unknown, status = 200): Response {
   return new Response(JSON.stringify(data), {
@@ -28,35 +24,6 @@ async function isAdminToken(token: string): Promise<boolean> {
     return !error && data === true;
   } catch {
     return false;
-  }
-}
-
-async function dispatchWhatsApp(to: string, message: string): Promise<boolean> {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), DISPATCH_TIMEOUT_MS);
-  try {
-    const response = await fetch(FONNTE_ENDPOINT, {
-      method: "POST",
-      headers: {
-        Authorization: FONNTE_API_TOKEN,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ target: to, message }),
-      signal: controller.signal,
-    });
-    if (response.status !== 200) {
-      console.error(`[WA_DISPATCH_ERROR] Fonnte returned HTTP ${response.status}.`);
-      return false;
-    }
-    return true;
-  } catch (error) {
-    const reason = error instanceof DOMException && error.name === "AbortError"
-      ? `request timed out after ${DISPATCH_TIMEOUT_MS}ms`
-      : "network request failed";
-    console.error(`[WA_DISPATCH_ERROR] ${reason}.`);
-    return false;
-  } finally {
-    clearTimeout(timeout);
   }
 }
 
@@ -93,7 +60,7 @@ Deno.serve(async (req: Request) => {
     });
     const { data: order, error } = await admin
       .from("preorder_orders")
-      .select("id,customer_name,whatsapp,order_number")
+      .select("id")
       .eq("id", orderId)
       .maybeSingle();
     if (error) {
@@ -101,28 +68,17 @@ Deno.serve(async (req: Request) => {
       return json({ message: "Gagal memuat pesanan." }, 500);
     }
     if (!order) return json({ message: "Pesanan tidak ditemukan." }, 404);
-    if (!order.whatsapp) return json({ message: "Nomor WhatsApp pemesan tidak tersedia." }, 422);
 
-    if (!FONNTE_API_TOKEN) {
-      console.warn(`[WA_MOCK_DISPATCH] FONNTE_API_TOKEN is not configured; skipped DP notice for order ${order.id}.`);
-      return json({ ok: true, waStatus: "skipped_no_token" });
-    }
-
-    const customerName = String(order.customer_name || "").replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim();
-    const orderNumber = String(order.order_number || order.id).replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim();
-    const message = [
-      `Halo Kak ${customerName}! Pembayaran DP 50% untuk pesanan #${orderNumber} telah berhasil diverifikasi ✅`,
-      "",
-      "Sekarang Kakak sudah bisa mulai merangkai kenangan kado (Pesan, Foto & Suara) secara privat melalui link rahasia berikut:",
-      `🔗 https://floramory.store/vault-setup?order=${encodeURIComponent(String(order.id))}`,
-      "",
-      "Seluruh isi kenangan Kakak aman dan terenkripsi rahasia. Terima kasih! 🌸",
-    ].join("\n");
-
-    if (!(await dispatchWhatsApp(String(order.whatsapp), message))) {
-      return json({ ok: false, waStatus: "failed", message: "Gagal mengirim notifikasi WhatsApp." }, 502);
-    }
-    return json({ ok: true, waStatus: "dispatched" });
+    console.log(
+      "[DP_CONFIRMED] Order " +
+        order.id +
+        " confirmed. Direct WhatsApp link ready for manual dispatch."
+    );
+    return json({
+      ok: true,
+      waStatus: "manual_ready",
+      message: "Status DP berhasil dikonfirmasi. Gunakan tombol Kirim Link WA di Admin untuk menghubungi pemesan.",
+    });
   } catch (error) {
     console.error("[DP_NOTIFICATION_ERROR]", error instanceof Error ? error.message : "Unexpected error.");
     return json({ message: "Gagal memproses notifikasi pembayaran." }, 500);

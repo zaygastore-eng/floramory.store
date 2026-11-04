@@ -22,12 +22,6 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "";
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
-// TODO: Configure FONNTE_API_TOKEN in Supabase secrets before enabling WhatsApp dispatch.
-const FONNTE_API_TOKEN = Deno.env.get("FONNTE_API_TOKEN") || "";
-const FONNTE_ENDPOINT = "https://api.fonnte.com/send";
-const BANK_NAME = Deno.env.get("BANK_NAME") || "";
-const BANK_ACCOUNT_NUMBER = Deno.env.get("BANK_ACCOUNT_NUMBER") || "";
-const BANK_ACCOUNT_HOLDER = Deno.env.get("BANK_ACCOUNT_HOLDER") || "";
 
 const CORS_HEADERS: Record<string, string> = {
   "Access-Control-Allow-Origin": "*",
@@ -42,7 +36,6 @@ const IP_WINDOW_MS = 10 * 60 * 1000;
 const PHONE_WINDOW_MS = 24 * 60 * 60 * 1000;
 const MIN_FILL_MS = 1200; // waktu minimal mengisi form (time-trap)
 const MAX_BODY_BYTES = 50_000;
-const WA_DISPATCH_TIMEOUT_MS = 9_000;
 
 const MAX_LENGTH: Record<string, number> = {
   customer_name: 120,
@@ -107,83 +100,8 @@ function getPriceAmount(raw: unknown): number {
   return Number.isSafeInteger(amount) ? amount : 0;
 }
 
-function formatIdr(amount: number): string {
-  return new Intl.NumberFormat("id-ID", {
-    style: "currency",
-    currency: "IDR",
-    maximumFractionDigits: 0,
-  }).format(amount);
-}
-
-function cleanMessageField(value: unknown): string {
-  return String(value || "").replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim();
-}
-
 function createOrderNumber(): string {
   return `ORD-${crypto.randomUUID().replace(/-/g, "").slice(0, 12).toUpperCase()}`;
-}
-
-function createPaymentMessage(input: {
-  orderNumber: string;
-  customerName: string;
-  productName: string;
-  totalAmount: number;
-  dpAmount: number;
-}): string {
-  return [
-    `Halo Kak ${cleanMessageField(input.customerName)}, terima kasih telah memesan karya botani di Floramory 🌸`,
-    "",
-    `Pesanan Anda telah kami terima dengan ID: #${cleanMessageField(input.orderNumber)}`,
-    `Produk: ${cleanMessageField(input.productName)}`,
-    `Total: ${formatIdr(input.totalAmount)} (DP 50%: ${formatIdr(input.dpAmount)})`,
-    "",
-    "Silakan melakukan pembayaran DP melalui:",
-    `${cleanMessageField(BANK_NAME)}: ${cleanMessageField(BANK_ACCOUNT_NUMBER)} a/n ${cleanMessageField(BANK_ACCOUNT_HOLDER)}`,
-    "",
-    "Setelah DP terkonfirmasi, sistem kami akan langsung mengirimkan link privat",
-    "untuk mengisi Memory Vault (pesan kenangan, foto & audio) khusus untuk",
-    "penerima kado Anda.",
-    "",
-    "Balas pesan ini dengan bukti transfer untuk konfirmasi. Terima kasih! 🌿",
-  ].join("\n");
-}
-
-async function dispatchWhatsApp(to: string, message: string): Promise<boolean> {
-  if (!FONNTE_API_TOKEN) {
-    console.warn("[WA_DISPATCH_SKIPPED] FONNTE_API_TOKEN is not configured.");
-    return false;
-  }
-
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), WA_DISPATCH_TIMEOUT_MS);
-  try {
-    const response = await fetch(FONNTE_ENDPOINT, {
-      method: "POST",
-      headers: {
-        Authorization: FONNTE_API_TOKEN,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ target: to, message }),
-      signal: controller.signal,
-    });
-    if (!response.ok) {
-      console.error(`[WA_DISPATCH_ERROR] Fonnte returned HTTP ${response.status}.`);
-      return false;
-    }
-    if (response.status !== 200) {
-      console.error(`[WA_DISPATCH_ERROR] Fonnte returned unexpected HTTP ${response.status}.`);
-      return false;
-    }
-    return true;
-  } catch (error) {
-    const reason = error instanceof DOMException && error.name === "AbortError"
-      ? `request timed out after ${WA_DISPATCH_TIMEOUT_MS}ms`
-      : "network request failed";
-    console.error(`[WA_DISPATCH_ERROR] ${reason}.`);
-    return false;
-  } finally {
-    clearTimeout(timeout);
-  }
 }
 
 function getStr(payload: Record<string, unknown>, key: string): string {
@@ -348,24 +266,11 @@ Deno.serve(async (req: Request) => {
     return json({ message: "Gagal menyimpan pre-order." }, 500);
   }
 
-  const paymentMessage = createPaymentMessage({
-    orderNumber,
-    customerName: getStr(body, "customer_name"),
-    productName: String(product.nama_produk || ""),
-    totalAmount,
-    dpAmount,
-  });
-  const waSent = await dispatchWhatsApp(whatsapp, paymentMessage);
-
-  try {
-    const { error: dispatchStatusError } = await admin
-      .from("preorder_orders")
-      .update({ wa_sent: waSent })
-      .eq("id", row.id);
-    if (dispatchStatusError) throw dispatchStatusError;
-  } catch {
-    console.error(`[WA_DISPATCH_ERROR] Could not store delivery status for order ${orderNumber}.`);
-  }
+  console.log(
+    "[PREORDER_CREATED] Order " +
+      orderNumber +
+      " created. Redirecting customer to manual WhatsApp confirmation."
+  );
 
   return json({
     success: true,
@@ -374,6 +279,6 @@ Deno.serve(async (req: Request) => {
     orderId: row.id,
     orderNumber,
     dpAmount,
-    waStatus: waSent ? "dispatched" : "failed",
+    waStatus: "manual_redirect",
   }, 201);
 });

@@ -36,6 +36,7 @@ export interface Product extends CatalogProduct {
   audio_durasi: number; // in seconds
   video_url: string;
   foto_vault: string;
+  vault_pin?: string;
   is_catalog: boolean;
   recipient_whatsapp?: string;
   order_id?: string | null;
@@ -59,6 +60,7 @@ export interface PreOrder {
   audio_durasi?: number;
   video_url?: string;
   vault_submitted_at?: string;
+  vault_pin?: string;
   status?: string;
   created_at?: string;
 }
@@ -68,7 +70,7 @@ export interface PreOrderSubmissionResult extends PreOrder {
   orderId: string;
   orderNumber: string;
   dpAmount: number;
-  waStatus: "dispatched" | "failed";
+  waStatus: "manual_redirect";
 }
 
 let cachedCatalog: CatalogProduct[] | null = null;
@@ -354,7 +356,7 @@ export async function notifyDpConfirmed(orderId: string): Promise<void> {
   }
 }
 
-async function callVaultOtp(payload: Record<string, string>): Promise<Record<string, unknown>> {
+async function callVaultPin(payload: Record<string, string>): Promise<Record<string, unknown>> {
   if (!isSupabaseConfigured()) {
     throw new Error("Supabase belum dikonfigurasi");
   }
@@ -370,38 +372,16 @@ async function callVaultOtp(payload: Record<string, string>): Promise<Record<str
   return data as Record<string, unknown>;
 }
 
-export async function requestVaultOtp(
-  productId: string
-): Promise<{
-  ok: boolean;
-  message: string;
-  targetType?: "recipient" | "buyer";
-  maskedPhone?: string;
-  debugOtp?: string;
-}> {
-  const data = await callVaultOtp({ action: "request", product_id: productId });
-  const targetType =
-    data.targetType === "buyer" || data.targetType === "recipient"
-      ? data.targetType
-      : undefined;
-  const maskedPhone = typeof data.maskedPhone === "string" ? data.maskedPhone : undefined;
-  return {
-    ok: data.ok === true,
-    message: String(data.message || ""),
-    ...(targetType ? { targetType } : {}),
-    ...(maskedPhone ? { maskedPhone } : {}),
-    ...(typeof data.debugOtp === "string" ? { debugOtp: data.debugOtp } : {}),
-  };
-}
-
-export async function verifyVaultOtp(
+export async function verifyVaultPin(
   productId: string,
-  otpCode: string
-): Promise<{ ok: boolean; verified: boolean; message?: string }> {
-  const data = await callVaultOtp({ action: "verify", product_id: productId, otp_code: otpCode });
+  pin: string
+): Promise<{ ok: boolean; verified: boolean; locked?: boolean; attemptsRemaining?: number; message?: string }> {
+  const data = await callVaultPin({ action: "verify", product_id: productId, pin });
   return {
     ok: data.ok === true,
     verified: data.verified === true,
+    ...(data.locked === true ? { locked: true } : {}),
+    ...(typeof data.attemptsRemaining === "number" ? { attemptsRemaining: data.attemptsRemaining } : {}),
     ...(typeof data.message === "string" ? { message: data.message } : {}),
   };
 }
@@ -572,6 +552,7 @@ function normalizeProduct(obj: Partial<Product>): Product {
     audio_durasi: Number.isFinite(parsedDurasi) ? Math.max(0, Math.round(parsedDurasi)) : 0,
     video_url: String(obj.video_url || record.video_url || "").trim(),
     foto_vault: String(obj.foto_vault || record.foto_vault || "").trim(),
+    vault_pin: String(obj.vault_pin || record.vault_pin || "").trim(),
     is_catalog: Boolean(obj.is_catalog ?? record.is_catalog ?? false),
     recipient_whatsapp: String(obj.recipient_whatsapp || record.recipient_whatsapp || "").trim(),
     order_id: String(obj.order_id || record.order_id || "").trim() || null,
@@ -601,6 +582,7 @@ function productPayload(product: Product, status = product.status || "active", u
     is_catalog: Boolean(product.is_catalog),
     recipient_whatsapp: normalizeWhatsApp(product.recipient_whatsapp || ""),
     order_id: product.order_id || null,
+    vault_pin: product.vault_pin || null,
     status,
   };
 }
@@ -623,6 +605,7 @@ function normalizePreOrder(obj: Partial<PreOrder> & Record<string, unknown>): Pr
     audio_durasi: Number(obj.audio_durasi) || 0,
     video_url: String(obj.video_url || "").trim(),
     vault_submitted_at: String(obj.vault_submitted_at || "").trim(),
+    vault_pin: String(obj.vault_pin || "").trim(),
     status: String(obj.status || "new").trim(),
     created_at: String(obj.created_at || "").trim(),
   };
@@ -694,18 +677,10 @@ export async function fetchCatalogProducts(): Promise<CatalogProduct[]> {
   return cachedCatalog || [];
 }
 
-/** @deprecated Use fetchCatalogProducts for the public grid. This alias exists
- *  only for Admin panel compatibility (admin fetcher overrides it anyway). */
-export type ProductSummary = CatalogProduct;
-
-export async function fetchAllProducts(): Promise<CatalogProduct[]> {
-  return fetchCatalogProducts();
-}
-
 // Kolom eksplisit (bukan select=*). created_at/updated_at terakhir
 // tidak diambil: tidak dipakai UI admin.
 const MANAGED_PRODUCTS_SELECT =
-  "id,nama_produk,tier,harga,bunga,deskripsi,bahan,ukuran,nama_pembeli,dari,pesan_personal,foto_produk,foto_qr,audio_url,audio_durasi,video_url,foto_vault,is_catalog,recipient_whatsapp,order_id,status";
+  "id,nama_produk,tier,harga,bunga,deskripsi,bahan,ukuran,nama_pembeli,dari,pesan_personal,foto_produk,foto_qr,audio_url,audio_durasi,video_url,foto_vault,vault_pin,is_catalog,recipient_whatsapp,order_id,status";
 
 function invalidateProductCaches() {
   cachedCatalog = null;
@@ -758,7 +733,6 @@ export async function fetchProductById(id: string): Promise<Product | null> {
 }
 
 export const fetchProductDetailById = fetchProductById;
-export const fetchAllProductsAdmin = fetchManagedProducts;
 
 const supabase = {
   storage: {
@@ -845,7 +819,26 @@ export async function updateProduct(id: string, product: Product): Promise<Produ
   }
 }
 
-export async function deleteProduct(id: string): Promise<void> {
+function extractStoragePath(url: string): string | null {
+  const publicObjectPrefix = "/storage/v1/object/public/product-images/";
+  try {
+    const pathname = new URL(url).pathname;
+    if (!pathname.startsWith(publicObjectPrefix)) return null;
+    const objectPath = decodeURIComponent(pathname.slice(publicObjectPrefix.length));
+    const segments = objectPath.split("/");
+    if (!objectPath || segments.some(segment => !segment || segment === "." || segment === "..")) {
+      return null;
+    }
+    return objectPath;
+  } catch {
+    return null;
+  }
+}
+
+export async function deleteProduct(
+  id: string,
+  storageUrls: (string | undefined)[] = []
+): Promise<void> {
   if (!isSupabaseConfigured()) {
     throw new Error("Hapus produk hanya tersedia saat Supabase aktif");
   }
@@ -854,6 +847,31 @@ export async function deleteProduct(id: string): Promise<void> {
     query: `id=eq.${encodeURIComponent(id)}`,
   });
   invalidateProductCaches();
+
+  const storagePaths = [...new Set(
+    storageUrls
+      .filter((url): url is string => Boolean(url))
+      .map(extractStoragePath)
+      .filter((path): path is string => path !== null)
+  )];
+  const cleanupResults = await Promise.allSettled(storagePaths.map(async objectPath => {
+    const encodedPath = objectPath.split("/").map(encodeURIComponent).join("/");
+    const { status, data } = await adminCall("proxy", {
+      method: "DELETE",
+      path: `/storage/v1/object/product-images/${encodedPath}`,
+    });
+    if (status >= 400) {
+      throw new Error(extractErrorMessage(data, "Gagal menghapus objek Storage."));
+    }
+  }));
+  cleanupResults.forEach((result, index) => {
+    if (result.status === "rejected") {
+      console.warn(
+        `[PRODUCT_STORAGE_CLEANUP_ERROR] Could not delete product image ${storagePaths[index]}:`,
+        result.reason
+      );
+    }
+  });
 }
 
 export interface PreOrderSubmitMeta {
@@ -915,7 +933,7 @@ export async function createPreOrder(
     orderId: String(data.orderId || data.id || ""),
     orderNumber: String(data.orderNumber || ""),
     dpAmount: Number(data.dpAmount || 0),
-    waStatus: data.waStatus === "dispatched" ? "dispatched" : "failed",
+    waStatus: "manual_redirect",
   };
 }
 
@@ -926,7 +944,7 @@ function isTierConstraintError(message: string): boolean {
 
 // Kolom eksplisit (bukan select=*). updated_at tidak dipakai UI.
 const PREORDER_SELECT =
-  "id,order_number,customer_name,whatsapp,product_id,product_name,custom_request,recipient_name,sender_name,personal_message,recipient_whatsapp,foto_vault,audio_url,audio_durasi,video_url,vault_submitted_at,status,created_at";
+  "id,order_number,customer_name,whatsapp,product_id,product_name,custom_request,recipient_name,sender_name,personal_message,recipient_whatsapp,foto_vault,audio_url,audio_durasi,video_url,vault_submitted_at,vault_pin,status,created_at";
 
 export interface PreOrderPage {
   orders: PreOrder[];
@@ -982,15 +1000,15 @@ export async function fetchPreOrders(offset = 0): Promise<PreOrderPage> {
   return { orders, hasMore, total };
 }
 
-// Hitung pesanan baru (status 'new') lewat count=exact — hanya kolom id,
-// bukan seluruh baris. Dipakai dashboard admin.
+// Hitung pesanan menunggu DP lewat count=exact — hanya kolom id,
+// bukan seluruh baris.
 export async function fetchNewPreOrderCount(): Promise<number> {
   if (!isSupabaseConfigured()) return 0;
   try {
     const { status, headers } = await adminCall("proxy", {
       method: "GET",
       path: "/rest/v1/preorder_orders",
-      query: "select=id&status=eq.new&limit=1&order=created_at.desc",
+      query: "select=id&status=eq.waiting_dp&limit=1&order=created_at.desc",
       prefer: "count=exact",
     });
     if (status >= 400) return 0;
@@ -1007,8 +1025,8 @@ export async function fetchPreOrderStatusCounts(): Promise<PreOrderStatusCounts>
   }
 
   const statusFilters: Record<keyof PreOrderStatusCounts, string> = {
-    waiting_dp: "new,waiting_dp",
-    completed: "in_production,in_progress,dp_verified,paid,contacted,completed",
+    waiting_dp: "waiting_dp",
+    completed: "completed",
     cancelled: "cancelled",
   };
   const statusKeys = ["waiting_dp", "completed", "cancelled"] as const;
