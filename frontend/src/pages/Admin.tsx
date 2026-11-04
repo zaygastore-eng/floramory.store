@@ -1339,7 +1339,7 @@ export default function Admin() {
     </div>
   );
 
-  const renderOrders = () => (
+  const renderPreOrders = () => (
     <div className="admin-panel-card">
       <div className="admin-panel-head">
         <div>
@@ -1396,96 +1396,99 @@ export default function Admin() {
         ) : filteredOrders.map(order => {
           const currentStatus = getOrderStatus(order.status);
           const customerName = order.customer_name || "Kak";
+          const activeBaseUrl = (localStorage.getItem(BASE_URL_KEY) || baseUrl || PRODUCTION_SITE_URL)
+            .trim()
+            .replace(/\/+$/, "");
+          const vaultUrl = `${activeBaseUrl}/vault-setup?order=${encodeURIComponent(order.id || "")}`;
           return (
-          <div className="admin-list-item admin-order-row" key={order.id || `${order.whatsapp}-${order.created_at}`}>
-            <div className="admin-order-main">
-              <div className="admin-order-primary">
-                <strong>{order.customer_name || "Tanpa nama"}</strong>
-                <span className="admin-order-meta">WhatsApp: {order.whatsapp || "Tidak tersedia"} / {order.product_name || order.product_id || "Produk belum dipilih"}</span>
-                <span>{order.created_at ? new Date(order.created_at).toLocaleDateString("id-ID") : ""}</span>
-                <div className="admin-order-pin-row">
-                  <span className={`admin-order-pin-status ${order.vault_pin ? "ready" : "pending"}`}>
-                    {order.vault_pin ? "Siap Cetak / Pasang Stiker Gosok" : "Menunggu Pengisian Kenangan"}
-                  </span>
-                  {order.vault_pin && (
-                    <span className="admin-order-pin">
-                      PIN Kartu: <strong>{order.vault_pin}</strong>
-                      <button
-                        type="button"
-                        className="admin-order-pin-copy"
-                        aria-label={`Salin PIN kartu pesanan ${order.order_number || order.id || customerName}`}
-                        title="Salin PIN"
-                        onClick={() => void (async () => {
-                          try {
-                            await navigator.clipboard.writeText(order.vault_pin || "");
-                            showToast("PIN kartu berhasil disalin.", "success");
-                          } catch (error) {
-                            console.error("[VAULT_PIN_COPY_ERROR]", error);
-                            showToast("Gagal menyalin PIN. Periksa izin clipboard browser.", "alert");
-                          }
-                        })()}
-                      >
-                        <Copy size={14} aria-hidden="true" />
-                        <span>Salin PIN</span>
-                      </button>
+            <div className="admin-list-item admin-order-row" key={order.id || `${order.whatsapp}-${order.created_at}`}>
+              <div className="admin-order-main">
+                <div className="admin-order-primary">
+                  <strong>{order.customer_name || "Tanpa nama"}</strong>
+                  <span className="admin-order-meta">WhatsApp: {order.whatsapp || "Tidak tersedia"} / {order.product_name || order.product_id || "Produk belum dipilih"}</span>
+                  <span>{order.created_at ? new Date(order.created_at).toLocaleDateString("id-ID") : ""}</span>
+                  <div className="admin-order-pin-row">
+                    <span className={`admin-order-pin-status ${order.vault_pin ? "ready" : "pending"}`}>
+                      {order.vault_pin ? "Siap Cetak / Pasang Stiker Gosok" : "Menunggu Pengisian Kenangan"}
                     </span>
-                  )}
+                    {order.vault_pin && (
+                      <span className="admin-order-pin">
+                        PIN Kartu: <strong>{order.vault_pin}</strong>
+                        <button
+                          type="button"
+                          className="admin-order-pin-copy"
+                          aria-label={`Salin PIN kartu pesanan ${order.order_number || order.id || customerName}`}
+                          title="Salin PIN"
+                          onClick={() => void (async () => {
+                            try {
+                              await navigator.clipboard.writeText(order.vault_pin || "");
+                              showToast("PIN kartu berhasil disalin.", "success");
+                            } catch (error) {
+                              console.error("[VAULT_PIN_COPY_ERROR]", error);
+                              showToast("Gagal menyalin PIN. Periksa izin clipboard browser.", "alert");
+                            }
+                          })()}
+                        >
+                          <Copy size={14} aria-hidden="true" />
+                          <span>Salin PIN</span>
+                        </button>
+                      </span>
+                    )}
+                  </div>
                 </div>
+                <select
+                  className={`admin-order-status-select status-${currentStatus}`}
+                  value={currentStatus}
+                  disabled={!order.id}
+                  aria-label={`Status pesanan ${customerName}`}
+                  onChange={event => void setOrderStatus(order, event.target.value)}
+                >
+                  {ORDER_STATUSES.map(status => <option value={status.value} key={status.value}>{status.label}</option>)}
+                </select>
+                {(order.recipient_name || order.personal_message || order.custom_request) && (
+                  <details className="admin-order-note">
+                    <summary>
+                      {order.recipient_name ? `Penerima: ${order.recipient_name}` : "Detail pesan"}
+                    </summary>
+                    {(order.personal_message || order.custom_request) && (
+                      <p>{order.personal_message || order.custom_request}</p>
+                    )}
+                  </details>
+                )}
               </div>
-              <select
-                className={`admin-order-status-select status-${currentStatus}`}
-                value={currentStatus}
-                disabled={!order.id}
-                aria-label={`Status pesanan ${customerName}`}
-                onChange={event => void setOrderStatus(order, event.target.value)}
-              >
-                {ORDER_STATUSES.map(status => <option value={status.value} key={status.value}>{status.label}</option>)}
-              </select>
-              {(order.recipient_name || order.personal_message || order.custom_request) && (
-                <details className="admin-order-note">
-                  <summary>
-                    {order.recipient_name ? `Penerima: ${order.recipient_name}` : "Detail pesan"}
-                  </summary>
-                  {(order.personal_message || order.custom_request) && (
-                    <p>{order.personal_message || order.custom_request}</p>
-                  )}
-                </details>
-              )}
+              <div className="admin-list-actions">
+                <button
+                  type="button"
+                  aria-label={`Salin link Vault untuk pesanan ${order.order_number || order.id || customerName}`}
+                  disabled={!order.id}
+                  onClick={() => void (async () => {
+                    try {
+                      await navigator.clipboard.writeText(vaultUrl);
+                      showToast("Link Vault berhasil disalin.", "success");
+                    } catch (error) {
+                      console.error("[VAULT_LINK_COPY_ERROR]", error);
+                      showToast("Gagal menyalin link Vault. Periksa izin clipboard browser.", "alert");
+                    }
+                  })()}
+                >
+                  Salin Link Vault
+                </button>
+                <a
+                  aria-label={`Kirim link Vault melalui WhatsApp kepada ${customerName}`}
+                  aria-disabled={!order.id}
+                  href={`https://wa.me/${normalizeWhatsApp(order.whatsapp)}?text=${encodeURIComponent(
+                    `Halo ${customerName}, DP untuk pesanan ${order.order_number || order.id} sudah dikonfirmasi. Berikut link rahasia Memory Vault Floramory: ${vaultUrl}`
+                  )}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Kirim Link WA
+                </a>
+                <button type="button" className="admin-order-sync-btn" onClick={() => processOrderToProduct(order)}>
+                  ✦ Proses jadi Produk &amp; Cetak QR
+                </button>
+              </div>
             </div>
-            <div className="admin-list-actions">
-              <button
-                type="button"
-                aria-label={`Salin link Vault untuk pesanan ${order.order_number || order.id || customerName}`}
-                disabled={!order.id}
-                onClick={() => void (async () => {
-                  const vaultUrl = `https://floramory.store/vault-setup?order=${encodeURIComponent(order.id || "")}`;
-                  try {
-                    await navigator.clipboard.writeText(vaultUrl);
-                    showToast("Link Vault berhasil disalin.", "success");
-                  } catch (error) {
-                    console.error("[VAULT_LINK_COPY_ERROR]", error);
-                    showToast("Gagal menyalin link Vault. Periksa izin clipboard browser.", "alert");
-                  }
-                })()}
-              >
-                Salin Link Vault
-              </button>
-              <a
-                aria-label={`Kirim link Vault melalui WhatsApp kepada ${customerName}`}
-                aria-disabled={!order.id}
-                href={`https://wa.me/${normalizeWhatsApp(order.whatsapp)}?text=${encodeURIComponent(
-                  `Halo ${customerName}, DP untuk pesanan ${order.order_number || order.id} sudah dikonfirmasi. Berikut link rahasia Memory Vault Floramory: https://floramory.store/vault-setup?order=${encodeURIComponent(order.id || "")}`
-                )}`}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                Kirim Link WA
-              </a>
-              <button type="button" className="admin-order-sync-btn" onClick={() => processOrderToProduct(order)}>
-                ✦ Proses jadi Produk &amp; Cetak QR
-              </button>
-            </div>
-          </div>
           );
         })}
       </div>
@@ -1498,6 +1501,8 @@ export default function Admin() {
       )}
     </div>
   );
+
+  const renderOrders = renderPreOrders;
 
   const renderFinancialReport = () => (
     <>
@@ -1683,7 +1688,7 @@ export default function Admin() {
   const renderContent = () => {
     if (activeTab === "dashboard") return renderDashboard();
     if (activeTab === "produk") return productFormOpen ? renderProductForm() : renderProductList();
-    if (activeTab === "pesanan") return renderOrders();
+    if (activeTab === "pesanan") return renderPreOrders();
     if (activeTab === "keuangan") return renderFinancialReport();
     return renderSettings();
   };
