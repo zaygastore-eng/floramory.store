@@ -1,51 +1,42 @@
-import { useEffect, useState, type DragEvent, type ChangeEvent, type FormEvent } from "react";
+import { useEffect, useState, useRef, type DragEvent, type ChangeEvent, type FormEvent } from "react";
 import BrandLogo from "@/components/BrandLogo";
+import VaultExperience from "@/pages/VaultExperience";
 import { fetchVaultSetup, saveVaultSetup, uploadVaultMedia, type PreOrder } from "@/lib/api";
 import { classifyMedia, parseSpotifyEmbedUrl } from "@/lib/media";
 import { pageUrl } from "@/lib/site";
-
-const cardStyle = {
-  padding: "clamp(1.25rem, 4vw, 2rem)",
-  border: "1px solid rgba(105, 112, 153, 0.16)",
-  borderRadius: "22px",
-  background: "rgba(255, 255, 255, 0.9)",
-  boxShadow: "0 16px 42px rgba(37, 43, 82, 0.07)",
-};
-
-const labelStyle = {
-  display: "block",
-  marginBottom: "0.55rem",
-  color: "#4f557d",
-  fontWeight: 600,
-};
-
-const hintStyle = {
-  display: "block",
-  marginTop: "0.55rem",
-  color: "#697099",
-  fontSize: "0.85rem",
-  lineHeight: 1.6,
-};
 
 export default function VaultSetup() {
   const [orderId, setOrderId] = useState("");
   const [order, setOrder] = useState<PreOrder | null>(null);
   const [loading, setLoading] = useState(true);
   const [pageError, setPageError] = useState("");
+
+  // Content states
   const [personalMessage, setPersonalMessage] = useState("");
   const [photoUrl, setPhotoUrl] = useState("");
   const [photoPreview, setPhotoPreview] = useState("");
   const [audioUrl, setAudioUrl] = useState("");
   const [audioPreview, setAudioPreview] = useState("");
   const [audioDuration, setAudioDuration] = useState(0);
-  const [audioMode, setAudioMode] = useState<"voice" | "spotify">("voice");
+  const [audioSource, setAudioSource] = useState<"file" | "record" | "spotify">("file");
   const [spotifyUrl, setSpotifyUrl] = useState("");
   const [videoUrl, setVideoUrl] = useState("");
+  const [customPin, setCustomPin] = useState("");
+
+  // Browser voice recorder state
+  const [recording, setRecording] = useState(false);
+  const [recordingTime, setRecordingTime] = useState(0);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const timerRef = useRef<number | null>(null);
+
+  // Upload & Save status
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [uploadingAudio, setUploadingAudio] = useState(false);
   const [saving, setSaving] = useState(false);
   const [uploadError, setUploadError] = useState("");
   const [saved, setSaved] = useState(false);
+  const [previewModalOpen, setPreviewModalOpen] = useState(false);
 
   useEffect(() => {
     const id = new URLSearchParams(window.location.search).get("order")?.trim() || "";
@@ -70,7 +61,7 @@ export default function VaultSetup() {
         setPhotoPreview(result.order.foto_vault || "");
         const existingAudioUrl = result.order.audio_url || "";
         if (classifyMedia(existingAudioUrl).type === "spotify") {
-          setAudioMode("spotify");
+          setAudioSource("spotify");
           setSpotifyUrl(existingAudioUrl);
           setAudioUrl("");
           setAudioPreview("");
@@ -81,6 +72,9 @@ export default function VaultSetup() {
           setAudioDuration(result.order.audio_durasi || 0);
         }
         setVideoUrl(result.order.video_url || "");
+        if (result.order.vault_pin) {
+          setCustomPin(result.order.vault_pin);
+        }
       })
       .catch(error => {
         if (active) setPageError(error instanceof Error ? error.message : "Link tidak valid atau pesanan tidak ditemukan.");
@@ -103,9 +97,47 @@ export default function VaultSetup() {
     };
   }, [audioPreview]);
 
+  // Audio Recording Handlers
+  const startRecording = async () => {
+    setUploadError("");
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+      audioChunksRef.current = [];
+
+      mediaRecorder.ondataavailable = e => {
+        if (e.data.size > 0) audioChunksRef.current.push(e.data);
+      };
+
+      mediaRecorder.onstop = () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: "audio/webm" });
+        const file = new File([audioBlob], `voicenote-${Date.now()}.webm`, { type: "audio/webm" });
+        void uploadFile(file, "audio");
+        stream.getTracks().forEach(t => t.stop());
+      };
+
+      mediaRecorder.start();
+      setRecording(true);
+      setRecordingTime(0);
+      timerRef.current = window.setInterval(() => {
+        setRecordingTime(t => t + 1);
+      }, 1000);
+    } catch {
+      setUploadError("Tidak dapat mengakses mikrofon browser. Pastikan izin mikrofon telah aktif.");
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && recording) {
+      mediaRecorderRef.current.stop();
+      setRecording(false);
+      if (timerRef.current) clearInterval(timerRef.current);
+    }
+  };
+
   const uploadFile = async (file: File, type: "photo" | "audio") => {
     const isPhoto = type === "photo";
-    if (!isPhoto) setAudioMode("voice");
     const setUploading = isPhoto ? setUploadingPhoto : setUploadingAudio;
     const setPreview = isPhoto ? setPhotoPreview : setAudioPreview;
     const setUrl = isPhoto ? setPhotoUrl : setAudioUrl;
@@ -167,18 +199,23 @@ export default function VaultSetup() {
   const handleSave = async (event: FormEvent) => {
     event.preventDefault();
     if (!orderId || saving) return;
-    if (audioMode === "spotify" && spotifyUrl.trim() && !parseSpotifyEmbedUrl(spotifyUrl)) {
+    if (audioSource === "spotify" && spotifyUrl.trim() && !parseSpotifyEmbedUrl(spotifyUrl)) {
       setUploadError("Periksa kembali link Spotify. Gunakan tautan track, album, atau playlist yang valid.");
       return;
     }
+    if (customPin && !/^\d{4,6}$/.test(customPin)) {
+      setUploadError("PIN rahasia harus terdiri dari 4 sampai 6 digit angka.");
+      return;
+    }
+
     setSaving(true);
     setUploadError("");
     try {
       const result = await saveVaultSetup(orderId, {
         personal_message: personalMessage,
         foto_vault: photoUrl,
-        audio_url: audioMode === "spotify" ? spotifyUrl.trim() : audioUrl,
-        audio_durasi: audioMode === "spotify" ? 0 : audioDuration,
+        audio_url: audioSource === "spotify" ? spotifyUrl.trim() : audioUrl,
+        audio_durasi: audioSource === "spotify" ? 0 : audioDuration,
         video_url: videoUrl.trim(),
       });
       if (!result.ok) throw new Error(result.message);
@@ -192,211 +229,341 @@ export default function VaultSetup() {
 
   const orderLabel = order?.order_number || order?.id || orderId;
   const spotifyEmbedPreviewUrl = parseSpotifyEmbedUrl(spotifyUrl);
+  const letterInitial = personalMessage.trim().charAt(0) || "A";
+  const letterRest = personalMessage.trim().slice(1) || "Tuliskan isi surat...";
 
   return (
-    <main style={{
-      minHeight: "100vh",
-      padding: "1.25rem 1rem 3rem",
-      background: "radial-gradient(ellipse at top, #fff 0%, #fafbff 45%, #f1f2f8 100%)",
-      color: "#111",
-      fontFamily: "'DM Sans', sans-serif",
-    }}>
-      <div style={{ width: "min(100%, 760px)", margin: "0 auto" }}>
-        <header style={{ padding: "1rem 0 1.5rem", textAlign: "center" }}>
-          <a href={pageUrl("/")} aria-label="Floramory" style={{ display: "inline-flex", justifyContent: "center" }}>
+    <main className="vault-setup-page">
+      <div className="vault-setup-container">
+        {/* Atelier Header */}
+        <header className="vault-setup-header">
+          <a href={pageUrl("/")} aria-label="A Chapter" className="logo-link">
             <BrandLogo />
           </a>
-          <p style={{ margin: "0.4rem 0 0", color: "#697099", fontSize: "0.9rem", letterSpacing: "0.08em" }}>
-            PRIVATE MEMORY VAULT SETUP
+          <span className="vault-setup-kicker">ATELIER PRIVATE SENDER CONSOLE</span>
+          <h1 className="vault-setup-main-title">Configure Memory Vault</h1>
+          <p className="vault-setup-lead">
+            Siapkan konten kenangan rahasia yang akan terbuka saat penerima kado memindai micro-chip di dasar karya botani Anda.
           </p>
         </header>
 
         {loading ? (
-          <section style={{ ...cardStyle, textAlign: "center", color: "#697099" }} aria-live="polite">
-            Membuka ruang kenangan pribadi...
+          <section className="vault-setup-card text-center" aria-live="polite">
+            <p className="vault-setup-hint">Membuka ruang konfigurasi kenangan atelier...</p>
           </section>
         ) : pageError || !order ? (
-          <section style={{ ...cardStyle, textAlign: "center" }} role="alert">
-            <div style={{ fontSize: "2.5rem" }} aria-hidden="true">🌿</div>
-            <h1 style={{ margin: "0.75rem 0", color: "#4f557d", fontFamily: "'Cormorant Garamond', Georgia, serif" }}>
-              Link tidak valid atau pesanan tidak ditemukan
-            </h1>
-            <p style={{ margin: 0, color: "#697099", lineHeight: 1.7 }}>
-              Periksa kembali tautan dari Floramory atau hubungi tim atelier untuk mendapatkan bantuan.
+          <section className="vault-setup-card text-center" role="alert">
+            <div className="vault-setup-empty-icon" aria-hidden="true">🌿</div>
+            <h2 className="vault-setup-card-title">Link Tidak Valid atau Pesanan Dibatalkan</h2>
+            <p className="vault-setup-hint">
+              Periksa kembali tautan yang dikirimkan oleh atelier A Chapter atau hubungi kurator WhatsApp kami.
             </p>
           </section>
         ) : saved ? (
-          <section style={{ ...cardStyle, padding: "clamp(2rem, 8vw, 4rem)", textAlign: "center" }} role="status">
-            <div style={{ fontSize: "3rem" }} aria-hidden="true">✨</div>
-            <h1 style={{ margin: "1rem 0", color: "#4f557d", fontFamily: "'Cormorant Garamond', Georgia, serif", fontSize: "clamp(2rem, 8vw, 2.8rem)" }}>
-              Kenangan tersimpan
-            </h1>
-            <p style={{ margin: "0 auto", maxWidth: "38rem", color: "#697099", lineHeight: 1.8 }}>
-              Kenangan Anda berhasil dikunci dengan aman! Tim Floramory akan menyematkan PIN rahasia pada kartu fisik di dalam boks kado bunga yang akan diterima oleh orang tersayang Anda.
+          <section className="vault-setup-card text-center vault-setup-success-card" role="status">
+            <div className="vault-wax-seal-hero" aria-hidden="true" style={{ margin: "0 auto 1.5rem" }}>
+              <span className="wax-seal-circle">A · C</span>
+            </div>
+            <h2 className="vault-setup-card-title" style={{ fontSize: "2rem" }}>Kenangan Berhasil Dikunci</h2>
+            <p className="vault-setup-hint" style={{ maxWidth: "480px", margin: "1rem auto 2rem" }}>
+              Memoir digital Anda telah aman tersimpan di cloud permanen A Chapter. Kurator kami akan mencetak PIN fisik rahasia pada kartu ucapan di dalam boks kado penerima.
             </p>
+            <button
+              type="button"
+              className="hero-cta hero-cta-primary"
+              onClick={() => setPreviewModalOpen(true)}
+            >
+              [ Pratinjau Tampilan Penerima ]
+            </button>
           </section>
         ) : (
           <>
-            <section style={{
-              ...cardStyle,
-              marginBottom: "1rem",
-              display: "flex",
-              flexWrap: "wrap",
-              justifyContent: "space-between",
-              alignItems: "center",
-              gap: "0.5rem",
-              background: "linear-gradient(125deg, #fff, #f8f6ef)",
-            }}>
+            {/* Order Info Strip */}
+            <div className="vault-setup-meta-bar">
               <div>
-                <span style={{ color: "#697099", fontSize: "0.78rem", textTransform: "uppercase", letterSpacing: "0.08em" }}>Pesanan privat</span>
-                <strong style={{ display: "block", color: "#4f557d", marginTop: "0.25rem" }}>#{orderLabel}</strong>
+                <span className="meta-bar-tag">ORDER SPECIMEN</span>
+                <strong className="meta-bar-id">#{orderLabel}</strong>
               </div>
-              <div style={{ color: "#697099" }}>Untuk: <strong style={{ color: "#4f557d" }}>{order.recipient_name || "Penerima kado"}</strong></div>
-            </section>
+              <div>
+                <span className="meta-bar-tag">RECIPIENT</span>
+                <strong className="meta-bar-name">{order.recipient_name || "Penerima Kado"}</strong>
+              </div>
+            </div>
 
-            <form onSubmit={handleSave} style={{ display: "grid", gap: "1rem" }}>
-              <section style={cardStyle}>
-                <span style={{ color: "#9b8a60", fontSize: "0.78rem", letterSpacing: "0.1em", textTransform: "uppercase" }}>01 · Surat personal</span>
-                <h1 style={{ margin: "0.4rem 0 1rem", color: "#4f557d", fontFamily: "'Cormorant Garamond', Georgia, serif", fontSize: "2rem" }}>Kata-kata dari hati</h1>
-                <label htmlFor="vault-message" style={labelStyle}>Pesan kenangan</label>
-                <textarea
-                  id="vault-message"
-                  value={personalMessage}
-                  onChange={event => setPersonalMessage(event.target.value)}
-                  maxLength={2000}
-                  rows={7}
-                  placeholder="Tuliskan cerita, doa, atau pesan yang ingin selalu diingat..."
-                  style={{ width: "100%", boxSizing: "border-box", padding: "1rem", borderRadius: "14px", border: "1px solid #dfe1ec", background: "#fff", color: "#292d49", font: "inherit", lineHeight: 1.7, resize: "vertical" }}
-                />
-                <span style={hintStyle}>{personalMessage.length}/2000 karakter</span>
-                <p style={{ margin: "1rem 0 0", color: "#697099", fontFamily: "'Cormorant Garamond', Georgia, serif", fontSize: "1.2rem" }}>
-                  Dengan penuh cinta,<br /><strong style={{ color: "#4f557d" }}>Dari: {order.sender_name || order.customer_name || "Floramory"}</strong>
+            <form onSubmit={handleSave} className="vault-setup-form">
+              {/* CARD 1: UPLOAD POLAROID PHOTOS */}
+              <section className="vault-setup-card">
+                <div className="card-step-badge">STEP 01</div>
+                <h2 className="vault-setup-card-title">Upload Polaroid Photos</h2>
+                <p className="vault-setup-card-sub">
+                  Pilih momen berharga yang akan dicetak dalam gaya polaroid digital dengan kertas linen bertekstur.
                 </p>
-              </section>
 
-              <section style={cardStyle}>
-                <span style={{ color: "#9b8a60", fontSize: "0.78rem", letterSpacing: "0.1em", textTransform: "uppercase" }}>02 · Foto kenangan</span>
-                <h2 style={{ margin: "0.4rem 0 1rem", color: "#4f557d", fontFamily: "'Cormorant Garamond', Georgia, serif", fontSize: "1.8rem" }}>Polaroid Capsule Photo</h2>
                 <label
-                  htmlFor="vault-photo"
-                  onDragOver={event => event.preventDefault()}
+                  htmlFor="vault-photo-input"
+                  onDragOver={e => e.preventDefault()}
                   onDrop={handleDropPhoto}
-                  style={{ display: "grid", placeItems: "center", minHeight: "145px", padding: "1.25rem", border: "1px dashed #b9bdd1", borderRadius: "16px", background: "#fafbff", textAlign: "center", cursor: "pointer", color: "#697099" }}
+                  className="vault-drop-zone"
                 >
-                  <span><strong style={{ display: "block", color: "#4f557d" }}>{uploadingPhoto ? "Mengunggah foto..." : "Sentuh untuk memilih atau letakkan foto di sini"}</strong><small style={{ display: "block", marginTop: "0.4rem" }}>JPG, PNG, atau WebP · Maks. 5 MB</small></span>
-                  <input id="vault-photo" type="file" accept="image/jpeg,image/png,image/webp" onChange={handlePhotoChange} disabled={uploadingPhoto} style={{ position: "absolute", width: 1, height: 1, opacity: 0 }} />
+                  <span className="drop-icon">📷</span>
+                  <strong className="drop-title">
+                    {uploadingPhoto ? "Sedang mengunggah foto..." : "Sentuh untuk memilih foto atau seret ke sini"}
+                  </strong>
+                  <span className="drop-hint">Format JPG, PNG, atau WebP · Maksimal 5 MB</span>
+                  <input
+                    id="vault-photo-input"
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    onChange={handlePhotoChange}
+                    disabled={uploadingPhoto}
+                    style={{ position: "absolute", width: 1, height: 1, opacity: 0 }}
+                  />
                 </label>
+
                 {photoPreview && (
-                  <figure style={{ width: "min(100%, 300px)", margin: "1.25rem auto 0", padding: "0.8rem 0.8rem 2.4rem", background: "#fff", boxShadow: "0 12px 30px rgba(37,43,82,.13)", transform: "rotate(-1deg)" }}>
-                    <img src={photoPreview} alt="Pratinjau foto kenangan" style={{ display: "block", width: "100%", aspectRatio: "1", objectFit: "cover", background: "#f1f2f8" }} />
-                    <figcaption style={{ paddingTop: "0.65rem", color: "#697099", textAlign: "center", fontFamily: "'Cormorant Garamond', Georgia, serif" }}>A moment kept close</figcaption>
-                  </figure>
+                  <div className="vault-setup-photo-preview">
+                    <div className="folio-polaroid-frame" style={{ maxWidth: "260px", margin: "1.5rem auto 0" }}>
+                      <img src={photoPreview} alt="Pratinjau Polaroid" style={{ width: "100%", aspectRatio: "1/1", objectFit: "cover" }} />
+                      <p className="folio-polaroid-script" style={{ fontSize: "1.1rem", marginTop: "8px" }}>
+                        A moment kept close
+                      </p>
+                    </div>
+                  </div>
                 )}
               </section>
 
-              <section style={cardStyle}>
-                <span style={{ color: "#9b8a60", fontSize: "0.78rem", letterSpacing: "0.1em", textTransform: "uppercase" }}>03 · Audio / Lagu</span>
-                <h2 style={{ margin: "0.4rem 0 1rem", color: "#4f557d", fontFamily: "'Cormorant Garamond', Georgia, serif", fontSize: "1.8rem" }}>Suara atau lagu kenangan</h2>
-                <div role="group" aria-label="Pilih jenis audio" style={{ display: "flex", flexWrap: "wrap", gap: "0.55rem", marginBottom: "1rem" }}>
+              {/* CARD 2: RECORD OR UPLOAD VOICE MEMORY */}
+              <section className="vault-setup-card">
+                <div className="card-step-badge">STEP 02</div>
+                <h2 className="vault-setup-card-title">Record or Upload Voice Memory</h2>
+                <p className="vault-setup-card-sub">
+                  Suara Anda adalah elemen paling personal. Rekam langsung melalui mikrofon atau unggah file suara.
+                </p>
+
+                <div className="vault-audio-toggle-row">
                   <button
                     type="button"
-                    aria-pressed={audioMode === "voice"}
-                    onClick={() => setAudioMode("voice")}
-                    style={{ border: "1px solid #c9cddd", borderRadius: "999px", padding: "0.65rem 0.9rem", background: audioMode === "voice" ? "#4f557d" : "#fff", color: audioMode === "voice" ? "#fff" : "#4f557d", font: "inherit", fontWeight: 600, cursor: "pointer" }}
+                    className={`audio-toggle-btn${audioSource === "file" ? " active" : ""}`}
+                    onClick={() => setAudioSource("file")}
                   >
-                    Unggah Rekaman Suara (VN)
+                    Unggah File Audio
                   </button>
                   <button
                     type="button"
-                    aria-pressed={audioMode === "spotify"}
-                    onClick={() => { setAudioMode("spotify"); setAudioDuration(0); }}
-                    style={{ border: "1px solid #c9cddd", borderRadius: "999px", padding: "0.65rem 0.9rem", background: audioMode === "spotify" ? "#4f557d" : "#fff", color: audioMode === "spotify" ? "#fff" : "#4f557d", font: "inherit", fontWeight: 600, cursor: "pointer" }}
+                    className={`audio-toggle-btn${audioSource === "record" ? " active" : ""}`}
+                    onClick={() => setAudioSource("record")}
                   >
-                    Tempel Link Lagu Spotify
+                    Rekam Langsung di Browser
+                  </button>
+                  <button
+                    type="button"
+                    className={`audio-toggle-btn${audioSource === "spotify" ? " active" : ""}`}
+                    onClick={() => { setAudioSource("spotify"); setAudioDuration(0); }}
+                  >
+                    Link Lagu Spotify
                   </button>
                 </div>
-                {audioMode === "spotify" ? (
-                  <>
-                    <label htmlFor="vault-spotify" style={labelStyle}>Link Spotify</label>
+
+                {audioSource === "file" && (
+                  <div className="vault-audio-file-box">
+                    <label htmlFor="vault-audio-input" className="vault-file-label">
+                      {uploadingAudio ? "Mengunggah audio..." : "Pilih Berkas Rekaman (.mp3, .m4a, .wav)"}
+                    </label>
                     <input
-                      id="vault-spotify"
+                      id="vault-audio-input"
+                      type="file"
+                      accept="audio/mpeg,audio/mp4,audio/x-m4a,audio/ogg,audio/wav,audio/webm"
+                      onChange={handleAudioChange}
+                      disabled={uploadingAudio}
+                      className="form-input"
+                    />
+                    <span className="drop-hint">Maksimal durasi bebas · Ukuran maksimal 10 MB</span>
+                  </div>
+                )}
+
+                {audioSource === "record" && (
+                  <div className="vault-browser-recorder">
+                    {!recording ? (
+                      <button
+                        type="button"
+                        className="recorder-btn record"
+                        onClick={startRecording}
+                      >
+                        ● Mulai Rekam Suara
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        className="recorder-btn stop"
+                        onClick={stopRecording}
+                      >
+                        ■ Hentikan &amp; Simpan ({recordingTime}s)
+                      </button>
+                    )}
+                    <p className="drop-hint">
+                      {recording ? "Sedang merekam suara Anda... Bicara dengan tenang di dekat mikrofon." : "Tekan tombol di atas untuk merekam langsung tanpa aplikasi tambahan."}
+                    </p>
+                  </div>
+                )}
+
+                {audioSource === "spotify" && (
+                  <div className="vault-spotify-box">
+                    <input
                       type="url"
                       value={spotifyUrl}
-                      onChange={event => { setSpotifyUrl(event.target.value); setAudioDuration(0); }}
+                      onChange={e => setSpotifyUrl(e.target.value)}
                       placeholder="https://open.spotify.com/track/..."
-                      style={{ width: "100%", boxSizing: "border-box", padding: "0.9rem 1rem", borderRadius: "12px", border: "1px solid #dfe1ec", font: "inherit", color: "#292d49" }}
+                      className="form-input"
                     />
-                    <span style={hintStyle}>Tempel link lagu, album, atau playlist Spotify.</span>
                     {spotifyEmbedPreviewUrl && (
                       <iframe
-                        title="Pratinjau Lagu Kenangan Spotify"
+                        title="Spotify Preview"
                         src={spotifyEmbedPreviewUrl}
                         width="100%"
                         height="152"
                         allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-                        loading="lazy"
-                        style={{ display: "block", marginTop: "1rem", borderRadius: "14px", border: "none" }}
+                        style={{ marginTop: "1rem", borderRadius: "8px", border: "none" }}
                       />
                     )}
-                    {spotifyUrl.trim() && !spotifyEmbedPreviewUrl && (
-                      <span role="status" style={{ ...hintStyle, color: "#9d3e32" }}>Link Spotify belum valid. Tempel tautan track, album, atau playlist Spotify.</span>
-                    )}
-                  </>
-                ) : (
-                  <>
-                    <label htmlFor="vault-audio" style={labelStyle}>{uploadingAudio ? "Mengunggah audio..." : "Pilih rekaman suara"}</label>
-                    <input id="vault-audio" type="file" accept="audio/mpeg,audio/mp4,audio/x-m4a,audio/ogg,audio/wav,audio/webm" onChange={handleAudioChange} disabled={uploadingAudio} />
-                    <span style={hintStyle}>MP3, M4A, WAV, OGG, atau WebM · Maks. 10 MB</span>
-                    {audioPreview && (
-                      <audio
-                        controls
-                        preload="metadata"
-                        src={audioPreview}
-                        onLoadedMetadata={event => {
-                          const duration = event.currentTarget.duration;
-                          if (Number.isFinite(duration)) setAudioDuration(Math.round(duration));
-                        }}
-                        style={{ display: "block", width: "100%", marginTop: "1rem" }}
-                      />
-                    )}
-                  </>
+                  </div>
+                )}
+
+                {audioPreview && audioSource !== "spotify" && (
+                  <div className="vault-audio-player-preview">
+                    <audio
+                      controls
+                      src={audioPreview}
+                      style={{ width: "100%", marginTop: "1rem" }}
+                      onLoadedMetadata={e => {
+                        const dur = e.currentTarget.duration;
+                        if (Number.isFinite(dur)) setAudioDuration(Math.round(dur));
+                      }}
+                    />
+                  </div>
                 )}
               </section>
 
-              <section style={cardStyle}>
-                <span style={{ color: "#9b8a60", fontSize: "0.78rem", letterSpacing: "0.1em", textTransform: "uppercase" }}>04 · Video opsional</span>
-                <h2 style={{ margin: "0.4rem 0 1rem", color: "#4f557d", fontFamily: "'Cormorant Garamond', Georgia, serif", fontSize: "1.8rem" }}>Moving memories</h2>
-                <label htmlFor="vault-video" style={labelStyle}>Link video YouTube atau video langsung</label>
-                <input
-                  id="vault-video"
-                  type="url"
-                  value={videoUrl}
-                  onChange={event => setVideoUrl(event.target.value)}
-                  placeholder="https://youtu.be/... atau https://..."
-                  style={{ width: "100%", boxSizing: "border-box", padding: "0.9rem 1rem", borderRadius: "12px", border: "1px solid #dfe1ec", font: "inherit", color: "#292d49" }}
+              {/* CARD 3: WRITE THE SECRET LETTER */}
+              <section className="vault-setup-card">
+                <div className="card-step-badge">STEP 03</div>
+                <h2 className="vault-setup-card-title">Write The Secret Letter</h2>
+                <p className="vault-setup-card-sub">
+                  Surat ini akan dirender dengan huruf inisial drop-cap bergaya manuskrip kuno pada kertas perkamen linen.
+                </p>
+
+                <textarea
+                  id="vault-letter-input"
+                  className="form-textarea vault-setup-textarea"
+                  rows={6}
+                  maxLength={2000}
+                  value={personalMessage}
+                  onChange={e => setPersonalMessage(e.target.value)}
+                  placeholder="Tuliskan kata-kata tulus dari lubuk hati Anda..."
                 />
-                <span style={hintStyle}>Gunakan link YouTube (termasuk unlisted) atau URL video langsung.</span>
+                <span className="char-counter">{personalMessage.length} / 2000 karakter</span>
+
+                {/* Drop-cap live preview */}
+                <div className="letter-dropcap-preview">
+                  <span className="preview-label">LIVE PARCHMENT PREVIEW:</span>
+                  <div className="preview-body">
+                    <span className="vault-drop-cap">{letterInitial}</span>
+                    <p className="preview-text">{letterRest}</p>
+                  </div>
+                  <div className="preview-signoff">
+                    With all my love, always yours, <strong>{order.sender_name || "You"}</strong>
+                  </div>
+                </div>
               </section>
 
-              {uploadError && (
-                <p role="alert" style={{ margin: 0, padding: "0.9rem 1rem", borderRadius: "12px", background: "#fff0ed", color: "#9d3e32" }}>
-                  {uploadError}
+              {/* OPTIONAL PIN CONFIGURATION */}
+              <section className="vault-setup-card">
+                <div className="card-step-badge">OPTIONAL SECURITY</div>
+                <h2 className="vault-setup-card-title">Secret PIN Protection</h2>
+                <p className="vault-setup-card-sub">
+                  Atur 4–6 digit PIN (opsional): Hanya orang yang tahu kode ini yang dapat membuka brankas memori.
                 </p>
+
+                <input
+                  type="text"
+                  maxLength={6}
+                  value={customPin}
+                  onChange={e => setCustomPin(e.target.value.replace(/\D/g, ""))}
+                  placeholder="Contoh: 140226"
+                  className="form-input vault-pin-config-input"
+                />
+                <span className="drop-hint">
+                  Jika dikosongkan, sistem akan mengunci dengan PIN acak yang otomatis tertera pada kartu ucapan fisik kado.
+                </span>
+              </section>
+
+              {/* ERRORS */}
+              {uploadError && (
+                <div className="vault-setup-error" role="alert">
+                  {uploadError}
+                </div>
               )}
-              <button
-                type="submit"
-                disabled={saving || uploadingPhoto || uploadingAudio}
-                style={{ width: "100%", minHeight: "3.5rem", border: 0, borderRadius: "14px", padding: "0.9rem 1.25rem", background: "#4f557d", color: "#fff", font: "inherit", fontWeight: 700, fontSize: "1rem", cursor: saving ? "wait" : "pointer", boxShadow: "0 12px 28px rgba(79,85,125,.22)" }}
-              >
-                {saving ? "Menyimpan kenangan..." : "Simpan ke Memory Vault ✦"}
-              </button>
-              <p style={{ margin: "-0.3rem 0 0", textAlign: "center", color: "#697099", fontSize: "0.82rem" }}>
-                Kenangan ini hanya digunakan untuk kado Anda.
-              </p>
+
+              {/* ACTIONS: PREVIEW & SAVE */}
+              <div className="vault-setup-action-group">
+                <button
+                  type="button"
+                  className="vault-setup-preview-btn"
+                  onClick={() => setPreviewModalOpen(true)}
+                >
+                  [ Preview What Recipient Will See ]
+                </button>
+
+                <button
+                  type="submit"
+                  disabled={saving || uploadingPhoto || uploadingAudio}
+                  className="hero-cta hero-cta-primary vault-setup-save-btn"
+                >
+                  {saving ? "Mengunci Kenangan..." : "KUNCI & SIMPAN BRANKAS MEMORI →"}
+                </button>
+              </div>
             </form>
           </>
         )}
       </div>
+
+      {/* RECIPIENT PREVIEW MODAL */}
+      {previewModalOpen && (
+        <div
+          className="modal-overlay open"
+          style={{ zIndex: 400 }}
+          onClick={() => setPreviewModalOpen(false)}
+        >
+          <div
+            className="vault-preview-modal-dialog"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="vault-preview-modal-bar">
+              <span>PREVIEW SIMULATION · WHAT RECIPIENT WILL SEE</span>
+              <button
+                type="button"
+                className="vault-preview-close"
+                onClick={() => setPreviewModalOpen(false)}
+              >
+                ✕ Close Preview
+              </button>
+            </div>
+            <div className="vault-preview-content">
+              <VaultExperience
+                previewData={{
+                  nama_pembeli: order?.recipient_name || "Recipient Name",
+                  dari: order?.sender_name || "Sender Name",
+                  pesan_personal: personalMessage || "Pesan kenangan manis Anda...",
+                  foto_vault: photoPreview || photoUrl,
+                  audio_url: audioPreview || audioUrl,
+                  audio_durasi: audioDuration,
+                  video_url: videoUrl,
+                  bunga: order?.product_name || "Hydrangea macrophylla x Gypsophila paniculata",
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

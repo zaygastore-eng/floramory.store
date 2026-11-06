@@ -10,9 +10,12 @@ export default function BrandLogo({
 
   if (failed) {
     return (
-      <span className="brand-logo-text">
-        Flora<span>mory</span>
-      </span>
+      <div className="brand-logo-wrap">
+        <span className="brand-logo-text">
+          A <span>Chapter</span>
+        </span>
+        <span className="brand-logo-kicker">ATELIER &amp; ARCHIVES</span>
+      </div>
     );
   }
 
@@ -20,7 +23,7 @@ export default function BrandLogo({
     <img
       className={className}
       src={logoUrl()}
-      alt="Floramory"
+      alt="A Chapter"
       onError={() => setFailed(true)}
     />
   );

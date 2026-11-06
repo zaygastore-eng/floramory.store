@@ -23,6 +23,7 @@ import {
   fetchManagedProducts,
   fetchPreOrders,
   fetchPreOrderStatusCounts,
+  fetchHeroConfig,
   fetchWhatsAppNumber,
   hasSupabaseConfig,
   notifyDpConfirmed,
@@ -30,21 +31,33 @@ import {
   signOutAdmin,
   statusAdminSession,
   updatePreOrderStatus,
+  updateHeroConfig,
   updateWhatsAppNumber,
   updateProduct,
   uploadProductImage,
   type PreOrder,
   type Product,
   type PreOrderStatusCounts,
+  type HeroConfig,
 } from "@/lib/api";
 import BrandLogo from "@/components/BrandLogo";
 import { isSupabaseStorageUrl, productImageUrl, validateImageUrl } from "@/lib/images";
 import { formatHarga, normalizeWhatsApp, PRODUCTION_SITE_URL } from "@/lib/site";
 import { getSupabaseClient } from "@/lib/supabase";
+import { homeContent } from "@/content/homeContent";
 
 const BASE_URL_KEY = "fm_base_url";
 const WA_KEY = "fm_wa";
 const SIDEBAR_PREFERENCE_KEY = "fm_admin_sidebar_collapsed";
+
+const defaultHeroConfig: HeroConfig = {
+  eyebrow: homeContent.hero.eyebrow,
+  headline: homeContent.hero.headline,
+  description: homeContent.hero.description,
+  ctaText: homeContent.hero.ctaButton,
+  ctaLink: "#chapters",
+  bgImageUrl: homeContent.hero.bgImage,
+};
 
 const TIER_OPTIONS = [
   { value: "classic", label: "Floramory Classic" },
@@ -269,6 +282,9 @@ export default function Admin() {
   const [baseUrl, setBaseUrl] = useState("");
   const [waNum, setWaNum] = useState("");
   const [configSaved, setConfigSaved] = useState(false);
+  const [heroConfig, setHeroConfig] = useState<HeroConfig>(defaultHeroConfig);
+  const [savingHeroConfig, setSavingHeroConfig] = useState(false);
+  const [uploadingHeroImage, setUploadingHeroImage] = useState(false);
   const [form, setForm] = useState<FormState>(EMPTY);
   const [generatedUrl, setGeneratedUrl] = useState("");
   const [qrVisible, setQrVisible] = useState(false);
@@ -296,6 +312,7 @@ export default function Admin() {
   const [realtimeConnected, setRealtimeConnected] = useState(false);
   const qrRef = useRef<HTMLDivElement>(null);
   const produkUploadRef = useRef<HTMLInputElement>(null);
+  const heroUploadRef = useRef<HTMLInputElement>(null);
   const wasMobileViewport = useRef(window.innerWidth < 768);
 
   useEffect(() => {
@@ -377,6 +394,17 @@ export default function Admin() {
         localStorage.setItem(WA_KEY, value);
       }
     });
+  }, [authed]);
+
+  useEffect(() => {
+    if (!authed) return;
+    let active = true;
+    void fetchHeroConfig().then(config => {
+      if (active && config) setHeroConfig(config);
+    });
+    return () => {
+      active = false;
+    };
   }, [authed]);
 
   const showToast = useCallback((msg: string, level: "info" | "success" | "alert" = "info") => {
@@ -618,6 +646,35 @@ export default function Admin() {
       showToast(error instanceof Error ? error.message : "Gagal mengunggah foto");
     } finally {
       setUploadingImage(false);
+    }
+  };
+
+  const handleHeroImageUpload = async (file: File) => {
+    if (uploadingHeroImage) return;
+    setUploadingHeroImage(true);
+    try {
+      const url = await uploadProductImage("site-settings-hero", "produk", file);
+      setHeroConfig(current => ({ ...current, bgImageUrl: url }));
+      showToast("Foto banner berhasil diunggah.", "success");
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "Gagal mengunggah foto banner.", "alert");
+    } finally {
+      setUploadingHeroImage(false);
+    }
+  };
+
+  const saveHeroConfig = async () => {
+    setSavingHeroConfig(true);
+    try {
+      await updateHeroConfig({
+        ...heroConfig,
+        bgImageUrl: heroConfig.bgImageUrl || "",
+      });
+      showToast("Hero banner berhasil diperbarui!", "success");
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "Gagal menyimpan hero banner.", "alert");
+    } finally {
+      setSavingHeroConfig(false);
     }
   };
 
@@ -1659,6 +1716,104 @@ export default function Admin() {
             value={waNum} onChange={e => setWaNum(e.target.value)} />
         </div>
         <button className="btn-generate" onClick={saveConfig}>Simpan Pengaturan</button>
+      </div>
+      <div className="admin-panel-card" style={{ gridColumn: "1 / -1" }}>
+        <div className="admin-panel-head">
+          <div>
+            <h2>Pengaturan Hero Banner (Slide 1)</h2>
+            <p>Konten editorial yang tampil di bagian atas halaman utama.</p>
+          </div>
+        </div>
+        <div className="admin-form-group">
+          <label className="admin-form-label" htmlFor="hero-eyebrow">Eyebrow text</label>
+          <input
+            id="hero-eyebrow"
+            className="admin-form-input"
+            value={heroConfig.eyebrow}
+            onChange={event => setHeroConfig(current => ({ ...current, eyebrow: event.target.value }))}
+          />
+        </div>
+        <div className="admin-form-group">
+          <label className="admin-form-label" htmlFor="hero-headline">Headline</label>
+          <textarea
+            id="hero-headline"
+            className="admin-form-input"
+            rows={3}
+            value={heroConfig.headline}
+            onChange={event => setHeroConfig(current => ({ ...current, headline: event.target.value }))}
+          />
+        </div>
+        <div className="admin-form-group">
+          <label className="admin-form-label" htmlFor="hero-description">Description</label>
+          <textarea
+            id="hero-description"
+            className="admin-form-input"
+            rows={4}
+            value={heroConfig.description}
+            onChange={event => setHeroConfig(current => ({ ...current, description: event.target.value }))}
+          />
+        </div>
+        <div className="admin-form-group">
+          <label className="admin-form-label" htmlFor="hero-cta-text">CTA Button Label</label>
+          <input
+            id="hero-cta-text"
+            className="admin-form-input"
+            value={heroConfig.ctaText}
+            onChange={event => setHeroConfig(current => ({ ...current, ctaText: event.target.value }))}
+          />
+        </div>
+        <div className="admin-form-group">
+          <label className="admin-form-label" htmlFor="hero-cta-link">CTA Button Link</label>
+          <input
+            id="hero-cta-link"
+            className="admin-form-input"
+            value={heroConfig.ctaLink}
+            onChange={event => setHeroConfig(current => ({ ...current, ctaLink: event.target.value }))}
+            placeholder="#chapters"
+          />
+        </div>
+        <div className="admin-form-group">
+          <label className="admin-form-label" htmlFor="hero-background-url">Background Image URL</label>
+          <input
+            id="hero-background-url"
+            className="admin-form-input"
+            type="url"
+            value={heroConfig.bgImageUrl || ""}
+            onChange={event => setHeroConfig(current => ({ ...current, bgImageUrl: event.target.value }))}
+            placeholder="https://..."
+          />
+          <input
+            ref={heroUploadRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp,image/avif,image/gif"
+            hidden
+            onChange={event => {
+              const file = event.target.files?.[0];
+              if (file) void handleHeroImageUpload(file);
+              event.target.value = "";
+            }}
+          />
+          <button
+            type="button"
+            className="admin-outline-btn"
+            style={{ marginTop: 8 }}
+            onClick={() => heroUploadRef.current?.click()}
+            disabled={uploadingHeroImage}
+          >
+            {uploadingHeroImage ? "Mengunggah..." : "Upload Foto Banner"}
+          </button>
+        </div>
+        <button
+          type="button"
+          className="btn-generate"
+          onClick={() => void saveHeroConfig()}
+          disabled={savingHeroConfig}
+        >
+          <span className="hero-config-save-content">
+            {savingHeroConfig && <RefreshCw size={16} className="hero-config-spinner" aria-hidden="true" />}
+            {savingHeroConfig ? "Menyimpan..." : "Simpan Perubahan Banner"}
+          </span>
+        </button>
       </div>
       <div className="admin-panel-card">
         <div className="admin-panel-head">

@@ -1,4 +1,5 @@
 import { normalizeWhatsApp } from "@/lib/site";
+import { homeContent, type ProductSpecimen } from "@/content/homeContent";
 
 const SUPABASE_URL = String(import.meta.env.VITE_SUPABASE_URL || "").replace(/\/$/, "");
 const SUPABASE_ANON_KEY = String(import.meta.env.VITE_SUPABASE_ANON_KEY || "");
@@ -20,8 +21,14 @@ export interface CatalogProduct {
   harga: string;
   deskripsi: string;
   foto_produk: string;
+  bunga?: string;
+  hoverImageUrl?: string;
+  editionTag?: string;
+  isFallback?: boolean;
   is_catalog?: boolean;
 }
+
+export type CatalogCategory = "framed" | "stem";
 
 /** Full product type used by detail views (Produk page, modal) and Admin panel. */
 export interface Product extends CatalogProduct {
@@ -71,6 +78,62 @@ export interface PreOrderSubmissionResult extends PreOrder {
   orderNumber: string;
   dpAmount: number;
   waStatus: "manual_redirect";
+}
+
+export interface HeroConfig {
+  eyebrow: string;
+  headline: string;
+  description: string;
+  ctaText: string;
+  ctaLink: string;
+  bgImageUrl?: string;
+}
+
+function isHeroConfig(value: unknown): value is HeroConfig {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const config = value as Record<string, unknown>;
+  return (
+    typeof config.eyebrow === "string" &&
+    typeof config.headline === "string" &&
+    typeof config.description === "string" &&
+    typeof config.ctaText === "string" &&
+    typeof config.ctaLink === "string" &&
+    (config.bgImageUrl === undefined || typeof config.bgImageUrl === "string")
+  );
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value && typeof value === "object" && !Array.isArray(value));
+}
+
+export async function fetchHeroConfig(): Promise<HeroConfig | null> {
+  if (!isSupabaseConfigured()) return null;
+
+  try {
+    const query = new URLSearchParams({
+      key: "eq.hero_config",
+      select: "value",
+      limit: "1",
+    });
+    const response = await fetch(`${SUPABASE_URL}/rest/v1/site_settings?${query}`, {
+      headers: supabaseHeaders(),
+    });
+    if (!response.ok) return null;
+
+    const rows: unknown = await response.json();
+    if (!Array.isArray(rows) || !isRecord(rows[0]) || !isHeroConfig(rows[0].value)) return null;
+    return rows[0].value;
+  } catch {
+    return null;
+  }
+}
+
+export async function updateHeroConfig(config: HeroConfig): Promise<void> {
+  await adminRequest("POST", "/rest/v1/site_settings", {
+    query: "on_conflict=key",
+    body: { key: "hero_config", value: config, updated_at: new Date().toISOString() },
+    prefer: "resolution=merge-duplicates,return=minimal",
+  });
 }
 
 let cachedCatalog: CatalogProduct[] | null = null;
@@ -620,6 +683,7 @@ function normalizeCatalogProduct(obj: Record<string, unknown>): CatalogProduct {
     harga: String(obj.harga || "").trim(),
     deskripsi: String(obj.deskripsi || "").trim(),
     foto_produk: String(obj.foto_produk || "").trim(),
+    bunga: String(obj.bunga || "").trim(),
     is_catalog: Boolean(obj.is_catalog ?? true),
   };
 }
@@ -627,17 +691,45 @@ function normalizeCatalogProduct(obj: Record<string, unknown>): CatalogProduct {
 // Public catalog query — only the 6 columns needed for the card grid.
 // Heavy detail fields (pesan_personal, foto_qr, nama_pembeli, etc.) are
 // excluded here and only fetched on demand via fetchProductById.
-const CATALOG_SELECT = "id,nama_produk,tier,harga,deskripsi,foto_produk,is_catalog";
+const CATALOG_SELECT = "id,nama_produk,tier,harga,bunga,deskripsi,foto_produk,is_catalog";
 
-async function fetchCatalogFromSupabase(): Promise<CatalogProduct[] | null> {
+export function getHomeContentCatalogProducts(category: CatalogCategory = "framed"): CatalogProduct[] {
+  const items: ProductSpecimen[] = category === "stem"
+    ? homeContent.singleStems.items
+    : homeContent.chapters.items;
+  return items.map((item, index) => ({
+    id: `home-content-${item.id}`,
+    nama_produk: item.name,
+    tier: category === "stem" ? "classic" : ["classic", "signature", "masterpiece", "signature"][index] || "classic",
+    harga: item.price,
+    bunga: item.latinName,
+    deskripsi: item.description,
+    foto_produk: item.frontImageUrl,
+    hoverImageUrl: item.hoverImageUrl,
+    editionTag: item.editionTag,
+    isFallback: true,
+    is_catalog: true,
+  }));
+}
+
+async function fetchCatalogFromSupabase(category?: CatalogCategory): Promise<CatalogProduct[] | null> {
   if (!isSupabaseConfigured()) return null;
 
   const all: CatalogProduct[] = [];
   try {
     for (let page = 0; page < PUBLIC_PRODUCTS_MAX_PAGES; page++) {
       const offset = page * PUBLIC_PRODUCTS_PAGE_SIZE;
+      const query = new URLSearchParams({
+        select: CATALOG_SELECT,
+        status: "eq.active",
+        is_catalog: "eq.true",
+        order: "created_at.desc",
+        limit: String(PUBLIC_PRODUCTS_PAGE_SIZE),
+        offset: String(offset),
+      });
+      if (category) query.set("kategori", `eq.${category}`);
       const res = await fetch(
-        `${SUPABASE_URL}/rest/v1/products?select=${CATALOG_SELECT}&status=eq.active&is_catalog=eq.true&order=created_at.desc&limit=${PUBLIC_PRODUCTS_PAGE_SIZE}&offset=${offset}`,
+        `${SUPABASE_URL}/rest/v1/products?${query}`,
         { headers: supabaseHeaders() }
       );
       if (!res.ok) return null;
@@ -658,9 +750,13 @@ async function fetchCatalogFromSupabase(): Promise<CatalogProduct[] | null> {
   }
 }
 
-/** Fetch the public catalog (lightweight). Returns CatalogProduct[] with only
- *  card-display columns. Results are cached for CACHE_TTL ms. */
-export async function fetchCatalogProducts(): Promise<CatalogProduct[]> {
+/** Fetch public catalog products, optionally filtered by their storefront category. */
+export async function fetchCatalogProducts(category?: CatalogCategory): Promise<CatalogProduct[]> {
+  if (category) {
+    const categoryRows = await fetchCatalogFromSupabase(category);
+    return categoryRows?.length ? categoryRows : getHomeContentCatalogProducts(category);
+  }
+
   const cached = cachedCatalog;
   const ttl = cached && cached.length === 0 ? EMPTY_CACHE_TTL : CACHE_TTL;
   if (cached && Date.now() - cacheTime < ttl) {
@@ -668,13 +764,14 @@ export async function fetchCatalogProducts(): Promise<CatalogProduct[]> {
   }
 
   const rows = await fetchCatalogFromSupabase();
-  if (rows !== null) {
-    cachedCatalog = rows;
-    cacheTime = Date.now();
-    return cachedCatalog;
-  }
-
-  return cachedCatalog || [];
+  const resolvedRows = rows?.length
+    ? rows
+    : cachedCatalog?.some(product => !product.isFallback)
+      ? cachedCatalog
+      : getHomeContentCatalogProducts("framed");
+  cachedCatalog = resolvedRows;
+  cacheTime = Date.now();
+  return resolvedRows;
 }
 
 // Kolom eksplisit (bukan select=*). created_at/updated_at terakhir

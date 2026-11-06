@@ -2,6 +2,13 @@ import { lazy, Suspense } from "react";
 import { Switch, Route, Router as WouterRouter } from "wouter";
 import Home from "@/pages/Home";
 import Produk from "@/pages/Produk";
+import ProductDetail from "@/pages/ProductDetail";
+import ShopAll from "@/pages/ShopAll";
+import SingleFlowers from "@/pages/SingleFlowers";
+import ForBusiness from "@/pages/ForBusiness";
+import GiftCard from "@/pages/GiftCard";
+import AboutUs from "@/pages/AboutUs";
+import VaultExperience from "@/pages/VaultExperience";
 import NotFound from "@/pages/not-found";
 import ErrorBoundary from "@/components/ErrorBoundary";
 
@@ -24,6 +31,15 @@ function Router() {
   return (
     <Switch>
       <Route path="/" component={Home} />
+      <Route path="/shop" component={ShopAll} />
+      <Route path="/single-flowers" component={SingleFlowers} />
+      <Route path="/business" component={ForBusiness} />
+      <Route path="/gift-card" component={GiftCard} />
+      <Route path="/about" component={AboutUs} />
+      <Route path="/vault/:id" component={VaultExperience} />
+      <Route path="/v/:id" component={VaultExperience} />
+      <Route path="/products/:id" component={ProductDetail} />
+      <Route path="/produk/:id" component={ProductDetail} />
       <Route path="/produk" component={Produk} />
       <Route path="/vault-setup">
         <Suspense fallback={<LoadingPage />}>

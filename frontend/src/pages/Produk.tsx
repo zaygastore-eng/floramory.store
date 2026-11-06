@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, lazy, Suspense, type ClipboardEvent, type 
 import { LoaderCircle } from "lucide-react";
 import BrandLogo from "@/components/BrandLogo";
 import ProductSpecimen from "@/components/ProductSpecimen";
+import VaultExperience from "@/pages/VaultExperience";
 const AudioPlayer = lazy(() => import("@/components/AudioPlayer"));
 import {
   fetchProductById,
@@ -64,7 +65,7 @@ export default function Produk() {
   if (loading) {
     return (
       <div className="loading-screen">
-        <div className="loading-logo" aria-label="Floramory">
+        <div className="loading-logo" aria-label="A Chapter">
           <BrandLogo className="brand-logo-img loading-logo-img" />
         </div>
         <div className="loading-dots"><span /><span /><span /></div>
@@ -81,7 +82,7 @@ export default function Produk() {
         <br />
         <a href={`https://wa.me/${normalizeWhatsApp(waNumber) || WA_FALLBACK}`} target="_blank" rel="noopener noreferrer"
           className="error-link">
-          Hubungi Floramory via WhatsApp →
+          Hubungi A Chapter via WhatsApp →
         </a>
       </div>
     );
@@ -93,12 +94,20 @@ export default function Produk() {
   const hasVideo = videoMedia.isVideo && Boolean(videoMedia.url);
   const hasAudio = audioMedia.isAudio && Boolean(audioMedia.url);
   const hasPersonalMessage = Boolean(product.pesan_personal && product.pesan_personal.trim());
+  const hasMemoir = hasFotoVault || hasVideo || hasAudio || hasPersonalMessage;
+
+  // When a physical QR is scanned pointing to /produk?id=UUID:
+  // If the product has a linked memoir vault or is a custom order, immediately render VaultExperience
+  if (hasMemoir || !product.is_catalog) {
+    return <VaultExperience productIdOverride={product.id} />;
+  }
+
   const isVaultEmpty = !hasFotoVault && !hasVideo && !hasAudio && !hasPersonalMessage;
   const isVaultLocked = !product.is_catalog && !isVaultEmpty && !vaultUnlocked;
   const waDigits = normalizeWhatsApp(waNumber) || WA_FALLBACK;
 
   const waMsg = encodeURIComponent(
-    `Hello Floramory, I'd like to consult on customizing ${product.nama_produk} (ID: ${product.id})`
+    `Hello A Chapter, I'd like to consult on customizing ${product.nama_produk} (ID: ${product.id})`
   );
 
   const handleVerifyPin = async (event: FormEvent) => {
@@ -150,7 +159,7 @@ export default function Produk() {
   return (
     <div className="produk-page">
       <header className="site-header">
-        <a className="header-logo logo-link" href={pageUrl("/")} aria-label="Floramory">
+        <a className="header-logo logo-link" href={pageUrl("/")} aria-label="A Chapter">
           <BrandLogo />
         </a>
         <span className="header-badge">{tierLabel(tier)}</span>
@@ -196,7 +205,7 @@ export default function Produk() {
                 </p>
                 <form onSubmit={handleVerifyPin} style={{ margin: "1.5rem auto 0", maxWidth: "24rem" }}>
                     <p style={{ margin: "0 0 0.9rem", color: "#69705d", lineHeight: 1.65 }}>
-                      Gosok stiker perak pada kartu ucapan Floramory kamu, lalu masukkan 6 digit PIN rahasia di bawah ini.
+                      Gosok stiker perak pada kartu ucapan A Chapter kamu, lalu masukkan 6 digit PIN rahasia di bawah ini.
                     </p>
                     <div style={{ display: "flex", justifyContent: "center", gap: "0.5rem", marginBottom: "1rem" }}>
                       {Array.from({ length: 6 }, (_, index) => (
@@ -230,12 +239,12 @@ export default function Produk() {
                       </p>
                     )}
                     <a
-                      href={`https://wa.me/${waDigits}?text=${encodeURIComponent("Halo Floramory, kartu kado saya rusak atau PIN tidak terbaca. Mohon bantu saya.")}`}
+                      href={`https://wa.me/${waDigits}?text=${encodeURIComponent("Halo A Chapter, kartu kado saya rusak atau PIN tidak terbaca. Mohon bantu saya.")}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       style={{ display: "inline-block", marginTop: "1rem", color: "#69705d", fontSize: "0.86rem", textDecoration: "underline" }}
                     >
-                      Kartu rusak atau tergores tidak terbaca? Hubungi WhatsApp Floramory
+                      Kartu rusak atau tergores tidak terbaca? Hubungi WhatsApp A Chapter
                     </a>
                 </form>
               </div>
@@ -261,7 +270,7 @@ export default function Produk() {
                     <span className="vault-polaroid-title">
                       {product.nama_pembeli ? `Untuk ${product.nama_pembeli}` : "Kapsul Kenangan"}
                     </span>
-                    <span className="vault-polaroid-sub">Captured with love · Floramory Keepsake</span>
+                    <span className="vault-polaroid-sub">Captured with love · A Chapter Keepsake</span>
                   </figcaption>
                 </figure>
               </div>
@@ -273,7 +282,7 @@ export default function Produk() {
                 <div className="vault-video-frame">
                   <iframe
                     src={videoMedia.embedUrl}
-                    title="Video Kenangan Floramory"
+                    title="Video Kenangan A Chapter"
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                     allowFullScreen
                     className="vault-video-iframe"
@@ -356,7 +365,7 @@ export default function Produk() {
                   <p className="vault-letter-text">{product.pesan_personal}</p>
                   <div className="vault-letter-sign">
                     <span>Dengan penuh cinta,</span>
-                    <strong>{product.dari || "Floramory"}</strong>
+                    <strong>{product.dari || "A Chapter"}</strong>
                   </div>
                 </div>
               </div>
@@ -370,17 +379,17 @@ export default function Produk() {
                   <div className="vault-letter-meta">
                     <span className="vault-letter-label">Botanical Keepsake Blessing</span>
                     <h3 className="vault-letter-salutation">
-                      {product.nama_pembeli ? `Untuk ${product.nama_pembeli}` : "Karya Kenangan Floramory"}
+                      {product.nama_pembeli ? `Untuk ${product.nama_pembeli}` : "Karya Kenangan A Chapter"}
                     </h3>
                   </div>
                 </div>
                 <div className="vault-letter-body">
                   <p className="vault-letter-text">
-                    “Setiap bunga Floramory dirangkai untuk menyimpan kenangan abadi. Karya seni botani ini diawetkan dengan cermat di laboratorium agar keindahan dan ketulusan momen istimewa Anda tetap mekar selamanya.”
+                    “Setiap bunga A Chapter dirangkai untuk menyimpan kenangan abadi. Karya seni botani ini diawetkan dengan cermat di laboratorium agar keindahan dan ketulusan momen istimewa Anda tetap mekar selamanya.”
                   </p>
                   <div className="vault-letter-sign">
                     <span>Dengan penuh kehangatan,</span>
-                    <strong>Atelier Floramory</strong>
+                    <strong>Atelier A Chapter</strong>
                   </div>
                 </div>
               </div>

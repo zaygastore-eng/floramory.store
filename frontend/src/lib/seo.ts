@@ -56,8 +56,8 @@ export interface ProductSeoInfo {
 
 // Terapkan metadata spesifik produk pada halaman /produk?id=...
 export function applyProductMeta(product: ProductSeoInfo): void {
-  const title = `${product.nama_produk} — Floramory`;
-  const desc = (product.deskripsi || `Produk ${product.nama_produk} dari Floramory.`)
+  const title = `${product.nama_produk} — A Chapter`;
+  const desc = (product.deskripsi || `Produk ${product.nama_produk} dari A Chapter.`)
     .replace(/\s+/g, " ")
     .slice(0, 160);
   const productUrl = resolveAbsolute(`/produk?id=${encodeURIComponent(product.id)}`);

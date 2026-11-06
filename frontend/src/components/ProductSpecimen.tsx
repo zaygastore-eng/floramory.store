@@ -1,6 +1,6 @@
 import ProductImage from "@/components/ProductImage";
 import { formatHarga } from "@/lib/site";
-import { tierEmoji, tierLabel, type Product } from "@/lib/api";
+import type { Product } from "@/lib/api";
 
 interface ProductSpecimenProps {
   product: Product;
@@ -13,58 +13,89 @@ export default function ProductSpecimen({
   whatsappUrl,
   onOrder,
 }: ProductSpecimenProps) {
-  const tier = product.tier.toLowerCase();
-  const tierNotes: Record<string, string> = {
-    classic: "A quiet keepsake, made to hold a lasting memory.",
-    signature: "A considered composition, preserved by hand.",
-    masterpiece: "A singular botanical work, made for a once-in-a-lifetime story.",
-  };
-
   return (
     <article className="specimen-sheet">
-      <section className="specimen-media-column" aria-label="Visual specimen">
+      <section className="specimen-media-column" aria-label="Visual botanical specimen">
         <div className="specimen-viewport">
-          <ProductImage
-            src={product.foto_produk}
-            size="large"
-            alt={`${product.nama_produk} — preserved botanical specimen`}
-            className="specimen-product-image"
-            width={1000}
-            height={1200}
-            loading="eager"
-            fallback={<span className="specimen-fallback">{tierEmoji(tier)}</span>}
-          />
-          <span className="specimen-tier-pill">
-            <span>{tierLabel(tier)}</span>
-            <span>{tierNotes[tier] || "A botanical keepsake, preserved by hand."}</span>
-          </span>
+          <div className="specimen-passe-partout">
+            <ProductImage
+              src={product.foto_produk}
+              size="large"
+              alt={`${product.nama_produk} — preserved botanical specimen`}
+              className="specimen-product-image"
+              width={1000}
+              height={1250}
+              loading="eager"
+              fallback={
+                <div className="product-img-monogram">
+                  <span className="product-monogram-inner">A · C</span>
+                </div>
+              }
+            />
+          </div>
+          <div className="specimen-microchip-stamp">
+            <span className="stamp-dot" aria-hidden="true">✦</span>
+            PERMANENT CLOUD MICRO-CHIP EMBEDDED IN BASE
+          </div>
         </div>
       </section>
 
-      <section className="specimen-copy-column" aria-label="Keepsake story">
-        <span className="specimen-eyebrow">Preserved botanical art · Handcrafted</span>
-        <h1 className="specimen-title" id="product-modal-title">{product.nama_produk}</h1>
-        <p className="specimen-price">{formatHarga(product.harga)}</p>
+      <section className="specimen-copy-column" aria-label="Archival keepsake folio">
+        {/* Edition Header */}
+        <div className="specimen-folio-header">
+          <span className="specimen-folio-tag">
+            FOLIO SPECIMEN NO. {product.id ? String(product.id).slice(0, 8).toUpperCase() : "2026-A"} · SURABAYA ATELIER
+          </span>
+          <h1 className="specimen-title" id="product-modal-title">{product.nama_produk}</h1>
+          <p className="specimen-price">{formatHarga(product.harga)}</p>
+        </div>
+
+        {/* Story / Philosophical Narrative */}
         <p className="specimen-narrative" id="specimen-narrative">
           {product.deskripsi || "A fleeting bloom, held in crystal clarity. Each specimen is carefully composed to keep the feeling of a meaningful moment close, long after the petals have fallen."}
         </p>
 
-        <p className="specimen-metadata">
-          {product.bunga || "Preserved bloom"} · 3–5 Days Lab Dehydration · {[product.ukuran, product.bahan].filter(Boolean).join(" · ") || "Hand-finished form"}
-        </p>
-        <p className="specimen-qr-whisper">
-          <span aria-hidden="true">✦</span> Secret embedded micro-QR permanently links this physical keepsake to your private digital Memory Vault.
-        </p>
+        {/* Curated Botanical Specifications (Hairline Definition List) */}
+        <dl className="specimen-herbarium-notes">
+          <div className="herb-note-row">
+            <dt>Botanical Elements</dt>
+            <dd>{product.bunga || "Natural Preserved Flora (Hydrangea & Gypsophila)"}</dd>
+          </div>
+          <div className="herb-note-row">
+            <dt>Preservation Standard</dt>
+            <dd>Lab Cryo-Dehydration (&lt; 0.02% Residual Moisture Content)</dd>
+          </div>
+          <div className="herb-note-row">
+            <dt>Encapsulation</dt>
+            <dd>Optical-Grade UV-Shielded Crystal Bio-Epoxy (Bubble-Free)</dd>
+          </div>
+          <div className="herb-note-row">
+            <dt>Frame &amp; Form</dt>
+            <dd>{[product.ukuran, product.bahan].filter(Boolean).join(" · ") || "Archival Solid Wood Herbarium Frame"}</dd>
+          </div>
+        </dl>
 
+        {/* The Memory Vault Included Card */}
+        <div className="specimen-vault-card">
+          <div className="vault-card-badge">DIGITAL MEMORY VAULT INCLUDED</div>
+          <p className="vault-card-text">
+            Sudah termasuk akses eksklusif Smart QR Memory Vault: simpan rekaman suara, foto kenangan, dan surat personal yang dapat diperbarui kapan saja seumur hidup tanpa aplikasi.
+          </p>
+        </div>
+
+        {/* Dual Action System */}
         <div className="specimen-actions">
           <button type="button" className="specimen-order-button" onClick={onOrder}>
-            Pre-Order This Keepsake <span aria-hidden="true">→</span>
+            COMMISSION THIS CHAPTER →
           </button>
-          <div className="specimen-secondary-actions">
-            <a href={whatsappUrl} target="_blank" rel="noopener noreferrer">
-              Ask / Consult via WhatsApp
-            </a>
-          </div>
+          <a
+            href={whatsappUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="specimen-whatsapp-link"
+          >
+            Consult Custom Request via WhatsApp
+          </a>
         </div>
       </section>
     </article>
