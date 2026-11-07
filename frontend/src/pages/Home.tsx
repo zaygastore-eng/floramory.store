@@ -504,26 +504,16 @@ export default function Home() {
     <>
       <SiteHeader />
 
-      <section className="hero editorial-hero">
-        <div
-          className="hero-bg"
-          aria-hidden="true"
-          style={{
-            backgroundImage: heroConfig.bgImageUrl
-              ? `linear-gradient(rgba(35, 29, 27, 0.3), rgba(35, 29, 27, 0.3)), url(${JSON.stringify(heroConfig.bgImageUrl)})`
-              : undefined,
-          }}
-        />
-        <div className="hero-inner editorial-hero-card">
-          <div className="hero-eyebrow">{heroConfig.eyebrow}</div>
-          <h1 className="hero-h1">
-            <span className="hero-h1-primary">{heroFirstLine}</span>
-            <span className="hero-h1-italic">{heroSecondLine}</span>
+      <section className="hero hero-teaser" id="hero">
+        <div className="hero-teaser-content">
+          <h1 className="hero-teaser-headline">
+            <span className="hero-line-where">Where Every</span>
+            <span className="hero-line-flower">Flower</span>
+            <span className="hero-line-chapter">Tells Your Chapter</span>
           </h1>
-          <p className="hero-sub">{heroConfig.description}</p>
-          <div className="hero-cta-group">
-            <a className="hero-cta-primary" href={heroConfig.ctaLink || "#chapters"}>
-              {heroConfig.ctaText}
+          <div className="hero-teaser-cta-wrap">
+            <a href="#pesan" className="hero-teaser-cta">
+              Join the Pre-Order
             </a>
           </div>
         </div>

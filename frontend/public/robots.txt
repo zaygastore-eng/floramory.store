@@ -2,4 +2,4 @@ User-agent: *
 Allow: /
 Disallow: /admin
 Disallow: /api/
-Sitemap: https://floramory.store/sitemap.xml
+Sitemap: https://www.achapter.my.id/sitemap.xml

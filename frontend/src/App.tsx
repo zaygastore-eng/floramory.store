@@ -5,7 +5,6 @@ import Produk from "@/pages/Produk";
 import ProductDetail from "@/pages/ProductDetail";
 import ShopAll from "@/pages/ShopAll";
 import SingleFlowers from "@/pages/SingleFlowers";
-import ForBusiness from "@/pages/ForBusiness";
 import GiftCard from "@/pages/GiftCard";
 import AboutUs from "@/pages/AboutUs";
 import VaultExperience from "@/pages/VaultExperience";
@@ -33,7 +32,6 @@ function Router() {
       <Route path="/" component={Home} />
       <Route path="/shop" component={ShopAll} />
       <Route path="/single-flowers" component={SingleFlowers} />
-      <Route path="/business" component={ForBusiness} />
       <Route path="/gift-card" component={GiftCard} />
       <Route path="/about" component={AboutUs} />
       <Route path="/vault/:id" component={VaultExperience} />
