@@ -390,11 +390,12 @@ export default function Admin() {
   useEffect(() => {
     if (!authed) return;
     const saved = localStorage.getItem(BASE_URL_KEY)?.trim();
-    // Default strictly to PRODUCTION_SITE_URL if unconfigured or previously set to localhost/127.0.0.1
+    // Default strictly to PRODUCTION_SITE_URL if unconfigured, localhost, or legacy floramory domain
     const isLocalhost = saved ? /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?/i.test(saved) : false;
-    const initialUrl = saved && !isLocalhost ? saved : PRODUCTION_SITE_URL;
+    const isLegacyDomain = saved ? saved.includes("floramory.store") : false;
+    const initialUrl = saved && !isLocalhost && !isLegacyDomain ? saved : PRODUCTION_SITE_URL;
     setBaseUrl(initialUrl);
-    if (!saved || isLocalhost) localStorage.setItem(BASE_URL_KEY, initialUrl);
+    if (!saved || isLocalhost || isLegacyDomain) localStorage.setItem(BASE_URL_KEY, initialUrl);
     setWaNum(localStorage.getItem(WA_KEY) || "");
     fetchWhatsAppNumber().then((value) => {
       if (value) {

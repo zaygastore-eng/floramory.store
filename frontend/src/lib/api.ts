@@ -506,7 +506,7 @@ function fileToBase64(file: File): Promise<string> {
 
 export async function uploadVaultMedia(
   orderId: string,
-  fileType: "photo" | "audio",
+  fileType: "photo" | "audio" | "video",
   file: File
 ): Promise<string> {
   const { status, data } = await callVaultSetup({

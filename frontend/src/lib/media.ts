@@ -21,16 +21,14 @@ function getSpotifyParts(rawUrl: string): { type: string; id: string } | null {
 
   try {
     const parsed = new URL(value);
-    if (parsed.hostname.toLowerCase() !== "open.spotify.com") return null;
+    if (!parsed.hostname.toLowerCase().includes("spotify.com")) return null;
     const segments = parsed.pathname.split("/").filter(Boolean);
-    const offset = segments[0]?.toLowerCase() === "embed" ? 1 : 0;
-    const type = segments[offset]?.toLowerCase();
-    const id = segments[offset + 1] || "";
-    if (
-      !["track", "album", "playlist"].includes(type || "") ||
-      !SPOTIFY_ID_PATTERN.test(id)
-    ) return null;
-    return { type: type || "", id };
+    const typeIndex = segments.findIndex(s => ["track", "album", "playlist"].includes(s.toLowerCase()));
+    if (typeIndex === -1) return null;
+    const type = segments[typeIndex].toLowerCase();
+    const id = segments[typeIndex + 1]?.split("?")[0] || "";
+    if (!SPOTIFY_ID_PATTERN.test(id)) return null;
+    return { type, id };
   } catch {
     return null;
   }

@@ -2,7 +2,7 @@ import { useEffect, useState, useRef, type DragEvent, type ChangeEvent, type For
 import BrandLogo from "@/components/BrandLogo";
 import VaultExperience from "@/pages/VaultExperience";
 import { fetchVaultSetup, saveVaultSetup, uploadVaultMedia, type PreOrder } from "@/lib/api";
-import { classifyMedia, parseSpotifyEmbedUrl } from "@/lib/media";
+import { classifyMedia, parseSpotifyEmbedUrl, parseYouTubeEmbedUrl } from "@/lib/media";
 import { pageUrl } from "@/lib/site";
 
 export default function VaultSetup() {
@@ -21,6 +21,9 @@ export default function VaultSetup() {
   const [audioSource, setAudioSource] = useState<"file" | "record" | "spotify">("file");
   const [spotifyUrl, setSpotifyUrl] = useState("");
   const [videoUrl, setVideoUrl] = useState("");
+  const [videoPreview, setVideoPreview] = useState("");
+  const [videoSource, setVideoSource] = useState<"file" | "youtube">("file");
+  const [uploadingVideo, setUploadingVideo] = useState(false);
   const [customPin, setCustomPin] = useState("");
 
   // Browser voice recorder state
@@ -39,7 +42,8 @@ export default function VaultSetup() {
   const [previewModalOpen, setPreviewModalOpen] = useState(false);
 
   useEffect(() => {
-    const id = new URLSearchParams(window.location.search).get("order")?.trim() || "";
+    const params = new URLSearchParams(window.location.search);
+    const id = params.get("order")?.trim() || params.get("token")?.trim() || params.get("id")?.trim() || "";
     setOrderId(id);
     if (!id) {
       setPageError("Link tidak valid atau pesanan tidak ditemukan.");
@@ -97,12 +101,28 @@ export default function VaultSetup() {
     };
   }, [audioPreview]);
 
-  // Audio Recording Handlers
+  useEffect(() => {
+    return () => {
+      if (videoPreview.startsWith("blob:")) URL.revokeObjectURL(videoPreview);
+    };
+  }, [videoPreview]);
+
+  // Audio Recording Handlers with Cross-Browser Compatibility
   const startRecording = async () => {
     setUploadError("");
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream);
+      const preferredMime =
+        typeof MediaRecorder !== "undefined" && MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
+          ? "audio/webm;codecs=opus"
+          : typeof MediaRecorder !== "undefined" && MediaRecorder.isTypeSupported("audio/webm")
+            ? "audio/webm"
+            : typeof MediaRecorder !== "undefined" && MediaRecorder.isTypeSupported("audio/mp4")
+              ? "audio/mp4"
+              : "";
+      const mediaRecorder = preferredMime
+        ? new MediaRecorder(stream, { mimeType: preferredMime })
+        : new MediaRecorder(stream);
       mediaRecorderRef.current = mediaRecorder;
       audioChunksRef.current = [];
 
@@ -111,8 +131,11 @@ export default function VaultSetup() {
       };
 
       mediaRecorder.onstop = () => {
-        const audioBlob = new Blob(audioChunksRef.current, { type: "audio/webm" });
-        const file = new File([audioBlob], `voicenote-${Date.now()}.webm`, { type: "audio/webm" });
+        const actualType = mediaRecorder.mimeType || "audio/webm";
+        const cleanType = actualType.split(";")[0];
+        const ext = cleanType.includes("mp4") ? "m4a" : "webm";
+        const audioBlob = new Blob(audioChunksRef.current, { type: cleanType });
+        const file = new File([audioBlob], `voicenote-${Date.now()}.${ext}`, { type: cleanType });
         void uploadFile(file, "audio");
         stream.getTracks().forEach(t => t.stop());
       };
@@ -136,23 +159,33 @@ export default function VaultSetup() {
     }
   };
 
-  const uploadFile = async (file: File, type: "photo" | "audio") => {
+  const uploadFile = async (file: File, type: "photo" | "audio" | "video") => {
     const isPhoto = type === "photo";
-    const setUploading = isPhoto ? setUploadingPhoto : setUploadingAudio;
-    const setPreview = isPhoto ? setPhotoPreview : setAudioPreview;
-    const setUrl = isPhoto ? setPhotoUrl : setAudioUrl;
-    const maxSize = isPhoto ? 5 * 1024 * 1024 : 10 * 1024 * 1024;
+    const isAudio = type === "audio";
+    const isVideo = type === "video";
+    const setUploading = isPhoto ? setUploadingPhoto : isAudio ? setUploadingAudio : setUploadingVideo;
+    const setPreview = isPhoto ? setPhotoPreview : isAudio ? setAudioPreview : setVideoPreview;
+    const setUrl = isPhoto ? setPhotoUrl : isAudio ? setAudioUrl : setVideoUrl;
+    const maxSize = isPhoto ? 5 * 1024 * 1024 : isAudio ? 15 * 1024 * 1024 : 35 * 1024 * 1024;
     const allowedTypes = isPhoto
       ? ["image/jpeg", "image/png", "image/webp"]
-      : ["audio/mpeg", "audio/mp4", "audio/x-m4a", "audio/ogg", "audio/wav", "audio/webm"];
+      : isAudio
+        ? ["audio/mpeg", "audio/mp4", "audio/x-m4a", "audio/ogg", "audio/wav", "audio/webm"]
+        : ["video/mp4", "video/webm", "video/quicktime", "video/x-m4v"];
 
     setUploadError("");
-    if (!allowedTypes.includes(file.type)) {
-      setUploadError(isPhoto ? "Gunakan foto JPG, PNG, atau WebP." : "Format audio belum didukung.");
+    if (!allowedTypes.includes(file.type) && !allowedTypes.some(t => file.type.startsWith(t.split("/")[0]))) {
+      setUploadError(
+        isPhoto
+          ? "Gunakan foto JPG, PNG, atau WebP."
+          : isAudio
+            ? "Format audio belum didukung (.mp3, .m4a, .wav, .webm)."
+            : "Format video belum didukung (.mp4, .webm, .mov)."
+      );
       return;
     }
     if (file.size > maxSize) {
-      setUploadError(`Ukuran file maksimal ${isPhoto ? "5 MB" : "10 MB"}.`);
+      setUploadError(`Ukuran file maksimal ${isPhoto ? "5 MB" : isAudio ? "15 MB" : "35 MB"}.`);
       return;
     }
     if (!orderId) return;
@@ -164,14 +197,14 @@ export default function VaultSetup() {
       const url = await uploadVaultMedia(orderId, type, file);
       setUrl(url);
       setPreview(url);
-      if (!isPhoto) {
+      if (isAudio) {
         const audio = new Audio(url);
         audio.addEventListener("loadedmetadata", () => {
           if (Number.isFinite(audio.duration)) setAudioDuration(Math.round(audio.duration));
         }, { once: true });
       }
     } catch (error) {
-      setPreview(isPhoto ? photoUrl : audioUrl);
+      setPreview(isPhoto ? photoUrl : isAudio ? audioUrl : videoUrl);
       setUploadError(error instanceof Error ? error.message : "Gagal mengunggah file.");
     } finally {
       setUploading(false);
@@ -194,6 +227,18 @@ export default function VaultSetup() {
     const file = event.target.files?.[0];
     if (file) void uploadFile(file, "audio");
     event.target.value = "";
+  };
+
+  const handleVideoChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) void uploadFile(file, "video");
+    event.target.value = "";
+  };
+
+  const handleDropVideo = (event: DragEvent<HTMLLabelElement>) => {
+    event.preventDefault();
+    const file = event.dataTransfer.files[0];
+    if (file) void uploadFile(file, "video");
   };
 
   const handleSave = async (event: FormEvent) => {
@@ -443,6 +488,85 @@ export default function VaultSetup() {
                 )}
               </section>
 
+              {/* CARD: VIDEO MEMOIR (OPTIONAL) */}
+              <section className="vault-setup-card">
+                <div className="card-step-badge">OPTIONAL MEMOIR</div>
+                <h2 className="vault-setup-card-title">Video Keepsake (Opsional)</h2>
+                <p className="vault-setup-card-sub">
+                  Sematkan video kenangan spesial untuk melengkapi rekaman audio Anda. Unggah berkas video (.mp4, .mov, .webm) atau tempel tautan YouTube/Shorts.
+                </p>
+
+                <div className="vault-audio-toggle-row">
+                  <button
+                    type="button"
+                    className={`audio-toggle-btn${videoSource === "file" ? " active" : ""}`}
+                    onClick={() => setVideoSource("file")}
+                  >
+                    Unggah Berkas Video
+                  </button>
+                  <button
+                    type="button"
+                    className={`audio-toggle-btn${videoSource === "youtube" ? " active" : ""}`}
+                    onClick={() => setVideoSource("youtube")}
+                  >
+                    Link YouTube / Shorts
+                  </button>
+                </div>
+
+                {videoSource === "file" && (
+                  <div className="vault-audio-file-box">
+                    <label htmlFor="vault-video-input" className="vault-file-label">
+                      {uploadingVideo ? "Mengunggah video..." : "Pilih Berkas Video (.mp4, .mov, .webm)"}
+                    </label>
+                    <input
+                      id="vault-video-input"
+                      type="file"
+                      accept="video/mp4,video/webm,video/quicktime,video/x-m4v"
+                      onChange={handleVideoChange}
+                      disabled={uploadingVideo}
+                      className="form-input"
+                    />
+                    <span className="drop-hint">Format didukung: MP4, MOV, WebM · Maksimal 35 MB</span>
+                  </div>
+                )}
+
+                {videoSource === "youtube" && (
+                  <div className="vault-spotify-box">
+                    <input
+                      type="url"
+                      value={videoUrl}
+                      onChange={e => setVideoUrl(e.target.value)}
+                      placeholder="https://www.youtube.com/watch?v=... atau https://youtu.be/..."
+                      className="form-input"
+                    />
+                    {parseYouTubeEmbedUrl(videoUrl) && (
+                      <div style={{ marginTop: "1rem", position: "relative", paddingBottom: "56.25%", height: 0, overflow: "hidden", borderRadius: "8px" }}>
+                        <iframe
+                          title="YouTube Video Preview"
+                          src={parseYouTubeEmbedUrl(videoUrl)!}
+                          style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", border: "none" }}
+                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                          allowFullScreen
+                        />
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {(videoPreview || (videoUrl && videoSource === "file")) && (
+                  <div className="vault-video-player-preview" style={{ marginTop: "1rem" }}>
+                    <video
+                      controls
+                      playsInline
+                      src={videoPreview || videoUrl}
+                      style={{ width: "100%", maxHeight: "360px", borderRadius: "10px", background: "#000" }}
+                    >
+                      Browser Anda tidak mendukung pemutar video.
+                    </video>
+                  </div>
+                )}
+              </section>
+
               {/* CARD 3: WRITE THE SECRET LETTER */}
               <section className="vault-setup-card">
                 <div className="card-step-badge">STEP 03</div>
@@ -515,7 +639,7 @@ export default function VaultSetup() {
 
                 <button
                   type="submit"
-                  disabled={saving || uploadingPhoto || uploadingAudio}
+                  disabled={saving || uploadingPhoto || uploadingAudio || uploadingVideo}
                   className="hero-cta hero-cta-primary vault-setup-save-btn"
                 >
                   {saving ? "Mengunci Kenangan..." : "KUNCI & SIMPAN BRANKAS MEMORI →"}
@@ -556,7 +680,7 @@ export default function VaultSetup() {
                   foto_vault: photoPreview || photoUrl,
                   audio_url: audioPreview || audioUrl,
                   audio_durasi: audioDuration,
-                  video_url: videoUrl,
+                  video_url: videoPreview || videoUrl,
                   bunga: order?.product_name || "Hydrangea macrophylla x Gypsophila paniculata",
                 }}
               />

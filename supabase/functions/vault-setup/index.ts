@@ -4,7 +4,8 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "";
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
 const ORDER_ID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const PHOTO_MAX_BYTES = 5 * 1024 * 1024;
-const AUDIO_MAX_BYTES = 10 * 1024 * 1024;
+const AUDIO_MAX_BYTES = 15 * 1024 * 1024;
+const VIDEO_MAX_BYTES = 35 * 1024 * 1024;
 const PHOTO_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 const AUDIO_EXTENSIONS: Record<string, string> = {
   "audio/mpeg": "mp3",
@@ -13,6 +14,12 @@ const AUDIO_EXTENSIONS: Record<string, string> = {
   "audio/ogg": "ogg",
   "audio/wav": "wav",
   "audio/webm": "webm",
+};
+const VIDEO_EXTENSIONS: Record<string, string> = {
+  "video/mp4": "mp4",
+  "video/webm": "webm",
+  "video/quicktime": "mov",
+  "video/x-m4v": "m4v",
 };
 
 const CORS_HEADERS: Record<string, string> = {
@@ -84,12 +91,18 @@ async function handleUpload(
   const mimeType = typeof body.mime_type === "string" ? body.mime_type.toLowerCase().trim() : "";
   const fileBase64 = typeof body.file_base64 === "string" ? body.file_base64 : "";
   const isPhoto = fileType === "photo";
-  if (!isPhoto && fileType !== "audio") {
+  const isAudio = fileType === "audio";
+  const isVideo = fileType === "video";
+  if (!isPhoto && !isAudio && !isVideo) {
     return json({ ok: false, message: "Tipe file tidak didukung." }, 400);
   }
 
-  const allowed = isPhoto ? PHOTO_TYPES.has(mimeType) : Boolean(AUDIO_EXTENSIONS[mimeType]);
-  const maxBytes = isPhoto ? PHOTO_MAX_BYTES : AUDIO_MAX_BYTES;
+  const allowed = isPhoto
+    ? PHOTO_TYPES.has(mimeType)
+    : isAudio
+      ? Boolean(AUDIO_EXTENSIONS[mimeType])
+      : Boolean(VIDEO_EXTENSIONS[mimeType]);
+  const maxBytes = isPhoto ? PHOTO_MAX_BYTES : isAudio ? AUDIO_MAX_BYTES : VIDEO_MAX_BYTES;
   if (!allowed) return json({ ok: false, message: "Format file tidak didukung." }, 415);
   if (!fileBase64 || fileBase64.length > Math.ceil(maxBytes * 4 / 3) + 8) {
     return json({ ok: false, message: "Ukuran file melebihi batas." }, 413);
@@ -109,7 +122,9 @@ async function handleUpload(
   const bucket = isPhoto ? "product-images" : "vault-media";
   const filePath = isPhoto
     ? `vault/${orderId}/polaroid.webp`
-    : `vault/${orderId}/audio.${AUDIO_EXTENSIONS[mimeType]}`;
+    : isAudio
+      ? `vault/${orderId}/audio.${AUDIO_EXTENSIONS[mimeType] || "mp3"}`
+      : `vault/${orderId}/video.${VIDEO_EXTENSIONS[mimeType] || "mp4"}`;
   const { error: uploadError } = await admin.storage.from(bucket).upload(filePath, bytes, {
     contentType: mimeType,
     upsert: true,
