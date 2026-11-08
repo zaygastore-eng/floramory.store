@@ -39,8 +39,6 @@ export default function SiteFooter() {
             <h2 className="atelier-footer-title">COLLECTIONS</h2>
             <ul className="atelier-footer-links">
               <li><Link href="/#chapters">The Chapters · Framed Keepsakes</Link></li>
-              <li><Link href="/#single-stems">Single Stems</Link></li>
-              <li><Link href="/#gift-cards">Gift Cards &amp; Packaging</Link></li>
               <li><Link href="/#pesan">Bespoke Commission</Link></li>
             </ul>
           </nav>
@@ -48,10 +46,10 @@ export default function SiteFooter() {
           <nav className="atelier-footer-col" aria-label="Technology and privacy">
             <h2 className="atelier-footer-title">TECHNOLOGY &amp; PRIVACY</h2>
             <ul className="atelier-footer-links">
-              <li><Link href="/#vault">Smart QR Memory Vault</Link></li>
-              <li><Link href="/#vault">Private URL &amp; Optional PIN</Link></li>
-              <li><Link href="/#vault">Zero-Subscription Cloud Hosting</Link></li>
-              <li><Link href="/#vault">Camera-Direct Access</Link></li>
+              <li><Link href="/smart-qr-vault">Smart QR Memory Vault</Link></li>
+              <li><Link href="/smart-qr-vault#privasi">Private URL &amp; Optional PIN</Link></li>
+              <li><Link href="/smart-qr-vault#privasi">Zero-Subscription Cloud Hosting</Link></li>
+              <li><Link href="/smart-qr-vault#cara-kerja">Camera-Direct Access</Link></li>
             </ul>
           </nav>
 

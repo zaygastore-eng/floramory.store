@@ -331,7 +331,7 @@ export default function Produk() {
                 <Suspense
                   fallback={
                     <div
-                      className="floramory-audio-card"
+                      className="achapter-audio-card"
                       style={{ height: "80px", display: "flex", alignItems: "center", justifyContent: "center" }}
                     >
                       <span className="audio-spinner" style={{ borderColor: "rgba(105, 112, 153, 0.2)", borderTopColor: "var(--sage)" }} />

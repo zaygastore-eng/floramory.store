@@ -118,7 +118,7 @@ export default function AudioPlayer({
     } else {
       setIsLoading(true);
       audio.play().catch(err => {
-        console.warn("[Floramory Audio] Playback prevented or interrupted:", err);
+        console.warn("[A Chapter Audio] Playback prevented or interrupted:", err);
         setIsPlaying(false);
         setIsLoading(false);
       });
@@ -145,7 +145,7 @@ export default function AudioPlayer({
     duration > 0 ? Math.min(100, Math.max(0, (currentTime / duration) * 100)) : 0;
 
   return (
-    <div className={`floramory-audio-card ${className}`}>
+    <div className={`achapter-audio-card ${className}`}>
       {/* Hidden audio element adhering to mobile policies */}
       <audio
         ref={audioRef}

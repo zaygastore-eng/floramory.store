@@ -4,9 +4,7 @@ import BrandLogo from "@/components/BrandLogo";
 
 const navLinks = [
   { href: "/#chapters", label: "The Chapters" },
-  { href: "/#single-stems", label: "Single Stems" },
-  { href: "/#gift-cards", label: "Gift Cards" },
-  { href: "/#vault", label: "Smart QR Vault" },
+  { href: "/smart-qr-vault", label: "Smart QR Vault" },
 ];
 
 export default function SiteHeader() {

@@ -1,6 +1,6 @@
 export const BASE_PATH = import.meta.env.BASE_URL.replace(/\/$/, "");
 export const PRODUCTION_SITE_URL = String(
-  import.meta.env.VITE_PUBLIC_SITE_URL || "https://floramory.store"
+  import.meta.env.VITE_PUBLIC_SITE_URL || "https://www.achapter.my.id"
 ).replace(/\/+$/, "");
 
 export function assetUrl(path: string): string {
@@ -88,7 +88,7 @@ export function formatVaultSetupInvitationWhatsApp(params: {
 
 Bunga pilihan Anda saat ini sedang memasuki tahap dehidrasi laboratorium.
 Silakan lengkapi rekaman suara, foto polaroid, dan surat rahasia melalui link privat atelier berikut:
-🔗 https://floramory.store/vault-setup?token=${params.tokenOrOrderId}
+🔗 https://www.achapter.my.id/vault-setup?token=${params.tokenOrOrderId}
 
 Karya akan mulai dicasting setelah memori selesai Anda susun.`;
 }

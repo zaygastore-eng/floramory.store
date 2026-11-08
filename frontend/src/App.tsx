@@ -4,9 +4,8 @@ import Home from "@/pages/Home";
 import Produk from "@/pages/Produk";
 import ProductDetail from "@/pages/ProductDetail";
 import ShopAll from "@/pages/ShopAll";
-import SingleFlowers from "@/pages/SingleFlowers";
-import GiftCard from "@/pages/GiftCard";
 import AboutUs from "@/pages/AboutUs";
+import SmartQrVault from "@/pages/SmartQrVault";
 import VaultExperience from "@/pages/VaultExperience";
 import NotFound from "@/pages/not-found";
 import ErrorBoundary from "@/components/ErrorBoundary";
@@ -31,9 +30,9 @@ function Router() {
     <Switch>
       <Route path="/" component={Home} />
       <Route path="/shop" component={ShopAll} />
-      <Route path="/single-flowers" component={SingleFlowers} />
-      <Route path="/gift-card" component={GiftCard} />
       <Route path="/about" component={AboutUs} />
+      <Route path="/smart-qr-vault" component={SmartQrVault} />
+      <Route path="/vault" component={SmartQrVault} />
       <Route path="/vault/:id" component={VaultExperience} />
       <Route path="/v/:id" component={VaultExperience} />
       <Route path="/products/:id" component={ProductDetail} />

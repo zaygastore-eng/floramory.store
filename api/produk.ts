@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
 // ============================================================
-// Floramory — Vercel Serverless Function: prerender SEO /produk
+// A Chapter — Vercel Serverless Function: prerender SEO /produk
 // ============================================================
 // Halaman /produk?id=... dirender client-side oleh React (SPA).
 // Crawler Google/Bing menjalankan JS, tetapi preview media sosial
@@ -62,8 +62,8 @@ function replaceMeta(html: string, name: string, isProperty: boolean, value: str
 }
 
 function injectProductMeta(html: string, product: Product, origin: string, productUrl: string): string {
-  const title = `${product.nama_produk} — Floramory`;
-  const description = (product.deskripsi || `Produk ${product.nama_produk} dari Floramory.`)
+  const title = `${product.nama_produk} — A Chapter`;
+  const description = (product.deskripsi || `Produk ${product.nama_produk} dari A Chapter.`)
     .replace(/\s+/g, " ")
     .slice(0, 160);
   const imageRaw = product.foto_qr || product.foto_produk;

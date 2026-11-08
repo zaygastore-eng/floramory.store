@@ -1,4 +1,4 @@
-# Operasional Floramory
+# Operasional A Chapter
 
 ## Struktur Monorepo
 
@@ -6,7 +6,7 @@ Proyek memakai pnpm workspace. Supabase adalah satu-satunya penyimpan data;
 tidak ada server Node terpisah.
 
 ```text
-FLORAMORY REALL/          # root workspace (repo)
+A-CHAPTER/                # root workspace (repo)
 ├── package.json          # workspace root (script delegasi: dev, build, serve)
 ├── pnpm-workspace.yaml   # mencakup frontend
 ├── frontend/             # React + Vite (src, public, dist build) -> Supabase langsung
@@ -358,7 +358,7 @@ logout menghapus cookie.
 
 Alur kerja:
 
-1. Base URL otomatis terkonfigurasi ke domain produksi `https://floramory.store` (dapat dikonfigurasi via `VITE_PUBLIC_SITE_URL`).
+1. Base URL otomatis terkonfigurasi ke domain produksi `https://www.achapter.my.id` (dapat dikonfigurasi via `VITE_PUBLIC_SITE_URL`).
 2. Lihat pesanan pelanggan di kartu Pre-order masuk.
 3. Klik Pakai pada pre-order untuk memasukkan data Memory Vault ke form produk.
 4. Lengkapi data produk dan foto.
@@ -372,10 +372,10 @@ Alur kerja:
 Format URL QR:
 
 ```text
-https://floramory.store/produk?id=ID_PRODUK
+https://www.achapter.my.id/produk?id=ID_PRODUK
 ```
 
-Panel admin otomatis menjaga agar QR fisik tidak menggunakan URL localhost dev. Download QR menghasilkan gambar PNG beresolusi tinggi (1200×1500 px) dengan branding Floramory Memory Vault yang siap cetak ke media fisik (stiker, akrilik, kartu hadiah).
+Panel admin otomatis menjaga agar QR fisik tidak menggunakan URL localhost dev. Download QR menghasilkan gambar PNG beresolusi tinggi (1200×1500 px) dengan branding A Chapter Memory Vault yang siap cetak ke media fisik (stiker, akrilik, kartu hadiah).
 
 ## Foto Produk & QR (Storage)
 

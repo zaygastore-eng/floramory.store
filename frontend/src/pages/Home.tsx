@@ -220,37 +220,15 @@ function splitHeroHeadline(headline: string): [string, string] {
 }
 
 function getCommissionProductGroups(
-  products: CatalogProduct[],
-  stemProducts: CatalogProduct[]
+  products: CatalogProduct[]
 ) {
   const activeProducts = products.filter(product => !product.isFallback);
-  const stemIds = new Set(
-    stemProducts.filter(product => !product.isFallback).map(product => product.id)
-  );
-  const giftPattern = /gift|voucher|packag|wooden box|wax seal|kartu/i;
-  const gifts = activeProducts.filter(product => giftPattern.test(product.nama_produk));
-  const giftIds = new Set(gifts.map(product => product.id));
-  const stems = activeProducts.filter(product => stemIds.has(product.id));
-  const stemIdsWithProducts = new Set(stems.map(product => product.id));
-  const chapters = activeProducts.filter(
-    product => !stemIdsWithProducts.has(product.id) && !giftIds.has(product.id)
-  );
 
   return [
     {
       label: "The Chapters (Framed Keepsakes)",
-      products: chapters,
+      products: activeProducts,
       examples: ["The Rose Garden", "Hydrangea Study", "Meadow Notes", "Custom Frame"],
-    },
-    {
-      label: "Single Stems (Minimalist Specimens)",
-      products: stems,
-      examples: ["Preserved Rose", "Single Hydrangea", "Lavender Stem", "Golden Fern"],
-    },
-    {
-      label: "Gift Cards & Archival Packaging",
-      products: gifts,
-      examples: ["Archival Wooden Box", "Wax Seal Gift Card", "Digital Voucher"],
     },
   ];
 }
@@ -260,9 +238,6 @@ export default function Home() {
   const [products, setProducts] = useState<CatalogProduct[]>([]);
   const [chapterProducts, setChapterProducts] = useState<CatalogProduct[]>(
     () => getHomeContentCatalogProducts("framed")
-  );
-  const [singleStemProducts, setSingleStemProducts] = useState<CatalogProduct[]>(
-    () => getHomeContentCatalogProducts("stem")
   );
   const [activeFaq, setActiveFaq] = useState<number | null>(null);
   const toggleFaq = (index: number) => {
@@ -306,12 +281,10 @@ export default function Home() {
     Promise.all([
       fetchCatalogProducts(),
       fetchCatalogProducts("framed"),
-      fetchCatalogProducts("stem"),
     ])
-      .then(([loadedProducts, framedProducts, stems]) => {
+      .then(([loadedProducts, framedProducts]) => {
         setProducts(loadedProducts);
         setChapterProducts(framedProducts);
-        setSingleStemProducts(stems);
         const preselectedId = new URLSearchParams(window.location.search).get("product");
         const preselectedProduct = loadedProducts.find(product => (
           !product.isFallback && product.id === preselectedId
@@ -328,7 +301,6 @@ export default function Home() {
       .catch(() => {
         setProducts([]);
         setChapterProducts(getHomeContentCatalogProducts("framed"));
-        setSingleStemProducts(getHomeContentCatalogProducts("stem"));
       });
     fetchWhatsAppNumber().then(number => {
       setWhatsappNumber(normalizeWhatsApp(number) || "6285235242425");
@@ -367,7 +339,7 @@ export default function Home() {
   };
 
   const [heroFirstLine, heroSecondLine] = splitHeroHeadline(heroConfig.headline);
-  const commissionProductGroups = getCommissionProductGroups(products, singleStemProducts);
+  const commissionProductGroups = getCommissionProductGroups(products);
 
   const handleVaultTabKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>) => {
     const tabs = ["photograph", "voice-record", "letter", "herbarium-notes"] as const;
@@ -412,15 +384,68 @@ export default function Home() {
     }, 50);
   };
 
+  const productSliderRef = useRef<HTMLDivElement>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStartX, setDragStartX] = useState(0);
+  const [dragScrollLeft, setDragScrollLeft] = useState(0);
+  const [hasMoved, setHasMoved] = useState(false);
+
+  const scrollSlider = (direction: "left" | "right") => {
+    if (!productSliderRef.current) return;
+    const scrollAmount = 340;
+    productSliderRef.current.scrollBy({
+      left: direction === "left" ? -scrollAmount : scrollAmount,
+      behavior: "smooth",
+    });
+  };
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (!productSliderRef.current) return;
+    setIsDragging(true);
+    setHasMoved(false);
+    setDragStartX(e.pageX - productSliderRef.current.offsetLeft);
+    setDragScrollLeft(productSliderRef.current.scrollLeft);
+  };
+
+  const handleMouseLeave = () => {
+    setIsDragging(false);
+  };
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging || !productSliderRef.current) return;
+    const x = e.pageX - productSliderRef.current.offsetLeft;
+    const walk = (x - dragStartX) * 1.5;
+    if (Math.abs(walk) > 5) {
+      setHasMoved(true);
+    }
+    productSliderRef.current.scrollLeft = dragScrollLeft - walk;
+  };
+
   const renderProductGrid = (items: CatalogProduct[]) => (
-    <div className="products-grid showcase-products-grid">
-      {items.map(product => (
-        <ProductCard
-          key={product.id}
-          product={product}
-          onClick={() => handleSelectProduct(product)}
-        />
-      ))}
+    <div className="product-slider-wrapper">
+      <div
+        ref={productSliderRef}
+        className={`product-slider-track ${isDragging ? "is-dragging" : ""}`}
+        onMouseDown={handleMouseDown}
+        onMouseLeave={handleMouseLeave}
+        onMouseUp={handleMouseUp}
+        onMouseMove={handleMouseMove}
+      >
+        {items.map(product => (
+          <div key={product.id} className="product-slider-item">
+            <ProductCard
+              product={product}
+              onClick={() => {
+                if (!hasMoved) handleSelectProduct(product);
+              }}
+            />
+          </div>
+        ))}
+      </div>
     </div>
   );
 
@@ -519,17 +544,6 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="craft-manifesto" aria-label="The Craft Manifesto">
-        <div className="craft-manifesto-inner">
-          <blockquote className="craft-manifesto-quote">
-            “We capture blooms at the apex of their life, extract every trace of moisture under controlled laboratory conditions, and cast each stem within crystal-clear UV-shielded resin alongside an indelible memory micro-vault. No wilting. No decay. Only your story, suspended in timeless silence.”
-          </blockquote>
-          <cite className="craft-manifesto-author">
-            — East Java Botanical Atelier · Est. 2024
-          </cite>
-        </div>
-      </section>
-
       <main className="home-sections">
       <section className="fm-section chapters-section" id="chapters">
         <div className="cluster-inner" id="produk">
@@ -541,70 +555,33 @@ export default function Home() {
                 Karya botani asli yang dipreservasi dalam kristal anti-UV, dilengkapi brankas memori digital di setiap bingkai.
               </p>
             </div>
-            <Link href="/shop" className="catalog-explore-all-link">
-              Lihat Detail Katalog →
-            </Link>
+            <div className="cluster-controls">
+              <div className="slider-nav-btns" aria-label="Navigasi geser produk">
+                <button
+                  type="button"
+                  className="slider-nav-btn prev"
+                  onClick={() => scrollSlider("left")}
+                  aria-label="Geser produk ke kiri"
+                  title="Geser ke kiri"
+                >
+                  ←
+                </button>
+                <button
+                  type="button"
+                  className="slider-nav-btn next"
+                  onClick={() => scrollSlider("right")}
+                  aria-label="Geser produk ke kanan"
+                  title="Geser ke kanan"
+                >
+                  →
+                </button>
+              </div>
+              <Link href="/shop" className="catalog-explore-all-link">
+                Lihat Detail Katalog →
+              </Link>
+            </div>
           </div>
           {renderProductGrid(chapterProducts)}
-        </div>
-      </section>
-
-      <section className="fm-section single-stems-section" id="single-stems">
-        <div className="cluster-inner">
-          <div className="cluster-heading cluster-heading--single">
-            <div>
-              <span className="section-eyebrow">BOTANICAL SPECIMENS · SINGLE STEM</span>
-              <h2 className="cluster-title">{homeContent.singleStems.sectionTitle}</h2>
-              <p className="cluster-description">{homeContent.singleStems.sectionDescription}</p>
-            </div>
-          </div>
-          {renderProductGrid(singleStemProducts)}
-        </div>
-      </section>
-
-      <section className="fm-section gift-packaging-section" id="gift-cards">
-        <div className="cluster-inner">
-          <div className="cluster-heading cluster-heading--single">
-            <div>
-              <span className="section-eyebrow">THOUGHTFUL ARCHIVES · ATELIER PACKAGING</span>
-              <h2 className="cluster-title">{homeContent.giftPackaging.sectionTitle}</h2>
-              <p className="cluster-description">
-                Kemasan standar museum dan kartu kado digital/fisik untuk momen yang tak terlupakan.
-              </p>
-            </div>
-          </div>
-          <div className="packaging-showcase-grid">
-            {homeContent.giftPackaging.items
-              .filter(item => item.id === "archival-wood-box" || item.id === "atelier-gift-card")
-              .map(item => (
-                <article className="packaging-showcase-card" key={item.id}>
-                  <div className="packaging-showcase-image">
-                    <ProductImage
-                      src={item.imageUrl}
-                      size="large"
-                      alt={item.name}
-                      width={1000}
-                      height={700}
-                      loading="lazy"
-                      fallback={<div className="packaging-image-placeholder">A Chapter · Atelier</div>}
-                    />
-                    {item.tag && <span className="packaging-showcase-tag">{item.tag}</span>}
-                  </div>
-                  <div className="packaging-showcase-copy">
-                    <span className="section-eyebrow">ATELIER ARCHIVE</span>
-                    <h3>{item.name}</h3>
-                    <p>{item.description}</p>
-                    {item.ctaHref && item.ctaLabel ? (
-                      <Link className="packaging-showcase-cta" href={item.ctaHref}>
-                        {item.ctaLabel}
-                      </Link>
-                    ) : (
-                      <span className="packaging-showcase-included">{item.price}</span>
-                    )}
-                  </div>
-                </article>
-              ))}
-          </div>
         </div>
       </section>
 
@@ -798,70 +775,24 @@ export default function Home() {
                 <a className="hero-cta-primary vault-commission-cta" href="#pesan">
                   COMMISSION YOUR VAULT →
                 </a>
+                <Link
+                  className="vault-learn-more-link"
+                  href="/smart-qr-vault"
+                  style={{
+                    display: "inline-block",
+                    marginTop: "1.1rem",
+                    color: "var(--wine, #8B3A4A)",
+                    fontSize: "0.92rem",
+                    letterSpacing: "0.04em",
+                    textDecoration: "underline",
+                    textUnderlineOffset: "4px",
+                  }}
+                >
+                  Pelajari Keamanan &amp; Cara Kerja Lengkap Brankas Digital →
+                </Link>
               </div>
             </div>
           </article>
-
-          <section className="vault-privacy" aria-labelledby="vault-privacy-title">
-            <div className="vault-block-heading">
-              <span className="vault-eyebrow">THE ARCHIVAL PRIVACY</span>
-              <h3 id="vault-privacy-title">Kenangan personal, terlindungi.</h3>
-            </div>
-            <div className="vault-privacy-grid">
-              {homeContent.smartVault.privacyPillars.map((pillar, index) => (
-                <article className="vault-privacy-card" key={pillar.id}>
-                  <span className="vault-card-index">0{index + 1}</span>
-                  <h4>{pillar.title}</h4>
-                  <p>{pillar.detail}</p>
-                </article>
-              ))}
-            </div>
-          </section>
-
-          <section className="vault-workflow" aria-labelledby="vault-workflow-title">
-            <div className="vault-block-heading">
-              <span className="vault-eyebrow">ATELIER TO RECIPIENT</span>
-              <h3 id="vault-workflow-title">From a personal story to a lasting archive</h3>
-            </div>
-            <ol className="vault-workflow-grid">
-              {homeContent.smartVault.workflowSteps.map((step) => (
-                <li className="vault-workflow-card" key={step.step}>
-                  <span className="vault-workflow-number">{String(step.step).padStart(2, "0")}.</span>
-                  <h4>{step.title}</h4>
-                  <p>{step.description}</p>
-                </li>
-              ))}
-            </ol>
-          </section>
-        </div>
-      </section>
-
-      <section className="fm-section about-section" id="tentang">
-        <div className="about-inner">
-          <div className="about-copy">
-            <span className="section-eyebrow">Philosophy &amp; Preservation</span>
-            <h2 className="section-title">Science, Art &amp;<br /><em>Botanical Immortality</em></h2>
-            <p className="section-desc">
-              Kami memberi kehidupan baru pada bunga surplus dari florist lokal melalui dehidrasi silica gel di laboratorium.
-              Setiap kuntum lalu dicasting dengan teliti dalam resin bening anti-UV—bebas gelembung, kaya warna alami,
-              dan dibuat untuk menjadi karya kenangan yang bertahan lama.
-            </p>
-          </div>
-          <div className="about-metrics">
-            <div className="about-stats">
-              {[
-                { num: "0 Waste", label: "Surplus bunga dimanfaatkan kembali dan diawetkan sebagai karya botani." },
-                { num: "3–5 Days", label: "Ekstraksi kelembapan terukur untuk menjaga pigmen alami tetap hidup." },
-                { num: "Handmade", label: "Penuangan individual yang disesuaikan untuk momen personal Anda." },
-                { num: "Lifetime", label: "Memory Vault dinamis untuk foto, suara, dan surat—selalu dapat diakses." },
-              ].map(({ num, label }, index) => (
-                <div className="stat-card" key={index}>
-                  <div className="stat-num">{num}</div>
-                  <div className="stat-label">{label}</div>
-                </div>
-              ))}
-            </div>
-          </div>
         </div>
       </section>
 

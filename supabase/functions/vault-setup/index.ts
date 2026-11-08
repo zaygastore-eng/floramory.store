@@ -168,7 +168,7 @@ async function handleSave(
     .eq("order_id", orderId);
   if (productError) {
     console.error("[VAULT_SETUP_SAVE_ERROR] Could not sync linked product:", productError.message);
-    return json({ ok: false, message: "Kenangan tersimpan, tetapi sinkronisasi produk gagal. Hubungi atelier Floramory." }, 500);
+    return json({ ok: false, message: "Kenangan tersimpan, tetapi sinkronisasi produk gagal. Hubungi atelier A Chapter." }, 500);
   }
 
   return json({

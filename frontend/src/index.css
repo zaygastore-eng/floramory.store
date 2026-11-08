@@ -56,7 +56,7 @@
 
 html,
 body {
-  overflow-x: hidden;
+  overflow-x: clip;
   max-width: 100vw;
   width: 100%;
 }
@@ -76,11 +76,10 @@ body {
 .fm-nav {
   position: sticky;
   top: 0;
-  z-index: 100;
-  background: rgba(251, 248, 243, 0.92);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border-bottom: 1px solid var(--border-hairline, rgba(35, 43, 56, 0.08));
+  z-index: 1000;
+  background: #FAF7F2;
+  border-bottom: 1px solid rgba(83, 27, 33, 0.12);
+  box-shadow: 0 2px 10px rgba(47, 51, 79, 0.04);
   padding: 0 clamp(1rem, 4vw, 3rem);
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
@@ -3021,6 +3020,7 @@ body {
 }
 
 /* Audio Player Component Styling */
+.achapter-audio-card,
 .floramory-audio-card {
   width: 100%;
   background: #ffffff;
@@ -7301,3 +7301,94 @@ body {
     transition: none;
   }
 }
+
+/* Editorial Product Slider & Carousel */
+.product-slider-wrapper {
+  position: relative;
+  width: 100%;
+  margin-top: 2rem;
+}
+
+.product-slider-track {
+  display: flex;
+  gap: 1.5rem;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  cursor: grab;
+  padding: 0.5rem 0.25rem 1.5rem;
+}
+
+.product-slider-track::-webkit-scrollbar {
+  display: none;
+}
+
+.product-slider-track.is-dragging {
+  cursor: grabbing;
+  scroll-behavior: auto;
+  user-select: none;
+}
+
+.product-slider-item {
+  flex: 0 0 clamp(280px, 28vw, 340px);
+  min-width: clamp(280px, 28vw, 340px);
+  scroll-snap-align: start;
+}
+
+.product-slider-item .product-card {
+  width: 100%;
+  height: 100%;
+  text-align: left;
+}
+
+.cluster-controls {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.slider-nav-btns {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.slider-nav-btn {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  border: 1px solid rgba(83, 27, 33, 0.25);
+  background: #ffffff;
+  color: var(--wine, #531b21);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 1.15rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.slider-nav-btn:hover {
+  background: var(--wine, #531b21);
+  color: #ffffff;
+  border-color: var(--wine, #531b21);
+  transform: translateY(-1px);
+}
+
+@media (max-width: 768px) {
+  .cluster-controls {
+    flex-direction: column-reverse;
+    align-items: flex-start;
+    gap: 0.75rem;
+    margin-top: 1rem;
+  }
+
+  .product-slider-item {
+    flex: 0 0 85vw;
+    min-width: 85vw;
+  }
+}
+

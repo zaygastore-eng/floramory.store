@@ -7,7 +7,7 @@ import "./index.css";
 ensureBaseMeta();
 
 const rootEl = document.getElementById("root");
-if (!rootEl) throw new Error("[Floramory] Root element #root not found in DOM. Check index.html.");
+if (!rootEl) throw new Error("[A Chapter] Root element #root not found in DOM. Check index.html.");
 
 createRoot(rootEl).render(
   <StrictMode>

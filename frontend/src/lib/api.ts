@@ -727,7 +727,7 @@ async function fetchCatalogFromSupabase(category?: CatalogCategory): Promise<Cat
         limit: String(PUBLIC_PRODUCTS_PAGE_SIZE),
         offset: String(offset),
       });
-      if (category) query.set("kategori", `eq.${category}`);
+      // Note: products table does not have a separate kategori column; all active catalog items are curated chapters
       const res = await fetch(
         `${SUPABASE_URL}/rest/v1/products?${query}`,
         { headers: supabaseHeaders() }
@@ -1051,6 +1051,7 @@ export interface PreOrderPage {
 
 export interface PreOrderStatusCounts {
   waiting_dp: number;
+  dp_verified: number;
   completed: number;
   cancelled: number;
 }
@@ -1105,7 +1106,7 @@ export async function fetchNewPreOrderCount(): Promise<number> {
     const { status, headers } = await adminCall("proxy", {
       method: "GET",
       path: "/rest/v1/preorder_orders",
-      query: "select=id&status=eq.waiting_dp&limit=1&order=created_at.desc",
+      query: "select=id&status=in.(waiting_dp,new)&limit=1&order=created_at.desc",
       prefer: "count=exact",
     });
     if (status >= 400) return 0;
@@ -1118,15 +1119,16 @@ export async function fetchNewPreOrderCount(): Promise<number> {
 
 export async function fetchPreOrderStatusCounts(): Promise<PreOrderStatusCounts> {
   if (!isSupabaseConfigured()) {
-    return { waiting_dp: 0, completed: 0, cancelled: 0 };
+    return { waiting_dp: 0, dp_verified: 0, completed: 0, cancelled: 0 };
   }
 
   const statusFilters: Record<keyof PreOrderStatusCounts, string> = {
-    waiting_dp: "waiting_dp",
-    completed: "completed",
+    waiting_dp: "waiting_dp,new",
+    dp_verified: "dp_verified,in_production,in_progress",
+    completed: "completed,paid",
     cancelled: "cancelled",
   };
-  const statusKeys = ["waiting_dp", "completed", "cancelled"] as const;
+  const statusKeys = ["waiting_dp", "dp_verified", "completed", "cancelled"] as const;
   const counts = await Promise.all(
     statusKeys.map(async statusKey => {
       const { status, data, headers } = await adminCall("proxy", {
@@ -1144,7 +1146,7 @@ export async function fetchPreOrderStatusCounts(): Promise<PreOrderStatusCounts>
       return [statusKey, total] as const;
     })
   );
-  const result: PreOrderStatusCounts = { waiting_dp: 0, completed: 0, cancelled: 0 };
+  const result: PreOrderStatusCounts = { waiting_dp: 0, dp_verified: 0, completed: 0, cancelled: 0 };
   for (const [statusKey, count] of counts) result[statusKey] = count;
   return result;
 }
@@ -1165,11 +1167,11 @@ export async function updatePreOrderStatus(id: string, status: string): Promise<
 
 export function tierLabel(tier: string): string {
   const labels: Record<string, string> = {
-    classic: "Floramory Classic",
-    signature: "Floramory Signature",
-    masterpiece: "Floramory Masterpiece",
+    classic: "A Chapter Classic",
+    signature: "A Chapter Signature",
+    masterpiece: "A Chapter Masterpiece",
   };
-  return labels[normalizeTierValue(tier)] || "Floramory";
+  return labels[normalizeTierValue(tier)] || "A Chapter";
 }
 
 export function tierEmoji(tier: string): string {

@@ -77,7 +77,7 @@ Deno.serve(async (req: Request) => {
 
     const customerName = order.customer_name || "Pemesan";
     const orderNum = order.order_number || order.id.slice(0, 8).toUpperCase();
-    const vaultUrl = `https://floramory.store/vault-setup?token=${order.id}`;
+    const vaultUrl = `https://www.achapter.my.id/vault-setup?token=${order.id}`;
 
     const waText = `Terima kasih Kak ${customerName}, pembayaran DP 50% untuk pesanan #${orderNum} telah kami terima.\n\nBunga pilihan Anda saat ini sedang memasuki tahap dehidrasi laboratorium.\nSilakan lengkapi rekaman suara, foto polaroid, dan surat rahasia melalui link privat atelier berikut:\n🔗 ${vaultUrl}\n\nKarya akan mulai dicasting setelah memori selesai Anda susun.`;
 

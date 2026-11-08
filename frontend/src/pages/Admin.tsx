@@ -4,14 +4,17 @@ import { QRCodeCanvas as QRCode } from "qrcode.react";
 import {
   Box,
   ClipboardList,
+  ChevronRight,
   Copy,
   DollarSign,
   Download,
   LayoutDashboard,
   LogOut,
   Menu,
+  MoreVertical,
   PanelLeftClose,
   PanelLeftOpen,
+  Phone,
   RefreshCw,
   Settings,
   TrendingUp,
@@ -60,13 +63,14 @@ const defaultHeroConfig: HeroConfig = {
 };
 
 const TIER_OPTIONS = [
-  { value: "classic", label: "Floramory Classic" },
-  { value: "signature", label: "Floramory Signature" },
-  { value: "masterpiece", label: "Floramory Masterpiece" },
+  { value: "classic", label: "A Chapter Classic" },
+  { value: "signature", label: "A Chapter Signature" },
+  { value: "masterpiece", label: "A Chapter Masterpiece" },
 ];
 
 const ORDER_STATUSES = [
   { value: "waiting_dp", label: "Menunggu DP" },
+  { value: "dp_verified", label: "DP Diterima (50%)" },
   { value: "completed", label: "Selesai / Terkirim" },
   { value: "cancelled", label: "Dibatalkan" },
 ] as const;
@@ -74,7 +78,8 @@ const ORDER_STATUSES = [
 function getOrderStatus(status?: string): typeof ORDER_STATUSES[number]["value"] {
   const normalized = (status || "").toLowerCase();
   if (["new", "waiting_dp"].includes(normalized)) return "waiting_dp";
-  if (["contacted", "paid", "dp_verified", "in_progress", "in_production"].includes(normalized)) return "completed";
+  if (["dp_verified", "in_production", "in_progress"].includes(normalized)) return "dp_verified";
+  if (["contacted", "paid", "completed"].includes(normalized)) return "completed";
   return ORDER_STATUSES.find(option => option.value === normalized)?.value || "waiting_dp";
 }
 
@@ -210,7 +215,7 @@ function LoginGate({ onLogin }: { onLogin: () => void }) {
     return (
       <div className="login-screen admin-login-screen">
         <div className="login-card">
-          <div className="login-logo" aria-label="Floramory">
+          <div className="login-logo" aria-label="A Chapter">
             <BrandLogo className="brand-logo-img login-logo-img" />
           </div>
           <div className="login-subtitle">Admin Panel</div>
@@ -230,7 +235,7 @@ function LoginGate({ onLogin }: { onLogin: () => void }) {
   return (
     <div className="login-screen admin-login-screen">
       <div className={`login-card${shake ? " shake" : ""}`}>
-        <div className="login-logo" aria-label="Floramory">
+        <div className="login-logo" aria-label="A Chapter">
           <BrandLogo className="brand-logo-img login-logo-img" />
         </div>
         <div className="login-subtitle">Admin Panel</div>
@@ -298,11 +303,14 @@ export default function Admin() {
   const [hasMorePreOrders, setHasMorePreOrders] = useState(false);
   const [operationalCounts, setOperationalCounts] = useState<PreOrderStatusCounts>({
     waiting_dp: 0,
+    dp_verified: 0,
     completed: 0,
     cancelled: 0,
   });
   const [orderSearch, setOrderSearch] = useState("");
   const [orderFilterStatus, setOrderFilterStatus] = useState<"all" | typeof ORDER_STATUSES[number]["value"]>("all");
+  const [financialSearch, setFinancialSearch] = useState("");
+  const [financialPeriod, setFinancialPeriod] = useState<"all" | "month" | "30days">("all");
   const [editingId, setEditingId] = useState("");
   const [productSearch, setProductSearch] = useState("");
   const [productViewTab, setProductViewTab] = useState<"catalog" | "orders">("catalog");
@@ -365,7 +373,7 @@ export default function Admin() {
 
   useEffect(() => {
     const prev = document.title;
-    document.title = "Admin — Floramory";
+    document.title = "Admin — A Chapter";
     return () => {
       document.title = prev;
     };
@@ -715,7 +723,7 @@ export default function Admin() {
       ...EMPTY,
       id: uniqueId,
       isCatalog: false,
-      nama: order.product_name || linkedProduct?.nama_produk || (order.product_id ? `Pesanan #${order.product_id}` : "Kado Botani Floramory"),
+      nama: order.product_name || linkedProduct?.nama_produk || (order.product_id ? `Pesanan #${order.product_id}` : "Kado Botani A Chapter"),
       tier: linkedProduct?.tier || "classic",
       harga: linkedProduct?.harga || "",
       bunga: linkedProduct?.bunga || "",
@@ -758,7 +766,7 @@ export default function Admin() {
           updated[nextStatus] = counts[nextStatus] + 1;
           return updated;
         });
-        if (previousStatus === "waiting_dp" && nextStatus === "completed") {
+        if (previousStatus === "waiting_dp" && (nextStatus === "dp_verified" || nextStatus === "completed")) {
           void notifyDpConfirmed(order.id).catch(error => {
             console.warn("[DP_NOTIFICATION_AUDIT_ERROR]", error);
           });
@@ -833,7 +841,7 @@ export default function Admin() {
     ctx.font = "bold 64px 'Cormorant Garamond', Georgia, serif";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.fillText("Floramory", 600, 1170);
+    ctx.fillText("A Chapter", 600, 1170);
 
     // Subtitle
     ctx.fillStyle = "#4f557d";
@@ -851,9 +859,9 @@ export default function Admin() {
     ctx.font = "26px 'DM Sans', -apple-system, sans-serif";
     ctx.fillText("Scan untuk info produk & pesan personal", 600, 1350);
 
-    // 4. Download Trigger with required naming pattern: floramory-qr-${product.id || 'new'}.png
+    // 4. Download Trigger with required naming pattern: achapter-qr-${product.id || 'new'}.png
     const link = document.createElement("a");
-    link.download = `floramory-qr-${form.id.trim() || "new"}.png`;
+    link.download = `achapter-qr-${form.id.trim() || "new"}.png`;
     link.href = printCanvas.toDataURL("image/png");
     link.click();
     showToast("QR Code resolusi cetak (1200×1500) berhasil didownload", "success");
@@ -905,7 +913,7 @@ export default function Admin() {
       String(now.getDate()).padStart(2, "0"),
     ].join("-");
     link.href = url;
-    link.download = `floramory-orders-${date}.csv`;
+    link.download = `achapter-orders-${date}.csv`;
     document.body.appendChild(link);
     link.click();
     link.remove();
@@ -913,18 +921,24 @@ export default function Admin() {
   };
 
   const exportFinancialReport = () => {
-    const columns = ["Tanggal", "Nama Pelanggan", "Produk", "Nilai Transaksi", "Status Pembayaran"];
+    const columns = ["Tanggal", "Nama Pelanggan", "Produk", "Nilai Penuh", "Nilai DP", "Sisa", "Status Pembayaran"];
     const escapeCsv = (value: string | number) => {
       const text = String(value);
       const safeText = /^[\t\r ]*[=+\-@]/.test(text) ? `'${text}` : text;
       return `"${safeText.replace(/"/g, '""')}"`;
     };
-    const rows = financialTransactions.map(({ order, product, amount }) => [
-      order.created_at ? new Date(order.created_at).toLocaleDateString("id-ID") : "",
+    const rows = filteredFinancialTransactions.map(({ order, product, amount, receivedAmount, remainingBalance, isFullySettled }) => [
+      order.created_at ? new Date(order.created_at).toLocaleDateString("id-ID", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      }) : "",
       order.customer_name || "Tanpa nama",
       product?.nama_produk || order.product_name || order.product_id || "Produk tidak ditemukan",
       amount,
-      isDpReceivedStatus(order.status) ? "DP Diterima (50%)" : "Selesai (100%)",
+      receivedAmount,
+      remainingBalance,
+      isFullySettled ? "Lunas (100%)" : "DP Diterima (50%)",
     ]);
     const csv = [
       columns.map(escapeCsv).join(","),
@@ -934,7 +948,7 @@ export default function Admin() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `floramory-laporan-keuangan-${new Date().toISOString().slice(0, 10)}.csv`;
+    link.download = `achapter-laporan-keuangan-${new Date().toISOString().slice(0, 10)}.csv`;
     document.body.appendChild(link);
     link.click();
     link.remove();
@@ -973,20 +987,47 @@ export default function Admin() {
   }));
   const previewUrl = getPreviewUrl();
   const financialTransactions = useMemo(() => preOrders
-    .filter(order => ["completed"].includes(getOrderStatus(order.status)))
+    .filter(order => isDpReceivedStatus(order.status))
     .map(order => {
       const product = managedProducts.find(item => item.id === order.product_id)
         || managedProducts.find(item => item.nama_produk.toLowerCase() === order.product_name.toLowerCase());
       const amount = product ? parsePrice(product.harga) : 0;
+      const normalizedStatus = (order.status || "").toLowerCase();
+      const isFullySettled = ["paid", "completed"].includes(normalizedStatus);
+      const receivedAmount = isFullySettled ? amount : amount * 0.5;
       return {
         order,
         product,
         amount,
-        receivedAmount: isDpReceivedStatus(order.status) ? amount * 0.5 : amount,
+        receivedAmount,
+        remainingBalance: amount - receivedAmount,
+        isFullySettled,
       };
     }), [managedProducts, preOrders]);
-  const totalRevenue = financialTransactions.reduce((sum, transaction) => sum + transaction.receivedAmount, 0);
-  const averageTransaction = financialTransactions.length ? totalRevenue / financialTransactions.length : 0;
+  const totalOmzet = financialTransactions.reduce((sum, transaction) => sum + transaction.amount, 0);
+  const totalCashIn = financialTransactions.reduce((sum, transaction) => sum + transaction.receivedAmount, 0);
+  const totalRemaining = totalOmzet - totalCashIn;
+  const averageTransaction = financialTransactions.length ? totalOmzet / financialTransactions.length : 0;
+  const normalizedFinancialSearch = financialSearch.trim().toLowerCase();
+  const now = new Date();
+  const financialPeriodStart = financialPeriod === "month"
+    ? new Date(now.getFullYear(), now.getMonth(), 1)
+    : financialPeriod === "30days"
+      ? new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
+      : null;
+  const filteredFinancialTransactions = financialTransactions.filter(({ order, product }) => {
+    const matchesSearch = !normalizedFinancialSearch || [
+      order.customer_name,
+      order.whatsapp,
+      product?.nama_produk,
+      order.product_name,
+      order.product_id,
+    ].some(value => (value || "").toLowerCase().includes(normalizedFinancialSearch));
+    if (!matchesSearch) return false;
+    if (!financialPeriodStart) return true;
+    const createdAt = order.created_at ? new Date(order.created_at) : null;
+    return createdAt !== null && !Number.isNaN(createdAt.getTime()) && createdAt >= financialPeriodStart && createdAt <= now;
+  });
   const normalizedOrderSearch = orderSearch.trim().toLowerCase();
   const searchedOrders = preOrders.filter(order => {
     if (!normalizedOrderSearch) return true;
@@ -1004,8 +1045,6 @@ export default function Admin() {
     counts[status.value] = searchedOrders.filter(order => getOrderStatus(order.status) === status.value).length;
     return counts;
   }, {});
-  const estimatedDpReceived = financialTransactions.reduce((sum, transaction) => sum + transaction.amount * 0.5, 0);
-
   const tabs: { id: AdminTab; label: string; icon: ComponentType<{ size?: number }> }[] = [
     { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
     { id: "produk", label: "Produk", icon: Box },
@@ -1305,9 +1344,6 @@ export default function Admin() {
           }}>
             {productViewTab === "catalog" ? "+ Tambah Produk Katalog" : "+ Buat Kado Fisik Baru"}
           </button>
-          <button className="admin-outline-btn" onClick={loadProducts} disabled={loadingProducts}>
-            <RefreshCw size={16} /> Refresh
-          </button>
         </div>
       </div>
 
@@ -1329,7 +1365,7 @@ export default function Admin() {
       </div>
 
       <input
-        className="admin-form-input"
+        className="admin-form-input admin-product-search"
         type="search"
         placeholder={productViewTab === "catalog" ? "Cari produk katalog (ID, nama, tier)..." : "Cari kado fisik (ID, nama, penerima, tier)..."}
         value={productSearch}
@@ -1352,24 +1388,31 @@ export default function Admin() {
             <div className={`admin-list-item admin-product-row${editingId === product.id ? " active" : ""}`} key={product.id}>
               <div className="admin-list-main">
                 <strong>{product.nama_produk || product.id}</strong>
-                <span>
-                  #{product.id}
-                  {!product.is_catalog && product.nama_pembeli && ` · Penerima: ${product.nama_pembeli}`}
-                </span>
-                {!product.is_catalog && recipientWhatsapp && (
-                  <span>
-                    · 📱 WA:{" "}
-                    <a
-                      href={`https://wa.me/${recipientWhatsapp}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      aria-label={`Hubungi penerima ${product.nama_pembeli || product.id} melalui WhatsApp`}
-                    >
-                      {product.recipient_whatsapp}
-                    </a>
+                <span className="admin-product-id">#{product.id}</span>
+                {!product.is_catalog && (
+                  <span className="admin-product-recipient">
+                    {product.nama_pembeli && (
+                      <>Penerima: {product.nama_pembeli}{recipientWhatsapp && " · "}</>
+                    )}
+                    {recipientWhatsapp && (
+                      <>
+                        <Phone size={13} aria-hidden="true" /> WA:{" "}
+                        <a
+                          href={`https://wa.me/${recipientWhatsapp}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          aria-label={`Hubungi penerima ${product.nama_pembeli || product.id} melalui WhatsApp`}
+                        >
+                          {product.recipient_whatsapp}
+                        </a>
+                      </>
+                    )}
                   </span>
                 )}
               </div>
+              <span className={`admin-product-status${product.status === "archived" ? " is-archived" : " is-active"}`}>
+                {product.status === "archived" ? "Terarsip" : "Aktif"}
+              </span>
               <span className={`admin-tier-badge tier-${product.tier.toLowerCase()}`}>
                 {TIER_OPTIONS.find(option => option.value === product.tier.toLowerCase())?.label || product.tier}
               </span>
@@ -1377,17 +1420,29 @@ export default function Admin() {
               <div className="admin-list-actions">
                 <button type="button" onClick={() => editProduct(product)}>Edit</button>
                 <a href={productUrl} target="_blank" rel="noopener noreferrer">Cek</a>
-                {!product.is_catalog && (
-                  <>
-                    <button type="button" onClick={() => copyProductQrUrl(product.id)} title="Salin link QR">
-                      Salin QR
-                    </button>
-                    <button type="button" onClick={() => downloadProductQR(product)} title="Download QR cetak fisik">
-                      Download QR
-                    </button>
-                  </>
-                )}
-                <button type="button" className="danger" onClick={() => handleDeleteProduct(product)}>Hapus</button>
+                <details className="admin-product-more">
+                  <summary aria-label={`Aksi lainnya untuk ${product.nama_produk || product.id}`} title="Aksi lainnya">
+                    <MoreVertical size={16} aria-hidden="true" />
+                  </summary>
+                  <div className="admin-product-more-menu">
+                    {!product.is_catalog && (
+                      <>
+                        <button type="button" onClick={event => {
+                          copyProductQrUrl(product.id);
+                          event.currentTarget.closest("details")?.removeAttribute("open");
+                        }}>Salin QR</button>
+                        <button type="button" onClick={event => {
+                          downloadProductQR(product);
+                          event.currentTarget.closest("details")?.removeAttribute("open");
+                        }}>Download QR</button>
+                      </>
+                    )}
+                    <button type="button" className="danger" onClick={event => {
+                      void handleDeleteProduct(product);
+                      event.currentTarget.closest("details")?.removeAttribute("open");
+                    }}>Hapus</button>
+                  </div>
+                </details>
               </div>
             </div>
           );
@@ -1400,15 +1455,11 @@ export default function Admin() {
     <div className="admin-panel-card">
       <div className="admin-panel-head">
         <div>
-          <h2>Pesanan Pre-order</h2>
-          <p>{operationalCounts.waiting_dp} pesanan menunggu DP.</p>
+          <p>{orderStatusCounts.waiting_dp ?? operationalCounts.waiting_dp ?? 0} pesanan menunggu DP.</p>
         </div>
         <div className="admin-panel-head-actions">
           <button className="admin-outline-btn" onClick={exportPreOrders}>
             <Download size={16} /> Export CSV
-          </button>
-          <button className="admin-outline-btn" onClick={loadPreOrders} disabled={loadingOrders}>
-            <RefreshCw size={16} /> Refresh
           </button>
         </div>
       </div>
@@ -1461,9 +1512,42 @@ export default function Admin() {
             <div className="admin-list-item admin-order-row" key={order.id || `${order.whatsapp}-${order.created_at}`}>
               <div className="admin-order-main">
                 <div className="admin-order-primary">
-                  <strong>{order.customer_name || "Tanpa nama"}</strong>
-                  <span className="admin-order-meta">WhatsApp: {order.whatsapp || "Tidak tersedia"} / {order.product_name || order.product_id || "Produk belum dipilih"}</span>
-                  <span>{order.created_at ? new Date(order.created_at).toLocaleDateString("id-ID") : ""}</span>
+                  <div className="admin-order-heading">
+                    <strong>{order.customer_name || "Tanpa nama"}</strong>
+                    <span className="admin-order-date">
+                      {order.created_at ? new Date(order.created_at).toLocaleDateString("id-ID", {
+                        day: "numeric",
+                        month: "short",
+                        year: "numeric",
+                      }) : ""}
+                    </span>
+                  </div>
+                  <span className="admin-order-meta admin-order-phone">
+                    <Phone size={13} aria-hidden="true" />
+                    {order.whatsapp ? (
+                      <a href={`https://wa.me/${normalizeWhatsApp(order.whatsapp)}`} target="_blank" rel="noopener noreferrer">
+                        {order.whatsapp}
+                      </a>
+                    ) : "Tidak tersedia"}
+                  </span>
+                  <span className="admin-order-meta admin-order-product">
+                    {order.product_name || order.product_id || "Produk belum dipilih"}
+                  </span>
+                </div>
+                <div className="admin-order-payment">
+                  <span className="admin-status-caption">Status Pembayaran</span>
+                  <select
+                    className={`admin-order-status-select status-${currentStatus}`}
+                    value={currentStatus}
+                    disabled={!order.id}
+                    aria-label={`Status pembayaran pesanan ${customerName}`}
+                    onChange={event => void setOrderStatus(order, event.target.value)}
+                  >
+                    {ORDER_STATUSES.map(status => <option value={status.value} key={status.value}>{status.label}</option>)}
+                  </select>
+                </div>
+                <div className="admin-order-memory">
+                  <span className="admin-status-caption">Status Memori Vault</span>
                   <div className="admin-order-pin-row">
                     <span className={`admin-order-pin-status ${order.vault_pin ? "ready" : "pending"}`}>
                       {order.vault_pin ? "Siap Cetak / Pasang Stiker Gosok" : "Menunggu Pengisian Kenangan"}
@@ -1493,18 +1577,10 @@ export default function Admin() {
                     )}
                   </div>
                 </div>
-                <select
-                  className={`admin-order-status-select status-${currentStatus}`}
-                  value={currentStatus}
-                  disabled={!order.id}
-                  aria-label={`Status pesanan ${customerName}`}
-                  onChange={event => void setOrderStatus(order, event.target.value)}
-                >
-                  {ORDER_STATUSES.map(status => <option value={status.value} key={status.value}>{status.label}</option>)}
-                </select>
                 {(order.recipient_name || order.personal_message || order.custom_request) && (
                   <details className="admin-order-note">
                     <summary>
+                      <ChevronRight size={14} className="admin-note-chevron" aria-hidden="true" />
                       {order.recipient_name ? `Penerima: ${order.recipient_name}` : "Detail pesan"}
                     </summary>
                     {(order.personal_message || order.custom_request) && (
@@ -1517,6 +1593,7 @@ export default function Admin() {
                 <button
                   type="button"
                   aria-label={`Salin link Vault untuk pesanan ${order.order_number || order.id || customerName}`}
+                  className="admin-outline-btn"
                   disabled={!order.id}
                   onClick={() => void (async () => {
                     try {
@@ -1531,17 +1608,26 @@ export default function Admin() {
                   Salin Link Vault
                 </button>
                 <a
+                  className="admin-outline-btn"
                   aria-label={`Kirim link Vault melalui WhatsApp kepada ${customerName}`}
                   aria-disabled={!order.id}
                   href={`https://wa.me/${normalizeWhatsApp(order.whatsapp)}?text=${encodeURIComponent(
-                    `Halo ${customerName}, DP untuk pesanan ${order.order_number || order.id} sudah dikonfirmasi. Berikut link rahasia Memory Vault Floramory: ${vaultUrl}`
+                    `Halo ${customerName}, DP untuk pesanan ${order.order_number || order.id} sudah dikonfirmasi. Berikut link rahasia Memory Vault A Chapter: ${vaultUrl}`
                   )}`}
                   target="_blank"
                   rel="noopener noreferrer"
                 >
                   Kirim Link WA
                 </a>
-                <button type="button" className="admin-order-sync-btn" onClick={() => processOrderToProduct(order)}>
+                <button
+                  type="button"
+                  className="admin-order-sync-btn"
+                  onClick={() => {
+                    if (window.confirm("Proses pesanan ini menjadi produk dan buat QR Vault? Aksi ini akan mengunci data pesanan.")) {
+                      processOrderToProduct(order);
+                    }
+                  }}
+                >
                   ✦ Proses jadi Produk &amp; Cetak QR
                 </button>
               </div>
@@ -1565,57 +1651,101 @@ export default function Admin() {
     <>
       <section className="admin-financial-stats">
         <article className="admin-financial-card">
-          <span className="admin-financial-icon"><DollarSign size={20} /></span>
-          <div><p>Total Pendapatan (Omzet)</p><strong>{formatCurrency(totalRevenue)}</strong></div>
+          <span className="admin-financial-icon is-omzet"><DollarSign size={20} /></span>
+          <div><p>Total Omzet</p><strong>{formatCurrency(totalOmzet)}</strong></div>
         </article>
         <article className="admin-financial-card">
-          <span className="admin-financial-icon"><ClipboardList size={20} /></span>
-          <div><p>Jumlah Transaksi Selesai</p><strong>{financialTransactions.length}</strong></div>
+          <span className="admin-financial-icon is-cash"><Wallet size={20} /></span>
+          <div>
+            <p>Kas / DP Diterima</p>
+            <strong>{formatCurrency(totalCashIn)}</strong>
+            <small className="admin-financial-subtotal">Sisa piutang: {formatCurrency(totalRemaining)}</small>
+          </div>
         </article>
         <article className="admin-financial-card">
-          <span className="admin-financial-icon"><Wallet size={20} /></span>
-          <div><p>Estimasi DP Diterima (50%)</p><strong>{formatCurrency(estimatedDpReceived)}</strong></div>
+          <span className="admin-financial-icon is-count"><ClipboardList size={20} /></span>
+          <div><p>Total Transaksi</p><strong>{financialTransactions.length}</strong></div>
         </article>
         <article className="admin-financial-card">
-          <span className="admin-financial-icon"><TrendingUp size={20} /></span>
-          <div><p>Rata-rata Nilai Transaksi</p><strong>{formatCurrency(averageTransaction)}</strong></div>
+          <span className="admin-financial-icon is-average"><TrendingUp size={20} /></span>
+          <div><p>Rata-rata Order</p><strong>{formatCurrency(averageTransaction)}</strong></div>
         </article>
       </section>
       <div className="admin-panel-card">
         <div className="admin-panel-head">
           <div>
-            <h2>Daftar Transaksi Berhasil</h2>
-            <p>{loadingOrders ? "Memuat seluruh data pre-order..." : `${financialTransactions.length} transaksi berstatus selesai atau lunas.`}</p>
+            <h2>Daftar Transaksi</h2>
+            <p>{loadingOrders ? "Memuat seluruh data pre-order..." : `${financialTransactions.length} Pre-order terkonfirmasi (DP diterima atau lunas).`}</p>
           </div>
-          <button className="admin-primary-btn" onClick={exportFinancialReport} disabled={loadingOrders || financialTransactions.length === 0}>
+        </div>
+        <div className="admin-financial-controls">
+          <input
+            className="admin-form-input"
+            type="search"
+            value={financialSearch}
+            onChange={event => setFinancialSearch(event.target.value)}
+            placeholder="Cari pelanggan, WhatsApp, atau produk"
+            aria-label="Cari laporan keuangan"
+          />
+          <select
+            className="admin-form-select"
+            value={financialPeriod}
+            onChange={event => {
+              const value = event.target.value;
+              setFinancialPeriod(value === "month" || value === "30days" ? value : "all");
+            }}
+            aria-label="Filter periode laporan keuangan"
+          >
+            <option value="all">Semua periode</option>
+            <option value="month">Bulan ini</option>
+            <option value="30days">30 hari terakhir</option>
+          </select>
+          <button className="admin-outline-btn" onClick={exportFinancialReport} disabled={loadingOrders || filteredFinancialTransactions.length === 0}>
             <Download size={16} /> Export Laporan Keuangan (CSV)
           </button>
         </div>
         {loadingOrders ? (
           <div className="manage-empty">Memuat laporan keuangan...</div>
         ) : financialTransactions.length === 0 ? (
-          <div className="manage-empty">Belum ada transaksi yang selesai atau lunas.</div>
+          <div className="manage-empty">Belum ada Pre-order terkonfirmasi (DP diterima atau lunas).</div>
+        ) : filteredFinancialTransactions.length === 0 ? (
+          <div className="manage-empty">Tidak ada transaksi yang cocok dengan pencarian atau periode ini.</div>
         ) : (
           <div className="admin-table-wrap">
             <table className="admin-table admin-financial-table">
               <thead>
-                <tr><th>Tanggal</th><th>Nama Pelanggan</th><th>Produk</th><th>Nilai Transaksi</th><th>Status Pembayaran</th></tr>
+                <tr><th>Tanggal</th><th>Pelanggan</th><th>Produk</th><th>Nilai Transaksi</th><th>Dibayar</th><th>Sisa</th><th>Status</th></tr>
               </thead>
               <tbody>
-                {financialTransactions.map(({ order, product, amount }) => (
+                {filteredFinancialTransactions.map(({ order, product, amount, receivedAmount, remainingBalance, isFullySettled }) => (
                   <tr key={order.id || `${order.whatsapp}-${order.created_at}`}>
-                    <td>{order.created_at ? new Date(order.created_at).toLocaleDateString("id-ID") : "-"}</td>
+                    <td>{order.created_at ? new Date(order.created_at).toLocaleDateString("id-ID", {
+                      day: "numeric",
+                      month: "short",
+                      year: "numeric",
+                    }) : "-"}</td>
                     <td>{order.customer_name || "Tanpa nama"}</td>
                     <td>{product?.nama_produk || order.product_name || order.product_id || "Produk tidak ditemukan"}</td>
                     <td>{product ? formatCurrency(amount) : "Harga tidak tersedia"}</td>
+                    <td>{product ? formatCurrency(receivedAmount) : "Harga tidak tersedia"}</td>
+                    <td>{product ? formatCurrency(remainingBalance) : "Harga tidak tersedia"}</td>
                     <td>
-                      <span className={`admin-payment-badge ${(order.status || "").toLowerCase()}`}>
-                        {isDpReceivedStatus(order.status) ? "DP Diterima (50%)" : "Selesai (100%)"}
+                      <span className={`status-badge ${isFullySettled ? "status-completed" : "status-waiting_dp"}`}>
+                        {isFullySettled ? "Lunas (100%)" : "DP 50%"}
                       </span>
                     </td>
                   </tr>
                 ))}
               </tbody>
+              <tfoot>
+                <tr>
+                  <th colSpan={3}>Total ({filteredFinancialTransactions.length} transaksi)</th>
+                  <th>{formatCurrency(filteredFinancialTransactions.reduce((sum, transaction) => sum + transaction.amount, 0))}</th>
+                  <th>{formatCurrency(filteredFinancialTransactions.reduce((sum, transaction) => sum + transaction.receivedAmount, 0))}</th>
+                  <th>{formatCurrency(filteredFinancialTransactions.reduce((sum, transaction) => sum + transaction.remainingBalance, 0))}</th>
+                  <th />
+                </tr>
+              </tfoot>
             </table>
           </div>
         )}
@@ -1631,6 +1761,8 @@ export default function Admin() {
           <div className="admin-stat-card" key={tier.value}><span>{tier.count}</span><p>{tier.label}</p></div>
         ))}
         <div className="admin-stat-card"><span>{operationalCounts.waiting_dp}</span><p>Menunggu DP</p></div>
+        <div className="admin-stat-card"><span>{operationalCounts.dp_verified || 0}</span><p>DP Diterima (50%)</p></div>
+        <div className="admin-stat-card"><span>{operationalCounts.completed}</span><p>Selesai</p></div>
       </section>
       <div className="admin-panel-card">
         <div className="admin-panel-head">
@@ -1673,7 +1805,7 @@ export default function Admin() {
         <div className="admin-form-group">
           <label className="admin-form-label">Base URL website (Target QR Code)</label>
           <div className="settings-input-group" style={{ display: "flex", gap: "8px" }}>
-            <input className="admin-form-input" type="text" placeholder="https://floramory.store"
+            <input className="admin-form-input" type="text" placeholder="https://www.achapter.my.id"
               value={baseUrl} onChange={e => setBaseUrl(e.target.value)} />
             <button type="button" className="btn-save-config" onClick={useAutoUrl} title="Set ke domain produksi">Produksi</button>
             <button type="button" className="admin-outline-btn" onClick={useLocalUrl} title="Set ke host browser saat ini (dev mode)">Lokal</button>
@@ -1833,10 +1965,10 @@ export default function Admin() {
   );
 
   const titleMap: Record<AdminTab, { title: string; desc: string }> = {
-    dashboard: { title: "Dashboard", desc: "Ringkasan katalog dan pesanan Floramory." },
-    produk: { title: "Produk", desc: "Kelola katalog produk Floramory." },
+    dashboard: { title: "Dashboard", desc: "Ringkasan katalog dan pesanan A Chapter." },
+    produk: { title: "Produk", desc: "Kelola katalog produk A Chapter." },
     pesanan: { title: "Pesanan", desc: "Kelola pre-order dan pakai data Memory Vault pelanggan." },
-    keuangan: { title: "Keuangan", desc: "Pantau omzet dari pre-order yang sudah selesai." },
+    keuangan: { title: "Keuangan", desc: "Pantau Pre-order terkonfirmasi (DP diterima atau lunas)." },
     pengaturan: { title: "Pengaturan", desc: "Atur domain QR dan nomor WhatsApp aktif." },
   };
 
@@ -1850,16 +1982,24 @@ export default function Admin() {
 
   return (
     <div className={`admin-shell${sidebarCollapsed ? " is-sidebar-collapsed" : " admin-sidebar-open"}`}>
-      {!sidebarCollapsed && <button className="admin-sidebar-backdrop" onClick={() => setSidebarCollapsed(true)} aria-label="Tutup menu admin" />}
       <aside className="admin-sidebar">
         <div className="admin-brand">
-          <div className="admin-brand-mark">F</div>
-          <div>
-            <strong aria-label="Floramory">
-              <BrandLogo className="brand-logo-img admin-brand-logo-img" />
-            </strong>
-            <span>Admin Panel</span>
+          <div className="admin-brand-main">
+            <div className="admin-brand-mark">A</div>
+            <div className="admin-brand-info">
+              <strong aria-label="A Chapter">A Chapter</strong>
+              <span>Admin Panel</span>
+            </div>
           </div>
+          <button
+            type="button"
+            className="admin-sidebar-burger"
+            onClick={toggleSidebar}
+            aria-label={sidebarCollapsed ? "Perluas menu sidebar" : "Ciutkan menu sidebar"}
+            title={sidebarCollapsed ? "Perluas menu sidebar" : "Ciutkan menu sidebar"}
+          >
+            <Menu size={18} />
+          </button>
         </div>
         <nav className="admin-side-nav">
           {tabs.map(tab => {
@@ -1883,17 +2023,6 @@ export default function Admin() {
             );
           })}
         </nav>
-        <button
-          type="button"
-          className="admin-sidebar-collapse"
-          onClick={toggleSidebar}
-          aria-label={sidebarCollapsed ? "Perluas sidebar" : "Ciutkan sidebar"}
-          aria-expanded={!sidebarCollapsed}
-          title={sidebarCollapsed ? "Perluas sidebar" : "Ciutkan sidebar"}
-        >
-          {sidebarCollapsed ? <PanelLeftOpen size={16} /> : <PanelLeftClose size={16} />}
-          <span>{sidebarCollapsed ? "Perluas menu" : "Ciutkan menu"}</span>
-        </button>
         <div className="admin-sidebar-footer">
           <p>Smart Eco-Preserved Artware</p>
           <span>Sumber data: Supabase</span>
@@ -1905,6 +2034,15 @@ export default function Admin() {
         </div>
       </aside>
 
+      {!sidebarCollapsed && (
+        <button
+          type="button"
+          className="admin-sidebar-backdrop"
+          onClick={() => setSidebarCollapsed(true)}
+          aria-label="Tutup menu admin"
+        />
+      )}
+
       <main className="admin-main">
         <header className="admin-main-header">
           <div className="admin-header-title">
@@ -1912,11 +2050,11 @@ export default function Admin() {
               type="button"
               className="admin-sidebar-toggle"
               onClick={toggleSidebar}
-              aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+              aria-label={sidebarCollapsed ? "Perluas sidebar" : "Ciutkan sidebar"}
               aria-expanded={!sidebarCollapsed}
               title="Toggle sidebar (Ctrl+B)"
             >
-              {sidebarCollapsed ? <Menu size={18} /> : <PanelLeftClose size={18} />}
+              <Menu size={20} />
             </button>
             <div>
               <h1>{activeTab === "produk" && productFormOpen ? (editingId ? "Edit Produk" : "Tambah Produk Baru") : titleMap[activeTab].title}</h1>

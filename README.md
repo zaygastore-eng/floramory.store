@@ -1,6 +1,6 @@
-# Floramory
+# A Chapter
 
-Website Floramory untuk katalog preserved flower, halaman produk Smart QR,
+Website A Chapter untuk katalog preserved flower artware, halaman produk Smart QR,
 Memory Vault, dan formulir Pre-Order. Aplikasi frontend menggunakan React dan
 Vite, dengan Supabase sebagai sumber data dan backend.
 
