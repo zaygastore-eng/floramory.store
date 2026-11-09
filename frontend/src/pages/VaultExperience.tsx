@@ -436,7 +436,7 @@ export default function VaultExperience({
 
                   {videoMedia.isVideo && videoMedia.url && (
                     <div className="vault-video-frame" style={{ marginTop: "1.5rem" }}>
-                      {videoMedia.type === "youtube" && videoMedia.embedUrl ? (
+                      {(videoMedia.type === "youtube" || videoMedia.type === "google_drive") && videoMedia.embedUrl ? (
                         <iframe
                           src={videoMedia.embedUrl}
                           title="Video Kenangan"

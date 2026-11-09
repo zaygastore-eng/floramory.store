@@ -66,6 +66,8 @@ export interface VoiceRecordTab {
   totalDurationLabel: string;
   quoteExcerpt: string;
   quoteAttribution: string;
+  audioSrc?: string;
+  songTitle?: string;
 }
 
 export interface LetterTab {
@@ -326,20 +328,22 @@ export const homeContent = {
       {
         kind: "voice-record",
         title: "Voice Record",
-        durationLabel: "01:28",
-        totalDurationLabel: "02:15",
+        durationLabel: "00:00",
+        totalDurationLabel: "02:11",
+        songTitle: "See You Again — Wiz Khalifa ft. Charlie Puth (Acoustic Keepsake)",
+        audioSrc: "/see-you-again.mp3",
         quoteExcerpt:
-          "Selamat ulang tahun, semoga karya ini selalu mengingatkanmu pada babak terindah kita...",
-        quoteAttribution: "A preserved voice note · June 2026",
+          "“It's been a long day without you, my friend. And I'll tell you all about it when I see you again... Terima kasih telah menjadi bagian terindah dalam hidupku. Sampai kita berjumpa lagi di babak berikutnya.”",
+        quoteAttribution: "Pesan Kenangan & Lagu Perpisahan · A Chapter Vault",
       },
       {
         kind: "letter",
         title: "The Letter",
-        greeting: "To My Dearest,",
+        greeting: "Untuk Sahabat & Belahan Jiwa yang Terkasih,",
         letterText:
-          "If time could be gathered like these petals, I would keep every little moment we shared. Until we make new memories, let this one remind you how deeply you are loved.",
-        signoff: "With all my love,",
-        signature: "Always yours",
+          "Waktu mungkin membawa kita ke persimpangan jalan yang berbeda, namun kenangan yang telah kita ukir bersama takkan pernah lekang oleh jarak dan masa. Sebagaimana kelopak bunga ini yang diawetkan abadi di laboratorium A Chapter, rasa sayang, syukur, dan doa tulusku akan selalu menyertai setiap langkahmu. Ini bukan akhir, melainkan sebuah babak baru. Until we meet again, simpanlah memori ini selamanya.",
+        signoff: "Dengan cinta dan rasa hormat terdalam,",
+        signature: "Selalu Sahabat Terbaikmu",
       },
       {
         kind: "herbarium-notes",

@@ -2,7 +2,7 @@ import { useEffect, useState, useRef, type DragEvent, type ChangeEvent, type For
 import BrandLogo from "@/components/BrandLogo";
 import VaultExperience from "@/pages/VaultExperience";
 import { fetchVaultSetup, saveVaultSetup, uploadVaultMedia, type PreOrder } from "@/lib/api";
-import { classifyMedia, parseSpotifyEmbedUrl, parseYouTubeEmbedUrl } from "@/lib/media";
+import { classifyMedia, parseSpotifyEmbedUrl, parseYouTubeEmbedUrl, parseGoogleDriveEmbedUrl } from "@/lib/media";
 import { pageUrl } from "@/lib/site";
 
 export default function VaultSetup() {
@@ -36,6 +36,15 @@ export default function VaultSetup() {
   // Upload & Save status
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [uploadingAudio, setUploadingAudio] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<{
+    photo: { percent: number; loaded: number; total: number };
+    audio: { percent: number; loaded: number; total: number };
+    video: { percent: number; loaded: number; total: number };
+  }>({
+    photo: { percent: 0, loaded: 0, total: 0 },
+    audio: { percent: 0, loaded: 0, total: 0 },
+    video: { percent: 0, loaded: 0, total: 0 },
+  });
   const [saving, setSaving] = useState(false);
   const [uploadError, setUploadError] = useState("");
   const [saved, setSaved] = useState(false);
@@ -166,7 +175,7 @@ export default function VaultSetup() {
     const setUploading = isPhoto ? setUploadingPhoto : isAudio ? setUploadingAudio : setUploadingVideo;
     const setPreview = isPhoto ? setPhotoPreview : isAudio ? setAudioPreview : setVideoPreview;
     const setUrl = isPhoto ? setPhotoUrl : isAudio ? setAudioUrl : setVideoUrl;
-    const maxSize = isPhoto ? 5 * 1024 * 1024 : isAudio ? 15 * 1024 * 1024 : 35 * 1024 * 1024;
+    const maxSize = isPhoto ? 10 * 1024 * 1024 : isAudio ? 25 * 1024 * 1024 : 50 * 1024 * 1024;
     const allowedTypes = isPhoto
       ? ["image/jpeg", "image/png", "image/webp"]
       : isAudio
@@ -185,7 +194,7 @@ export default function VaultSetup() {
       return;
     }
     if (file.size > maxSize) {
-      setUploadError(`Ukuran file maksimal ${isPhoto ? "5 MB" : isAudio ? "15 MB" : "35 MB"}.`);
+      setUploadError(`Ukuran file maksimal ${isPhoto ? "10 MB" : isAudio ? "25 MB" : "50 MB"}.`);
       return;
     }
     if (!orderId) return;
@@ -193,8 +202,22 @@ export default function VaultSetup() {
     const localPreview = URL.createObjectURL(file);
     setPreview(localPreview);
     setUploading(true);
+    setUploadProgress(prev => ({
+      ...prev,
+      [type]: { percent: 0, loaded: 0, total: file.size },
+    }));
+
     try {
-      const url = await uploadVaultMedia(orderId, type, file);
+      const url = await uploadVaultMedia(orderId, type, file, (progress) => {
+        setUploadProgress(prev => ({
+          ...prev,
+          [type]: {
+            percent: progress.percent,
+            loaded: progress.loadedBytes,
+            total: progress.totalBytes,
+          },
+        }));
+      });
       setUrl(url);
       setPreview(url);
       if (isAudio) {
@@ -365,6 +388,25 @@ export default function VaultSetup() {
                   />
                 </label>
 
+                {uploadingPhoto && (
+                  <div className="vault-upload-progress-box">
+                    <div className="vault-upload-progress-top">
+                      <span>Mengunggah Foto...</span>
+                      <span>{uploadProgress.photo.percent}%</span>
+                    </div>
+                    <div className="vault-upload-progress-bar-bg">
+                      <div
+                        className="vault-upload-progress-bar-fill"
+                        style={{ width: `${uploadProgress.photo.percent}%` }}
+                      />
+                    </div>
+                    <div className="vault-upload-progress-sub">
+                      <span>{(uploadProgress.photo.loaded / (1024 * 1024)).toFixed(1)} MB / {(uploadProgress.photo.total / (1024 * 1024)).toFixed(1)} MB</span>
+                      <span>Mohon tunggu sebentar...</span>
+                    </div>
+                  </div>
+                )}
+
                 {photoPreview && (
                   <div className="vault-setup-photo-preview">
                     <div className="folio-polaroid-frame" style={{ maxWidth: "260px", margin: "1.5rem auto 0" }}>
@@ -422,7 +464,26 @@ export default function VaultSetup() {
                       disabled={uploadingAudio}
                       className="form-input"
                     />
-                    <span className="drop-hint">Maksimal durasi bebas · Ukuran maksimal 10 MB</span>
+                    <span className="drop-hint">Format didukung: MP3, M4A, WAV · Maksimal 25 MB</span>
+
+                    {uploadingAudio && (
+                      <div className="vault-upload-progress-box">
+                        <div className="vault-upload-progress-top">
+                          <span>Mengunggah Audio Suara...</span>
+                          <span>{uploadProgress.audio.percent}%</span>
+                        </div>
+                        <div className="vault-upload-progress-bar-bg">
+                          <div
+                            className="vault-upload-progress-bar-fill"
+                            style={{ width: `${uploadProgress.audio.percent}%` }}
+                          />
+                        </div>
+                        <div className="vault-upload-progress-sub">
+                          <span>{(uploadProgress.audio.loaded / (1024 * 1024)).toFixed(1)} MB / {(uploadProgress.audio.total / (1024 * 1024)).toFixed(1)} MB</span>
+                          <span>Mohon jangan tutup halaman...</span>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -509,7 +570,7 @@ export default function VaultSetup() {
                     className={`audio-toggle-btn${videoSource === "youtube" ? " active" : ""}`}
                     onClick={() => setVideoSource("youtube")}
                   >
-                    Link YouTube / Shorts
+                    Link YouTube / Google Drive
                   </button>
                 </div>
 
@@ -526,7 +587,26 @@ export default function VaultSetup() {
                       disabled={uploadingVideo}
                       className="form-input"
                     />
-                    <span className="drop-hint">Format didukung: MP4, MOV, WebM · Maksimal 35 MB</span>
+                    <span className="drop-hint">Format didukung: MP4, MOV (iPhone), WebM · Maksimal 50 MB</span>
+
+                    {uploadingVideo && (
+                      <div className="vault-upload-progress-box">
+                        <div className="vault-upload-progress-top">
+                          <span>Mengunggah Video Kenangan...</span>
+                          <span>{uploadProgress.video.percent}%</span>
+                        </div>
+                        <div className="vault-upload-progress-bar-bg">
+                          <div
+                            className="vault-upload-progress-bar-fill"
+                            style={{ width: `${uploadProgress.video.percent}%` }}
+                          />
+                        </div>
+                        <div className="vault-upload-progress-sub">
+                          <span>{(uploadProgress.video.loaded / (1024 * 1024)).toFixed(1)} MB / {(uploadProgress.video.total / (1024 * 1024)).toFixed(1)} MB</span>
+                          <span>Mohon jangan tutup halaman saat proses unggah...</span>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -536,7 +616,7 @@ export default function VaultSetup() {
                       type="url"
                       value={videoUrl}
                       onChange={e => setVideoUrl(e.target.value)}
-                      placeholder="https://www.youtube.com/watch?v=... atau https://youtu.be/..."
+                      placeholder="Link YouTube (https://youtu.be/...) atau Google Drive (https://drive.google.com/file/d/...)"
                       className="form-input"
                     />
                     {parseYouTubeEmbedUrl(videoUrl) && (
@@ -546,6 +626,17 @@ export default function VaultSetup() {
                           src={parseYouTubeEmbedUrl(videoUrl)!}
                           style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", border: "none" }}
                           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                          allowFullScreen
+                        />
+                      </div>
+                    )}
+                    {parseGoogleDriveEmbedUrl(videoUrl) && (
+                      <div style={{ marginTop: "1rem", position: "relative", paddingBottom: "56.25%", height: 0, overflow: "hidden", borderRadius: "8px" }}>
+                        <iframe
+                          title="Google Drive Video Preview"
+                          src={parseGoogleDriveEmbedUrl(videoUrl)!}
+                          style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", border: "none" }}
+                          allow="accelerometer; autoplay; encrypted-media; picture-in-picture"
                           allowFullScreen
                         />
                       </div>

@@ -3,17 +3,20 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "";
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
 const ORDER_ID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-const PHOTO_MAX_BYTES = 5 * 1024 * 1024;
-const AUDIO_MAX_BYTES = 15 * 1024 * 1024;
-const VIDEO_MAX_BYTES = 35 * 1024 * 1024;
+// Batas ukuran berkas
+const PHOTO_MAX_BYTES = 10 * 1024 * 1024; // 10 MB
+const AUDIO_MAX_BYTES = 25 * 1024 * 1024; // 25 MB
+const VIDEO_MAX_BYTES = 50 * 1024 * 1024; // 50 MB
 const PHOTO_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 const AUDIO_EXTENSIONS: Record<string, string> = {
   "audio/mpeg": "mp3",
+  "audio/mp3": "mp3",
   "audio/mp4": "m4a",
   "audio/x-m4a": "m4a",
   "audio/ogg": "ogg",
   "audio/wav": "wav",
   "audio/webm": "webm",
+  "audio/aac": "aac",
 };
 const VIDEO_EXTENSIONS: Record<string, string> = {
   "video/mp4": "mp4",
@@ -74,6 +77,62 @@ async function handleGet(admin: ReturnType<typeof createClient>, orderId: string
   const order = { ...result.order };
   Reflect.deleteProperty(order, "vault_pin");
   return json({ ok: true, order });
+}
+
+async function handleGetUploadUrl(
+  admin: ReturnType<typeof createClient>,
+  orderId: string,
+  body: Record<string, unknown>
+): Promise<Response> {
+  const result = await loadOrder(admin, orderId);
+  if (result.error) return json({ ok: false, message: "Gagal memuat pesanan." }, 500);
+  if (!result.order) {
+    return json({ ok: false, message: "Pesanan tidak ditemukan atau sudah dibatalkan." }, 404);
+  }
+
+  const fileType = body.file_type;
+  const mimeType = typeof body.mime_type === "string" ? body.mime_type.toLowerCase().trim() : "";
+  const isPhoto = fileType === "photo";
+  const isAudio = fileType === "audio";
+  const isVideo = fileType === "video";
+  if (!isPhoto && !isAudio && !isVideo) {
+    return json({ ok: false, message: "Tipe file tidak didukung." }, 400);
+  }
+
+  const allowed = isPhoto
+    ? PHOTO_TYPES.has(mimeType)
+    : isAudio
+      ? Boolean(AUDIO_EXTENSIONS[mimeType])
+      : Boolean(VIDEO_EXTENSIONS[mimeType]);
+  if (!allowed) return json({ ok: false, message: "Format file tidak didukung." }, 415);
+
+  const bucket = isPhoto ? "product-images" : "vault-media";
+  const filePath = isPhoto
+    ? `vault/${orderId}/polaroid.webp`
+    : isAudio
+      ? `vault/${orderId}/audio.${AUDIO_EXTENSIONS[mimeType] || "mp3"}`
+      : `vault/${orderId}/video.${VIDEO_EXTENSIONS[mimeType] || "mp4"}`;
+
+  // Buat Signed Upload URL berdurasi 15 menit untuk upload biner langsung dari browser ke Supabase
+  const { data: signData, error: signError } = await admin.storage
+    .from(bucket)
+    .createSignedUploadUrl(filePath, { upsert: true });
+
+  if (signError || !signData) {
+    console.error("[VAULT_SETUP_SIGN_ERROR]", signError?.message);
+    return json({ ok: false, message: "Gagal membuat izin unggah media. Silakan coba lagi." }, 502);
+  }
+
+  const { data: pubData } = admin.storage.from(bucket).getPublicUrl(filePath);
+
+  return json({
+    ok: true,
+    bucket,
+    filePath,
+    token: signData.token,
+    signedUrl: signData.signedUrl,
+    publicUrl: pubData.publicUrl,
+  });
 }
 
 async function handleUpload(
@@ -219,6 +278,7 @@ Deno.serve(async (req: Request) => {
   });
   try {
     if (body.action === "get") return await handleGet(admin, body.order_id);
+    if (body.action === "get-upload-url") return await handleGetUploadUrl(admin, body.order_id, body);
     if (body.action === "upload") return await handleUpload(admin, body.order_id, body);
     if (body.action === "save") return await handleSave(admin, body.order_id, body);
     return json({ ok: false, message: "Aksi tidak dikenal." }, 400);

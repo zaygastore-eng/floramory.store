@@ -3,10 +3,14 @@ import { logoUrl } from "@/lib/site";
 
 export default function BrandLogo({
   className = "brand-logo-img",
+  variant = "burgundy",
 }: {
   className?: string;
+  variant?: "burgundy" | "light";
 }) {
   const [failed, setFailed] = useState(false);
+
+  const src = variant === "light" ? "/a-chapter-logo-light.png" : logoUrl();
 
   if (failed) {
     return (
@@ -22,7 +26,7 @@ export default function BrandLogo({
   return (
     <img
       className={className}
-      src={logoUrl()}
+      src={src}
       alt="A Chapter"
       onError={() => setFailed(true)}
     />

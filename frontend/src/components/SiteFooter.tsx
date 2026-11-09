@@ -25,7 +25,7 @@ export default function SiteFooter() {
         <div className="atelier-footer-grid">
           <section className="atelier-footer-col atelier-footer-brand" aria-labelledby="footer-brand-title">
             <Link href="/" className="footer-logo logo-link" aria-label="A Chapter home">
-              <BrandLogo />
+              <BrandLogo variant="light" />
             </Link>
             <h2 className="atelier-footer-title" id="footer-brand-title">BOTANICAL ARTWARE ATELIER</h2>
             <p className="atelier-footer-copy">

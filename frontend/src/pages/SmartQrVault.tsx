@@ -29,11 +29,48 @@ export default function SmartQrVault() {
     "photograph" | "voice-record" | "letter" | "herbarium-notes"
   >("photograph");
   const [isAudioPlaying, setIsAudioPlaying] = useState(false);
+  const [audioCurrentTime, setAudioCurrentTime] = useState(0);
+  const [audioDuration, setAudioDuration] = useState(131);
+  const vaultAudioRef = useRef<HTMLAudioElement | null>(null);
   const [activeFaq, setActiveFaq] = useState<number | null>(null);
 
   useEffect(() => {
     window.scrollTo(0, 0);
   }, []);
+
+  const toggleAudio = (src?: string) => {
+    if (!vaultAudioRef.current && src) {
+      const audio = new Audio(src);
+      vaultAudioRef.current = audio;
+
+      audio.addEventListener("loadedmetadata", () => {
+        if (Number.isFinite(audio.duration) && audio.duration > 0) {
+          setAudioDuration(audio.duration);
+        }
+      });
+      audio.addEventListener("timeupdate", () => {
+        setAudioCurrentTime(audio.currentTime);
+      });
+      audio.addEventListener("ended", () => {
+        setIsAudioPlaying(false);
+        setAudioCurrentTime(0);
+      });
+    }
+
+    const audio = vaultAudioRef.current;
+    if (!audio) return;
+
+    if (isAudioPlaying) {
+      audio.pause();
+      setIsAudioPlaying(false);
+    } else {
+      audio.play().then(() => {
+        setIsAudioPlaying(true);
+      }).catch((err) => {
+        console.warn("Audio playback error:", err);
+      });
+    }
+  };
 
   const handleVaultTabKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>) => {
     const tabs = ["photograph", "voice-record", "letter", "herbarium-notes"] as const;
@@ -46,7 +83,10 @@ export default function SmartQrVault() {
     if (nextIndex !== currentIndex) {
       event.preventDefault();
       setVaultSimTab(tabs[nextIndex]);
-      setIsAudioPlaying(false);
+      if (vaultAudioRef.current && tabs[nextIndex] !== "voice-record") {
+        vaultAudioRef.current.pause();
+        setIsAudioPlaying(false);
+      }
     }
   };
 
@@ -113,10 +153,13 @@ export default function SmartQrVault() {
                       aria-selected={isSelected}
                       tabIndex={isSelected ? 0 : -1}
                       className={`vault-sim-btn${isSelected ? " active" : ""}`}
-                      onClick={() => {
-                        setVaultSimTab(tab.kind);
+                    onClick={() => {
+                      setVaultSimTab(tab.kind);
+                      if (vaultAudioRef.current && tab.kind !== "voice-record") {
+                        vaultAudioRef.current.pause();
                         setIsAudioPlaying(false);
-                      }}
+                      }
+                    }}
                       onKeyDown={handleVaultTabKeyDown}
                     >
                       {["I.", "II.", "III.", "IV."][index]} {tab.title.toUpperCase()}
@@ -164,39 +207,54 @@ export default function SmartQrVault() {
                     }
 
                     if (tab.kind === "voice-record") {
+                      const formatTime = (sec: number) => {
+                        if (!Number.isFinite(sec) || sec < 0) return "00:00";
+                        const m = Math.floor(sec / 60);
+                        const s = Math.floor(sec % 60);
+                        return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
+                      };
+                      const curTimeStr = formatTime(audioCurrentTime);
+                      const totalTimeStr = formatTime(audioDuration);
+
                       return (
                         <div className="sim-panel" key={tab.kind}>
                           <div className="folio-audio-card">
                             <div className="folio-audio-meta">
-                              <span className="folio-audio-tag">ORIGINAL VOICE MEMO</span>
-                              <span className="folio-audio-dur">{tab.totalDurationLabel}</span>
+                              <span className="folio-audio-tag">SEE YOU AGAIN · ACOUSTIC KEEPSAKE</span>
+                              <span className="folio-audio-dur">{totalTimeStr}</span>
                             </div>
                             <blockquote className="folio-audio-quote">
-                              “{tab.quoteExcerpt}”
+                              {tab.quoteExcerpt}
                             </blockquote>
                             <p className="folio-audio-cite">— {tab.quoteAttribution}</p>
                             <div className="folio-audio-player">
                               <button
                                 type="button"
                                 className="folio-play-btn"
-                                aria-label={isAudioPlaying ? "Pause voice note preview" : "Play voice note preview"}
-                                onClick={() => setIsAudioPlaying(prev => !prev)}
+                                aria-label={isAudioPlaying ? "Jeda lagu See You Again" : "Putar lagu See You Again"}
+                                onClick={() => toggleAudio(tab.audioSrc || "/see-you-again.mp3")}
                               >
                                 {isAudioPlaying ? "❚❚" : "▶"}
                               </button>
-                              <div className="folio-waveform" aria-hidden="true">
+                              <div
+                                className="folio-waveform"
+                                aria-hidden="true"
+                                onClick={() => toggleAudio(tab.audioSrc || "/see-you-again.mp3")}
+                                style={{ cursor: "pointer" }}
+                                title="Klik untuk memutar lagu"
+                              >
                                 {[40, 75, 25, 90, 60, 45, 80, 55, 30, 95, 70, 50, 85, 40, 65, 30, 80, 45].map((h, i) => (
                                   <span
                                     key={i}
                                     style={{
                                       height: `${h}%`,
-                                      opacity: isAudioPlaying && i < 8 ? 1 : 0.45,
+                                      opacity: isAudioPlaying && i < 12 ? 1 : 0.45,
                                     }}
                                   />
                                 ))}
                               </div>
                               <span className="folio-play-time">
-                                {isAudioPlaying ? tab.durationLabel : "00:00"}
+                                {isAudioPlaying || audioCurrentTime > 0 ? curTimeStr : "00:00"}
                               </span>
                             </div>
                           </div>

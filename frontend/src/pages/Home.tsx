@@ -256,6 +256,9 @@ export default function Home() {
     "photograph" | "voice-record" | "letter" | "herbarium-notes"
   >("photograph");
   const [isAudioPlaying, setIsAudioPlaying] = useState(false);
+  const [audioCurrentTime, setAudioCurrentTime] = useState(0);
+  const [audioDuration, setAudioDuration] = useState(131);
+  const homeAudioRef = useRef<HTMLAudioElement | null>(null);
   const [orderForm, setOrderForm] = useState({
     nama: "",
     wa: "",
@@ -340,6 +343,40 @@ export default function Home() {
 
   const [heroFirstLine, heroSecondLine] = splitHeroHeadline(heroConfig.headline);
   const commissionProductGroups = getCommissionProductGroups(products);
+
+  const toggleAudio = (src?: string) => {
+    if (!homeAudioRef.current && src) {
+      const audio = new Audio(src);
+      homeAudioRef.current = audio;
+
+      audio.addEventListener("loadedmetadata", () => {
+        if (Number.isFinite(audio.duration) && audio.duration > 0) {
+          setAudioDuration(audio.duration);
+        }
+      });
+      audio.addEventListener("timeupdate", () => {
+        setAudioCurrentTime(audio.currentTime);
+      });
+      audio.addEventListener("ended", () => {
+        setIsAudioPlaying(false);
+        setAudioCurrentTime(0);
+      });
+    }
+
+    const audio = homeAudioRef.current;
+    if (!audio) return;
+
+    if (isAudioPlaying) {
+      audio.pause();
+      setIsAudioPlaying(false);
+    } else {
+      audio.play().then(() => {
+        setIsAudioPlaying(true);
+      }).catch((err) => {
+        console.warn("Audio playback error:", err);
+      });
+    }
+  };
 
   const handleVaultTabKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>) => {
     const tabs = ["photograph", "voice-record", "letter", "herbarium-notes"] as const;
@@ -621,7 +658,10 @@ export default function Home() {
                     className={`vault-sim-btn${isSelected ? " active" : ""}`}
                     onClick={() => {
                       setVaultSimTab(tab.kind);
-                      setIsAudioPlaying(false);
+                      if (tab.kind !== "voice-record" && homeAudioRef.current) {
+                        homeAudioRef.current.pause();
+                        setIsAudioPlaying(false);
+                      }
                     }}
                     onKeyDown={handleVaultTabKeyDown}
                   >
@@ -670,15 +710,27 @@ export default function Home() {
                   }
 
                   if (tab.kind === "voice-record") {
+                    const formatTime = (sec: number) => {
+                      if (!Number.isFinite(sec) || sec < 0) return "00:00";
+                      const m = Math.floor(sec / 60);
+                      const s = Math.floor(sec % 60);
+                      return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
+                    };
+                    const curTimeStr = formatTime(audioCurrentTime);
+                    const totalTimeStr = formatTime(audioDuration);
+
                     return (
                       <div className="sim-panel" key={tab.kind}>
                         <div className="folio-audio-card">
                           <div className="folio-audio-kicker">
-                            RECORDED VOICE MEMORY · CHAPTER NO. 02
+                            {tab.songTitle || "SEE YOU AGAIN — ACOUSTIC KEEPSAKE MEMOIR"}
                           </div>
                           <div
                             className={`folio-waveform${isAudioPlaying ? " is-playing" : ""}`}
                             aria-hidden="true"
+                            onClick={() => toggleAudio(tab.audioSrc || "/see-you-again.mp3")}
+                            style={{ cursor: "pointer" }}
+                            title="Klik untuk memutar lagu"
                           >
                             {[24, 38, 58, 34, 72, 48, 88, 55, 96, 42, 68, 34, 82, 50, 100, 58, 75, 38, 64, 46, 86, 54, 72, 32, 60, 42, 92, 48, 68, 36, 78, 52].map((height, index) => (
                               <span
@@ -691,19 +743,19 @@ export default function Home() {
                             <button
                               type="button"
                               className="folio-play-btn"
-                              aria-label={isAudioPlaying ? "Pause voice recording preview" : "Play voice recording preview"}
+                              aria-label={isAudioPlaying ? "Jeda lagu See You Again" : "Putar lagu See You Again"}
                               aria-pressed={isAudioPlaying}
-                              onClick={() => setIsAudioPlaying((playing) => !playing)}
+                              onClick={() => toggleAudio(tab.audioSrc || "/see-you-again.mp3")}
                             >
                               <span aria-hidden="true">{isAudioPlaying ? "Ⅱ" : "▶"}</span>
-                              {isAudioPlaying ? "PAUSE PREVIEW" : "PLAY PREVIEW"}
+                              {isAudioPlaying ? "JEDA LAGU" : "PUTAR LAGU (SEE YOU AGAIN)"}
                             </button>
                             <span className="folio-audio-time">
-                              {tab.durationLabel} / {tab.totalDurationLabel}
+                              {isAudioPlaying || audioCurrentTime > 0 ? curTimeStr : "00:00"} / {totalTimeStr}
                             </span>
                           </div>
                           <blockquote className="folio-audio-quote">
-                            <p>“{tab.quoteExcerpt}”</p>
+                            <p>{tab.quoteExcerpt}</p>
                             <footer>— {tab.quoteAttribution}</footer>
                           </blockquote>
                         </div>

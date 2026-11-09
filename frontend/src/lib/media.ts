@@ -1,4 +1,4 @@
-export type MediaType = "spotify" | "youtube" | "direct_audio" | "direct_video" | "unknown";
+export type MediaType = "spotify" | "youtube" | "google_drive" | "direct_audio" | "direct_video" | "unknown";
 
 export interface ClassifiedMedia {
   type: MediaType;
@@ -71,6 +71,30 @@ export function parseYouTubeEmbedUrl(url: string): string | null {
     : null;
 }
 
+export function parseGoogleDriveEmbedUrl(url: string): string | null {
+  try {
+    const parsed = new URL(url.trim());
+    const host = parsed.hostname.toLowerCase();
+    if (!host.includes("drive.google.com")) return null;
+
+    // Pattern 1: /file/d/FILE_ID/view or /file/d/FILE_ID
+    const match = /\/file\/d\/([a-zA-Z0-9_-]+)/.exec(parsed.pathname);
+    if (match && match[1]) {
+      return `https://drive.google.com/file/d/${match[1]}/preview`;
+    }
+
+    // Pattern 2: id=FILE_ID
+    const idParam = parsed.searchParams.get("id");
+    if (idParam) {
+      return `https://drive.google.com/file/d/${idParam}/preview`;
+    }
+
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 function unknownMedia(): ClassifiedMedia {
   return { type: "unknown", embedUrl: null, isAudio: false, isVideo: false };
 }
@@ -87,6 +111,11 @@ export function classifyMedia(url: string): ClassifiedMedia {
   const youtubeEmbedUrl = parseYouTubeEmbedUrl(value);
   if (youtubeEmbedUrl) {
     return { type: "youtube", embedUrl: youtubeEmbedUrl, isAudio: false, isVideo: true };
+  }
+
+  const driveEmbedUrl = parseGoogleDriveEmbedUrl(value);
+  if (driveEmbedUrl) {
+    return { type: "google_drive", embedUrl: driveEmbedUrl, isAudio: false, isVideo: true };
   }
 
   let pathname = value;

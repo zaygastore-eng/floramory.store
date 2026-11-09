@@ -7145,6 +7145,11 @@ body {
   text-decoration: none;
 }
 
+.atelier-footer .brand-logo-img {
+  height: 42px;
+  max-width: 190px;
+}
+
 .atelier-footer .brand-logo-text {
   color: var(--bg-ivory);
 }
@@ -7391,4 +7396,65 @@ body {
     min-width: 85vw;
   }
 }
+
+/* ── VAULT SETUP UPLOAD PROGRESS INDICATOR ── */
+.vault-upload-progress-box {
+  margin-top: 1rem;
+  padding: 1rem 1.25rem;
+  border-radius: 10px;
+  background: #FDFBF8;
+  border: 1px solid rgba(83, 27, 33, 0.12);
+  box-shadow: 0 2px 8px rgba(35, 43, 56, 0.04);
+  animation: fadeInProgress 0.25s ease-out;
+}
+
+@keyframes fadeInProgress {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.vault-upload-progress-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--chapter-slate, #232B38);
+  margin-bottom: 0.5rem;
+}
+
+.vault-upload-progress-bar-bg {
+  width: 100%;
+  height: 8px;
+  background: #EBE5DB;
+  border-radius: 999px;
+  overflow: hidden;
+  position: relative;
+}
+
+.vault-upload-progress-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #531B21 0%, #C5A059 100%);
+  border-radius: 999px;
+  transition: width 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.vault-upload-progress-sub {
+  margin-top: 0.45rem;
+  font-size: 0.75rem;
+  color: var(--text-taupe, #756C64);
+  display: flex;
+  justify-content: space-between;
+}
+
+.vault-upload-success-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: #2E7D32;
+  font-size: 0.82rem;
+  font-weight: 600;
+  margin-top: 0.75rem;
+}
+
 
