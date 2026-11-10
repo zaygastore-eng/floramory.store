@@ -437,55 +437,66 @@ async function handleSave(
   }
 
   const audioDuration = Number(body.audio_durasi);
-  const lockedAt = new Date().toISOString();
-  const vaultUpdate = {
-    personal_message: personalMessage,
-    foto_vault: fotoVault,
-    audio_url: audioUrl,
-    audio_durasi: Number.isFinite(audioDuration)
-      ? Math.max(0, Math.min(86_400, Math.round(audioDuration)))
-      : 0,
-    video_url: videoUrl,
-    vault_submitted_at: lockedAt,
-    vault_locked_at: lockedAt,
-    vault_pin: pin,
-  };
+  const audioDurationValue = Number.isFinite(audioDuration)
+    ? Math.max(0, Math.min(86_400, Math.round(audioDuration)))
+    : 0;
 
-  // Produk lebih dulu: jika sinkronisasi gagal, pesanan belum terkunci
-  // sehingga pengirim bisa mencoba lagi tanpa kehilangan akses.
-  const { error: productError } = await admin
-    .from("products")
-    .update({
-      foto_vault: vaultUpdate.foto_vault,
-      audio_url: vaultUpdate.audio_url,
-      audio_durasi: vaultUpdate.audio_durasi,
-      video_url: vaultUpdate.video_url,
-      pesan_personal: vaultUpdate.personal_message,
-      vault_pin: pin,
-    })
-    .eq("order_id", orderId);
-  if (productError) {
-    console.error("[VAULT_SETUP_SAVE_ERROR] Could not sync linked product:", productError.message);
+  // Satu transaksi: pesanan + produk tertaut + pemeriksaan lock/expiry
+  // atomik. Mencegah dua tab/penyerang menimpa vault yang sudah dikunci.
+  const { data: rpcData, error: rpcError } = await admin.rpc("save_vault_setup", {
+    p_order_id: orderId,
+    p_pin: pin,
+    p_personal_message: personalMessage,
+    p_foto_vault: fotoVault,
+    p_audio_url: audioUrl,
+    p_audio_durasi: audioDurationValue,
+    p_video_url: videoUrl,
+  });
+
+  if (rpcError) {
+    console.error("[VAULT_SETUP_SAVE_ERROR] RPC failed:", rpcError.message);
     return json(
       req,
-      { ok: false, message: "Gagal menyimpan kenangan ke produk. Silakan coba lagi atau hubungi atelier A Chapter." },
+      { ok: false, message: "Gagal menyimpan Memory Vault. Silakan coba lagi atau hubungi atelier A Chapter." },
       500
     );
   }
 
-  const { error: updateError } = await admin
-    .from("preorder_orders")
-    .update(vaultUpdate)
-    .eq("id", orderId);
-  if (updateError) {
-    console.error("[VAULT_SETUP_SAVE_ERROR] Could not save order vault:", updateError.message);
+  const saveResult = (rpcData || {}) as Record<string, unknown>;
+  if (saveResult.ok !== true) {
+    const code = String(saveResult.code || "");
+    if (code === "expired") {
+      return json(
+        req,
+        {
+          ok: false,
+          expired: true,
+          message: "Link konfigurasi sudah kedaluwarsa. Hubungi atelier A Chapter untuk tautan baru.",
+        },
+        410
+      );
+    }
+    if (code === "locked") {
+      return json(
+        req,
+        {
+          ok: false,
+          locked: true,
+          message: "Memory Vault sudah dikunci. Hubungi atelier A Chapter jika ingin mengubah kenangan.",
+        },
+        423
+      );
+    }
+    if (code === "not_found" || code === "cancelled") {
+      return json(req, { ok: false, message: "Pesanan tidak ditemukan atau sudah dibatalkan." }, 404);
+    }
     return json(req, { ok: false, message: "Gagal menyimpan Memory Vault." }, 500);
   }
 
   return json(req, {
     ok: true,
     message: "Kenangan berhasil disimpan dan dikunci ke Memory Vault!",
-    pin,
+    pin: String(saveResult.pin || pin),
     locked: true,
   });
 }

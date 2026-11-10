@@ -335,7 +335,18 @@ export default function VaultSetup() {
         video_url: videoUrl.trim(),
         vault_pin: customPin.trim(),
       });
-      if (!result.ok) throw new Error(result.message);
+      if (!result.ok) {
+        if (result.expired) {
+          setVaultExpired(true);
+          setPageError(result.message);
+          return;
+        }
+        if (result.locked) {
+          setVaultLocked(true);
+          return;
+        }
+        throw new Error(result.message);
+      }
       setVaultLocked(true);
       setSaved(true);
     } catch (error) {

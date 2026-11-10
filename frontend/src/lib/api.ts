@@ -48,6 +48,7 @@ export interface Product extends CatalogProduct {
   recipient_whatsapp?: string;
   order_id?: string | null;
   status?: string;
+  deleted_at?: string | null;
 }
 
 export interface PreOrder {
@@ -698,7 +699,7 @@ export async function saveVaultSetup(
     video_url: string;
     vault_pin?: string;
   }
-): Promise<{ ok: boolean; message: string; locked?: boolean; pin?: string }> {
+): Promise<{ ok: boolean; message: string; locked?: boolean; expired?: boolean; pin?: string }> {
   const { status, data } = await callVaultSetup({
     action: "save",
     order_id: orderId,
@@ -708,6 +709,7 @@ export async function saveVaultSetup(
     ok: status < 400 && data.ok === true,
     message: String(data.message || "Gagal menyimpan Memory Vault."),
     ...(data.locked === true ? { locked: true } : {}),
+    ...(data.expired === true ? { expired: true } : {}),
     ...(typeof data.pin === "string" ? { pin: data.pin } : {}),
   };
 }
@@ -789,6 +791,7 @@ function normalizeProduct(obj: Partial<Product>): Product {
     recipient_whatsapp: String(obj.recipient_whatsapp || record.recipient_whatsapp || "").trim(),
     order_id: String(obj.order_id || record.order_id || "").trim() || null,
     status: String(obj.status || "active").trim(),
+    deleted_at: obj.deleted_at ? String(obj.deleted_at) : null,
   };
 }
 
@@ -949,7 +952,7 @@ export async function fetchCatalogProducts(category?: CatalogCategory): Promise<
 // Kolom eksplisit (bukan select=*). created_at/updated_at terakhir
 // tidak diambil: tidak dipakai UI admin.
 const MANAGED_PRODUCTS_SELECT =
-  "id,nama_produk,tier,harga,bunga,deskripsi,bahan,ukuran,nama_pembeli,dari,pesan_personal,foto_produk,foto_qr,audio_url,audio_durasi,video_url,foto_vault,vault_pin,is_catalog,recipient_whatsapp,order_id,status";
+  "id,nama_produk,tier,harga,bunga,deskripsi,bahan,ukuran,nama_pembeli,dari,pesan_personal,foto_produk,foto_qr,audio_url,audio_durasi,video_url,foto_vault,vault_pin,is_catalog,recipient_whatsapp,order_id,status,deleted_at";
 
 function invalidateProductCaches() {
   cachedCatalog = null;
@@ -1105,6 +1108,30 @@ function extractStoragePath(url: string): string | null {
   } catch {
     return null;
   }
+}
+
+export async function archiveProduct(id: string): Promise<void> {
+  if (!isSupabaseConfigured()) {
+    throw new Error("Arsip produk hanya tersedia saat Supabase aktif");
+  }
+
+  await adminRequest("PATCH", "/rest/v1/products", {
+    query: `id=eq.${encodeURIComponent(id)}`,
+    body: { deleted_at: new Date().toISOString() },
+  });
+  invalidateProductCaches();
+}
+
+export async function restoreProduct(id: string): Promise<void> {
+  if (!isSupabaseConfigured()) {
+    throw new Error("Pulihkan produk hanya tersedia saat Supabase aktif");
+  }
+
+  await adminRequest("PATCH", "/rest/v1/products", {
+    query: `id=eq.${encodeURIComponent(id)}`,
+    body: { deleted_at: null },
+  });
+  invalidateProductCaches();
 }
 
 export async function deleteProduct(

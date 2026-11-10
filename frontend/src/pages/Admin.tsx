@@ -21,6 +21,7 @@ import {
   Wallet,
 } from "lucide-react";
 import {
+  archiveProduct,
   createProduct,
   deleteProduct,
   fetchManagedProducts,
@@ -30,6 +31,7 @@ import {
   fetchWhatsAppNumber,
   hasSupabaseConfig,
   notifyDpConfirmed,
+  restoreProduct,
   signInAdmin,
   signOutAdmin,
   statusAdminSession,
@@ -697,8 +699,38 @@ export default function Admin() {
     showToast(`Mode edit: ${product.id}`);
   };
 
+  const handleArchiveProduct = async (product: Product) => {
+    const ok = window.confirm(`Arsipkan produk ${product.id}? Produk disembunyikan dari katalog, tetapi datanya tetap tersimpan dan bisa dipulihkan.`);
+    if (!ok) return;
+
+    try {
+      await archiveProduct(product.id);
+      setManagedProducts(products => products.map(item =>
+        item.id === product.id ? { ...item, deleted_at: new Date().toISOString() } : item
+      ));
+      if (editingId === product.id) resetForm();
+      await loadProducts();
+      showToast("Produk diarsipkan. Data tetap aman dan bisa dipulihkan.", "success");
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "Gagal mengarsipkan produk");
+    }
+  };
+
+  const handleRestoreProduct = async (product: Product) => {
+    try {
+      await restoreProduct(product.id);
+      setManagedProducts(products => products.map(item =>
+        item.id === product.id ? { ...item, deleted_at: null } : item
+      ));
+      await loadProducts();
+      showToast("Produk berhasil dipulihkan.", "success");
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "Gagal memulihkan produk");
+    }
+  };
+
   const handleDeleteProduct = async (product: Product) => {
-    const ok = window.confirm(`Hapus permanen produk ${product.id}? Produk dan data terkait akan dihapus dari sistem.`);
+    const ok = window.confirm(`Hapus permanen produk ${product.id}? Tindakan ini tidak bisa dibatalkan. Gunakan "Arsipkan" jika hanya ingin menyembunyikannya.`);
     if (!ok) return;
 
     try {
@@ -1411,8 +1443,8 @@ export default function Admin() {
                   </span>
                 )}
               </div>
-              <span className={`admin-product-status${product.status === "archived" ? " is-archived" : " is-active"}`}>
-                {product.status === "archived" ? "Terarsip" : "Aktif"}
+              <span className={`admin-product-status${product.deleted_at || product.status === "archived" ? " is-archived" : " is-active"}`}>
+                {product.deleted_at ? "Dihapus" : product.status === "archived" ? "Terarsip" : "Aktif"}
               </span>
               <span className={`admin-tier-badge tier-${product.tier.toLowerCase()}`}>
                 {TIER_OPTIONS.find(option => option.value === product.tier.toLowerCase())?.label || product.tier}
@@ -1438,10 +1470,23 @@ export default function Admin() {
                         }}>Download QR</button>
                       </>
                     )}
-                    <button type="button" className="danger" onClick={event => {
-                      void handleDeleteProduct(product);
-                      event.currentTarget.closest("details")?.removeAttribute("open");
-                    }}>Hapus</button>
+                    {product.deleted_at ? (
+                      <button type="button" onClick={event => {
+                        void handleRestoreProduct(product);
+                        event.currentTarget.closest("details")?.removeAttribute("open");
+                      }}>Pulihkan</button>
+                    ) : (
+                      <>
+                        <button type="button" onClick={event => {
+                          void handleArchiveProduct(product);
+                          event.currentTarget.closest("details")?.removeAttribute("open");
+                        }}>Arsipkan</button>
+                        <button type="button" className="danger" onClick={event => {
+                          void handleDeleteProduct(product);
+                          event.currentTarget.closest("details")?.removeAttribute("open");
+                        }}>Hapus permanen</button>
+                      </>
+                    )}
                   </div>
                 </details>
               </div>
