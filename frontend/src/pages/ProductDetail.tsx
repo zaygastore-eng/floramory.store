@@ -70,6 +70,7 @@ export default function ProductDetail() {
               nama_produk: res.nama_produk,
               deskripsi: res.deskripsi,
               imageUrl: res.foto_produk,
+              harga: res.harga,
             });
           }
         })

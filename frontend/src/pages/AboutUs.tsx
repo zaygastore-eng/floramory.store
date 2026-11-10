@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import SiteHeader from "@/components/SiteHeader";
 import SiteFooter from "@/components/SiteFooter";
+import { applyPageMeta } from "@/lib/seo";
 
 const ABOUT_FAQS = [
   {
@@ -23,6 +24,15 @@ const ABOUT_FAQS = [
 
 export default function AboutUs() {
   const [activeFaq, setActiveFaq] = useState<number | null>(null);
+
+  useEffect(() => {
+    applyPageMeta({
+      title: "The Atelier Story — A Chapter",
+      description:
+        "Dilahirkan di Surabaya, A Chapter menggabungkan seni lukis botani abad ke-17 dengan sains preservasi modern untuk mengabadikan babak terindah hidup manusia.",
+      path: "/about",
+    });
+  }, []);
 
   return (
     <div className="subpage-wrapper">

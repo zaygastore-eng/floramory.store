@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { applyPageMeta } from "@/lib/seo";
 import { Link } from "wouter";
 import SiteHeader from "@/components/SiteHeader";
 import SiteFooter from "@/components/SiteFooter";
@@ -35,6 +36,15 @@ export default function ShopAll() {
 
     fetchWhatsAppNumber().then(num => {
       setWhatsappNumber(normalizeWhatsApp(num) || "6285235242425");
+    });
+  }, []);
+
+  useEffect(() => {
+    applyPageMeta({
+      title: "The Chapter Collection — A Chapter",
+      description:
+        "Jelajahi koleksi karya botani abadi A Chapter: framed keepsake, single stem, dan gift card dengan Smart-QR Memory Vault.",
+      path: "/shop",
     });
   }, []);
 

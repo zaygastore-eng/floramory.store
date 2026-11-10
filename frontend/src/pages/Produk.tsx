@@ -55,6 +55,7 @@ export default function Produk() {
             nama_produk: p.nama_produk,
             deskripsi: p.deskripsi,
             imageUrl: p.foto_qr || p.foto_produk,
+            harga: p.harga,
           });
         }
       })

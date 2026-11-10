@@ -20,8 +20,57 @@ function setMeta(name: string, content: string, isProperty = false): void {
   const selector = isProperty
     ? `meta[property="${name}"]`
     : `meta[name="${name}"]`;
-  const el = document.querySelector<HTMLMetaElement>(selector);
-  if (el) el.setAttribute("content", content);
+  let el = document.querySelector<HTMLMetaElement>(selector);
+  if (!el) {
+    el = document.createElement("meta");
+    el.setAttribute(isProperty ? "property" : "name", name);
+    document.head.appendChild(el);
+  }
+  el.setAttribute("content", content);
+}
+
+function setJsonLd(id: string, data: unknown): void {
+  let script = document.getElementById(id) as HTMLScriptElement | null;
+  if (!script) {
+    script = document.createElement("script");
+    script.id = id;
+    script.type = "application/ld+json";
+    document.head.appendChild(script);
+  }
+  script.textContent = JSON.stringify(data);
+}
+
+function clearJsonLd(id: string): void {
+  document.getElementById(id)?.remove();
+}
+
+export interface PageSeoInfo {
+  title: string;
+  description: string;
+  path: string;
+  imageUrl?: string;
+  robots?: string;
+}
+
+// Metadata untuk halaman statis (/shop, /about, /smart-qr-vault, dst).
+export function applyPageMeta(info: PageSeoInfo): void {
+  const url = resolveAbsolute(info.path);
+  const ogImage = resolveAbsolute(info.imageUrl || "/opengraph.jpg");
+
+  document.title = info.title;
+  setMeta("description", info.description);
+  setMeta("robots", info.robots || "index, follow");
+  setMeta("og:type", "website", true);
+  setMeta("og:title", info.title, true);
+  setMeta("og:description", info.description, true);
+  setMeta("og:url", url, true);
+  setMeta("og:image", ogImage, true);
+  setMeta("twitter:card", "summary_large_image");
+  setMeta("twitter:title", info.title);
+  setMeta("twitter:description", info.description);
+  setMeta("twitter:image", ogImage);
+  setCanonical(url);
+  clearJsonLd("product-jsonld");
 }
 
 // Cannot dipakai di index.html statik karena Vite membaca atribut `href`
@@ -38,13 +87,12 @@ function setCanonical(href: string): void {
 
 // Setelah app dimuat: isi url/gambar absolut utk halaman umum (mis. /).
 export function ensureBaseMeta(): void {
-  const origin = window.location.origin;
-  const url = `${origin}/`;
-  setMeta("og:url", url, true);
-  setCanonical(url);
-  const ogImage = resolveAbsolute("/opengraph.jpg");
-  setMeta("og:image", ogImage, true);
-  setMeta("twitter:image", ogImage);
+  applyPageMeta({
+    title: "A Chapter — Atelier of Botanical Keepsakes & Smart Memory Vault",
+    description:
+      "Aksesori preserved flower dengan Smart-QR Memory Vault. Simpan babak terindah hidupmu dalam keindahan botani abadi.",
+    path: "/",
+  });
 }
 
 export interface ProductSeoInfo {
@@ -52,6 +100,13 @@ export interface ProductSeoInfo {
   id: string;
   deskripsi?: string;
   imageUrl?: string;
+  harga?: string;
+}
+
+function extractPrice(harga?: string): string | null {
+  if (!harga) return null;
+  const digits = harga.replace(/[^\d]/g, "");
+  return digits || null;
 }
 
 // Terapkan metadata spesifik produk pada halaman /produk?id=...
@@ -67,6 +122,8 @@ export function applyProductMeta(product: ProductSeoInfo): void {
 
   document.title = title;
   setMeta("description", desc);
+  setMeta("robots", "index, follow");
+  setMeta("og:type", "product", true);
   setMeta("og:title", title, true);
   setMeta("og:description", desc, true);
   setMeta("og:url", productUrl, true);
@@ -76,4 +133,37 @@ export function applyProductMeta(product: ProductSeoInfo): void {
   setMeta("twitter:description", desc);
   setMeta("twitter:image", ogImage);
   setCanonical(productUrl);
+
+  const price = extractPrice(product.harga);
+  setJsonLd("product-jsonld", {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    name: product.nama_produk,
+    description: desc,
+    image: [ogImage],
+    sku: product.id,
+    brand: {
+      "@type": "Brand",
+      name: "A Chapter",
+    },
+    url: productUrl,
+    ...(price
+      ? {
+          offers: {
+            "@type": "Offer",
+            priceCurrency: "IDR",
+            price,
+            availability: "https://schema.org/InStock",
+            url: productUrl,
+          },
+        }
+      : {}),
+  });
+}
+
+// Halaman privat (vault penerima & form setup) tidak boleh diindeks mesin pencari.
+export function applyNoIndexMeta(title: string): void {
+  document.title = title;
+  setMeta("robots", "noindex, nofollow");
+  clearJsonLd("product-jsonld");
 }
