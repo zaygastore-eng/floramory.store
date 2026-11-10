@@ -3,6 +3,8 @@ import BrandLogo from "@/components/BrandLogo";
 import VaultExperience from "@/pages/VaultExperience";
 import { fetchVaultSetup, saveVaultSetup, uploadVaultMedia, type PreOrder } from "@/lib/api";
 import { classifyMedia, parseSpotifyEmbedUrl, parseYouTubeEmbedUrl, parseGoogleDriveEmbedUrl } from "@/lib/media";
+import { compressVaultPhoto, formatBytes, type CompressedImageResult } from "@/lib/imageCompression";
+import { applyNoIndexMeta } from "@/lib/seo";
 import { pageUrl } from "@/lib/site";
 
 export default function VaultSetup() {
@@ -49,8 +51,12 @@ export default function VaultSetup() {
   const [uploadError, setUploadError] = useState("");
   const [saved, setSaved] = useState(false);
   const [previewModalOpen, setPreviewModalOpen] = useState(false);
+  const [photoDragActive, setPhotoDragActive] = useState(false);
+  const [compressingPhoto, setCompressingPhoto] = useState(false);
+  const [photoCompression, setPhotoCompression] = useState<CompressedImageResult | null>(null);
 
   useEffect(() => {
+    applyNoIndexMeta("Vault Setup — A Chapter");
     const params = new URLSearchParams(window.location.search);
     const id = params.get("order")?.trim() || params.get("token")?.trim() || params.get("id")?.trim() || "";
     setOrderId(id);
@@ -120,6 +126,10 @@ export default function VaultSetup() {
   const startRecording = async () => {
     setUploadError("");
     try {
+      if (!navigator.mediaDevices?.getUserMedia) {
+        setUploadError("Browser ini tidak mendukung perekaman langsung. Gunakan Chrome, Safari, atau Edge versi terbaru.");
+        return;
+      }
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const preferredMime =
         typeof MediaRecorder !== "undefined" && MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
@@ -155,8 +165,17 @@ export default function VaultSetup() {
       timerRef.current = window.setInterval(() => {
         setRecordingTime(t => t + 1);
       }, 1000);
-    } catch {
-      setUploadError("Tidak dapat mengakses mikrofon browser. Pastikan izin mikrofon telah aktif.");
+    } catch (error) {
+      const name = error instanceof DOMException ? error.name : "";
+      if (name === "NotAllowedError" || name === "SecurityError") {
+        setUploadError(
+          "Izin mikrofon ditolak. Klik ikon 🔒 / mikrofon di address bar browser, pilih \"Izinkan\", lalu muat ulang halaman ini."
+        );
+      } else if (name === "NotFoundError" || name === "OverconstrainedError") {
+        setUploadError("Mikrofon tidak ditemukan. Pastikan perangkat memiliki mikrofon yang aktif.");
+      } else {
+        setUploadError("Tidak dapat mengakses mikrofon browser. Pastikan izin mikrofon telah aktif.");
+      }
     }
   };
 
@@ -199,16 +218,35 @@ export default function VaultSetup() {
     }
     if (!orderId) return;
 
+    // Foto kamera ponsel diperkecil & dikompres di browser sebelum diunggah.
+    // Ini menghemat kuota pelanggan dan membuat upload jauh lebih cepat.
+    let fileToUpload = file;
+    if (isPhoto) {
+      setCompressingPhoto(true);
+      setPhotoCompression(null);
+      try {
+        const compressed = await compressVaultPhoto(file);
+        fileToUpload = compressed.file;
+        if (compressed.didCompress) setPhotoCompression(compressed);
+      } finally {
+        setCompressingPhoto(false);
+      }
+      if (fileToUpload.size > maxSize) {
+        setUploadError("Foto masih terlalu besar setelah dioptimalkan. Gunakan foto dengan ukuran lebih kecil.");
+        return;
+      }
+    }
+
     const localPreview = URL.createObjectURL(file);
     setPreview(localPreview);
     setUploading(true);
     setUploadProgress(prev => ({
       ...prev,
-      [type]: { percent: 0, loaded: 0, total: file.size },
+      [type]: { percent: 0, loaded: 0, total: fileToUpload.size },
     }));
 
     try {
-      const url = await uploadVaultMedia(orderId, type, file, (progress) => {
+      const url = await uploadVaultMedia(orderId, type, fileToUpload, (progress) => {
         setUploadProgress(prev => ({
           ...prev,
           [type]: {
@@ -218,10 +256,15 @@ export default function VaultSetup() {
           },
         }));
       });
-      setUrl(url);
-      setPreview(url);
+      // Cache-buster: path storage bersifat tetap (polaroid.webp, video.mp4, dst).
+      // Tanpa parameter unik, browser/CDN akan menampilkan berkas lama saat pelanggan mengganti media.
+      const freshUrl = /^https?:/i.test(url)
+        ? `${url}${url.includes("?") ? "&" : "?"}v=${Date.now()}`
+        : url;
+      setUrl(freshUrl);
+      setPreview(freshUrl);
       if (isAudio) {
-        const audio = new Audio(url);
+        const audio = new Audio(freshUrl);
         audio.addEventListener("loadedmetadata", () => {
           if (Number.isFinite(audio.duration)) setAudioDuration(Math.round(audio.duration));
         }, { once: true });
@@ -242,6 +285,7 @@ export default function VaultSetup() {
 
   const handleDropPhoto = (event: DragEvent<HTMLLabelElement>) => {
     event.preventDefault();
+    setPhotoDragActive(false);
     const file = event.dataTransfer.files[0];
     if (file) void uploadFile(file, "photo");
   };
@@ -316,9 +360,17 @@ export default function VaultSetup() {
         </header>
 
         {loading ? (
-          <section className="vault-setup-card text-center" aria-live="polite">
-            <p className="vault-setup-hint">Membuka ruang konfigurasi kenangan atelier...</p>
-          </section>
+          <div className="vault-setup-skeleton" aria-live="polite" aria-busy="true">
+            <span className="sr-only">Membuka ruang konfigurasi kenangan atelier...</span>
+            {[0, 1, 2].map(card => (
+              <section className="vault-skeleton-card" key={card} aria-hidden="true">
+                <span className="vault-skeleton-line is-title" />
+                <span className="vault-skeleton-line" />
+                <span className="vault-skeleton-line is-short" />
+                <span className="vault-skeleton-block" />
+              </section>
+            ))}
+          </div>
         ) : pageError || !order ? (
           <section className="vault-setup-card text-center" role="alert">
             <div className="vault-setup-empty-icon" aria-hidden="true">🌿</div>
@@ -369,21 +421,37 @@ export default function VaultSetup() {
 
                 <label
                   htmlFor="vault-photo-input"
-                  onDragOver={e => e.preventDefault()}
+                  onDragOver={e => {
+                    e.preventDefault();
+                    if (!uploadingPhoto && !compressingPhoto) setPhotoDragActive(true);
+                  }}
+                  onDragEnter={e => {
+                    e.preventDefault();
+                    if (!uploadingPhoto && !compressingPhoto) setPhotoDragActive(true);
+                  }}
+                  onDragLeave={e => {
+                    if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
+                      setPhotoDragActive(false);
+                    }
+                  }}
                   onDrop={handleDropPhoto}
-                  className="vault-drop-zone"
+                  className={`vault-drop-zone${photoDragActive ? " is-dragging" : ""}`}
                 >
                   <span className="drop-icon">📷</span>
                   <strong className="drop-title">
-                    {uploadingPhoto ? "Sedang mengunggah foto..." : "Sentuh untuk memilih foto atau seret ke sini"}
+                    {compressingPhoto
+                      ? "Mengoptimalkan foto..."
+                      : uploadingPhoto
+                        ? "Sedang mengunggah foto..."
+                        : "Sentuh untuk memilih foto atau seret ke sini"}
                   </strong>
-                  <span className="drop-hint">Format JPG, PNG, atau WebP · Maksimal 5 MB</span>
+                  <span className="drop-hint">Format JPG, PNG, atau WebP · Maksimal 10 MB · otomatis dioptimalkan</span>
                   <input
                     id="vault-photo-input"
                     type="file"
                     accept="image/jpeg,image/png,image/webp"
                     onChange={handlePhotoChange}
-                    disabled={uploadingPhoto}
+                    disabled={uploadingPhoto || compressingPhoto}
                     style={{ position: "absolute", width: 1, height: 1, opacity: 0 }}
                   />
                 </label>
@@ -405,6 +473,17 @@ export default function VaultSetup() {
                       <span>Mohon tunggu sebentar...</span>
                     </div>
                   </div>
+                )}
+
+                {!uploadingPhoto && (photoPreview || photoUrl) && (
+                  <span className="vault-upload-success-badge" role="status">
+                    ✓ Foto polaroid tersimpan
+                    {photoCompression && (
+                      <span className="vault-compress-savings">
+                        {formatBytes(photoCompression.originalBytes)} → {formatBytes(photoCompression.compressedBytes)}
+                      </span>
+                    )}
+                  </span>
                 )}
 
                 {photoPreview && (
@@ -450,6 +529,12 @@ export default function VaultSetup() {
                     Link Lagu Spotify
                   </button>
                 </div>
+
+                {!uploadingAudio && (audioPreview || audioUrl || spotifyUrl.trim()) && (
+                  <span className="vault-upload-success-badge" role="status">
+                    ✓ Memori suara siap
+                  </span>
+                )}
 
                 {audioSource === "file" && (
                   <div className="vault-audio-file-box">
@@ -521,16 +606,31 @@ export default function VaultSetup() {
                       placeholder="https://open.spotify.com/track/..."
                       className="form-input"
                     />
-                    {spotifyEmbedPreviewUrl && (
-                      <iframe
-                        title="Spotify Preview"
-                        src={spotifyEmbedPreviewUrl}
-                        width="100%"
-                        height="152"
-                        allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-                        style={{ marginTop: "1rem", borderRadius: "8px", border: "none" }}
-                      />
-                    )}
+                    {spotifyEmbedPreviewUrl ? (
+                      <>
+                        <iframe
+                          title="Spotify Preview"
+                          src={spotifyEmbedPreviewUrl}
+                          width="100%"
+                          height="152"
+                          allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+                          style={{ marginTop: "1rem", borderRadius: "8px", border: "none" }}
+                        />
+                        <a
+                          className="spotify-open-link"
+                          href={spotifyUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          Buka langsung di Spotify ↗
+                        </a>
+                      </>
+                    ) : spotifyUrl.trim() ? (
+                      <p className="drop-hint" style={{ marginTop: "0.75rem" }}>
+                        Tautan belum dikenali. Gunakan tautan lagu/album/playlist yang diawali
+                        <strong> https://open.spotify.com/</strong> (bukan tautan pendek spotify.link).
+                      </p>
+                    ) : null}
                   </div>
                 )}
 
@@ -573,6 +673,12 @@ export default function VaultSetup() {
                     Link YouTube / Google Drive
                   </button>
                 </div>
+
+                {!uploadingVideo && (videoPreview || videoUrl) && (
+                  <span className="vault-upload-success-badge" role="status">
+                    ✓ Video memoir siap
+                  </span>
+                )}
 
                 {videoSource === "file" && (
                   <div className="vault-audio-file-box">
@@ -730,10 +836,21 @@ export default function VaultSetup() {
 
                 <button
                   type="submit"
-                  disabled={saving || uploadingPhoto || uploadingAudio || uploadingVideo}
+                  disabled={saving || uploadingPhoto || uploadingAudio || uploadingVideo || compressingPhoto}
                   className="hero-cta hero-cta-primary vault-setup-save-btn"
                 >
                   {saving ? "Mengunci Kenangan..." : "KUNCI & SIMPAN BRANKAS MEMORI →"}
+                </button>
+              </div>
+
+              <div className="vault-mobile-savebar">
+                <span>Kenangan siap dikunci?</span>
+                <button
+                  type="submit"
+                  aria-label="Kunci dan simpan brankas memori"
+                  disabled={saving || uploadingPhoto || uploadingAudio || uploadingVideo || compressingPhoto}
+                >
+                  {saving ? "Menyimpan..." : "Kunci & Simpan"}
                 </button>
               </div>
             </form>
@@ -769,9 +886,15 @@ export default function VaultSetup() {
                   dari: order?.sender_name || "Sender Name",
                   pesan_personal: personalMessage || "Pesan kenangan manis Anda...",
                   foto_vault: photoPreview || photoUrl,
-                  audio_url: audioPreview || audioUrl,
+                  audio_url:
+                    audioSource === "spotify"
+                      ? spotifyUrl.trim()
+                      : audioPreview || audioUrl,
                   audio_durasi: audioDuration,
-                  video_url: videoPreview || videoUrl,
+                  video_url:
+                    videoSource === "youtube"
+                      ? videoUrl.trim()
+                      : videoPreview || videoUrl,
                   bunga: order?.product_name || "Hydrangea macrophylla x Gypsophila paniculata",
                 }}
               />

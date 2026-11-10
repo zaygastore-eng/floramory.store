@@ -124,10 +124,6 @@ export function classifyMedia(url: string): ClassifiedMedia {
   } catch {
     // Keep the original value for extension and storage-path checks below.
   }
-  const normalizedPath = `${pathname} ${value}`.toLowerCase();
-  if (normalizedPath.includes("vault-media") || /\/audio\./i.test(normalizedPath)) {
-    return { type: "direct_audio", embedUrl: null, isAudio: true, isVideo: false };
-  }
 
   const extension = /\.([a-z0-9]+)(?:$|[?#\s])/i.exec(pathname)?.[1]?.toLowerCase();
   if (["mp3", "m4a", "wav", "ogg", "webm", "aac", "flac"].includes(extension || "")) {
@@ -136,6 +132,13 @@ export function classifyMedia(url: string): ClassifiedMedia {
   if (["mp4", "mov", "m4v", "ogv", "avi"].includes(extension || "")) {
     return { type: "direct_video", embedUrl: null, isAudio: false, isVideo: true };
   }
+
+  // Fallback untuk URL storage lama tanpa ekstensi yang jelas.
+  const normalizedPath = `${pathname} ${value}`.toLowerCase();
+  if (normalizedPath.includes("vault-media") || /\/audio\./i.test(normalizedPath)) {
+    return { type: "direct_audio", embedUrl: null, isAudio: true, isVideo: false };
+  }
+
   return unknownMedia();
 }
 

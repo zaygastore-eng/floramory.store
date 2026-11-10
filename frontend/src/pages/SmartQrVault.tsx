@@ -4,6 +4,7 @@ import SiteHeader from "@/components/SiteHeader";
 import SiteFooter from "@/components/SiteFooter";
 import ProductImage from "@/components/ProductImage";
 import { homeContent } from "@/content/homeContent";
+import { applyPageMeta } from "@/lib/seo";
 
 const VAULT_FAQS = [
   {
@@ -20,14 +21,15 @@ const VAULT_FAQS = [
   },
   {
     q: "Kapan dan bagaimana saya mengirimkan foto, rekaman suara, dan surat?",
-    a: "Setelah Anda melakukan reservasi dan konfirmasi DP 50%, Concierge A Chapter akan mengirimkan tautan privat 'Vault Setup' melalui WhatsApp. Anda dapat langsung mengunggah foto, merekam suara, dan mengetik surat dari ponsel Anda dengan santai."
+    a: "Setelah Anda melakukan reservasi dan konfirmasi DP 50%, Concierge A Chapter akan mengirimkan tautan privat 'Vault Setup' melalui WhatsApp. Anda dapat langsung mengunggah foto, merekam suara, menambahkan video memoir, dan mengetik surat dari ponsel Anda dengan santai."
   }
 ];
 
 export default function SmartQrVault() {
   const [vaultSimTab, setVaultSimTab] = useState<
-    "photograph" | "voice-record" | "letter" | "herbarium-notes"
+    "photograph" | "voice-record" | "letter" | "video"
   >("photograph");
+  const [isVideoPlaying, setIsVideoPlaying] = useState(false);
   const [isAudioPlaying, setIsAudioPlaying] = useState(false);
   const [audioCurrentTime, setAudioCurrentTime] = useState(0);
   const [audioDuration, setAudioDuration] = useState(131);
@@ -36,6 +38,12 @@ export default function SmartQrVault() {
 
   useEffect(() => {
     window.scrollTo(0, 0);
+    applyPageMeta({
+      title: "Smart QR Memory Vault — A Chapter",
+      description:
+        "Satu karya botani abadi, satu micro-chip rahasia. Pindai dengan kamera ponsel untuk membuka foto, rekaman suara, video memoir, dan surat personal.",
+      path: window.location.pathname.startsWith("/vault") ? "/vault" : "/smart-qr-vault",
+    });
   }, []);
 
   const toggleAudio = (src?: string) => {
@@ -73,7 +81,7 @@ export default function SmartQrVault() {
   };
 
   const handleVaultTabKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>) => {
-    const tabs = ["photograph", "voice-record", "letter", "herbarium-notes"] as const;
+    const tabs = ["photograph", "voice-record", "letter", "video"] as const;
     const currentIndex = tabs.indexOf(vaultSimTab);
     let nextIndex = currentIndex;
     if (event.key === "ArrowRight") nextIndex = (currentIndex + 1) % tabs.length;
@@ -87,6 +95,7 @@ export default function SmartQrVault() {
         vaultAudioRef.current.pause();
         setIsAudioPlaying(false);
       }
+      if (tabs[nextIndex] !== "video") setIsVideoPlaying(false);
     }
   };
 
@@ -96,24 +105,55 @@ export default function SmartQrVault() {
 
       <main className="subpage-main">
         {/* Curatorial Hero Banner */}
-        <section className="about-hero-section smart-vault-hero" aria-label="Smart QR Vault Hero">
-          <div className="about-hero-inner">
-            <span className="section-eyebrow">THE LIVING ARCHIVAL VAULT</span>
-            <h1 className="about-hero-title">
-              Where Physical Botanical Artware Meets <em>Eternal Digital Memoirs</em>
-            </h1>
-            <p className="about-hero-lead">
-              Setiap karya botani A Chapter ditanami micro-chip khusus di dasar bingkai kristal.
-              Cukup dekatkan kamera ponsel tanpa perlu mengunduh aplikasi, dan brankas kenangan privat
-              berisi foto beresolusi tinggi, rekaman suara asli, serta surat cinta personal akan terbuka selamanya.
-            </p>
-            <div style={{ marginTop: "2rem", display: "flex", gap: "1rem", justifyContent: "center", flexWrap: "wrap" }}>
-              <a href="#simulator" className="hero-cta-primary">
-                Eksplorasi Simulator Vault ↓
-              </a>
-              <Link href="/#pesan" className="admin-outline-btn" style={{ padding: "0.85rem 1.75rem", fontSize: "0.9rem", color: "inherit", textDecoration: "none" }}>
-                Commission Your Keepsake →
-              </Link>
+        <section className="smart-vault-hero" aria-label="Smart QR Vault Hero">
+          <div className="smart-vault-hero-inner">
+            <div className="smart-vault-hero-copy">
+              <span className="section-eyebrow">THE LIVING ARCHIVAL VAULT</span>
+              <h1 className="smart-vault-hero-title">
+                Bunga yang menyimpan <em>suara dan cerita</em> Anda.
+              </h1>
+              <p className="smart-vault-hero-lead">
+                Satu karya botani abadi, satu micro-chip rahasia. Cukup pindai dengan kamera
+                ponsel — foto, rekaman suara, video, dan surat personal terbuka selamanya.
+              </p>
+              <ul className="smart-vault-hero-points">
+                <li><span>01</span> Tanpa aplikasi tambahan</li>
+                <li><span>02</span> PIN rahasia opsional</li>
+                <li><span>03</span> Tersimpan permanen</li>
+              </ul>
+              <div className="smart-vault-hero-actions">
+                <a href="#simulator" className="hero-cta-primary">
+                  Lihat Simulasi Vault ↓
+                </a>
+                <Link href="/#pesan" className="smart-vault-hero-secondary">
+                  Commission Your Keepsake →
+                </Link>
+              </div>
+            </div>
+
+            <div className="smart-vault-hero-visual" aria-hidden="true">
+              <span className="hero-visual-glow" />
+              <div className="hero-phone-mock">
+                <span className="hero-phone-notch" />
+                <div className="hero-phone-screen">
+                  <span className="hero-phone-scan" />
+                  <div className="hero-vault-card">
+                    <span className="hero-vault-seal">A · C</span>
+                    <span className="hero-vault-kicker">MEMORY VAULT</span>
+                    <p className="hero-vault-dedication">
+                      Untuk seseorang yang paling berarti
+                    </p>
+                    <div className="hero-vault-wave">
+                      {[38, 62, 44, 82, 56, 92, 48, 70, 36, 78, 52, 88, 42, 66].map((height, index) => (
+                        <span key={index} style={{ height: `${height}%`, animationDelay: `${index * -120}ms` }} />
+                      ))}
+                    </div>
+                    <span className="hero-vault-caption">Audio memoir · 02:11</span>
+                  </div>
+                </div>
+              </div>
+              <span className="hero-visual-tag tag-one">SCAN · TAP · RELIVE</span>
+              <span className="hero-visual-tag tag-two">PHOTO · VOICE · VIDEO</span>
             </div>
           </div>
         </section>
@@ -126,7 +166,7 @@ export default function SmartQrVault() {
               <h2 className="vault-title">A Glimpse Inside Your Secret Vault</h2>
               <p className="vault-desc">
                 Coba pengalaman membuka brankas rahasia berikut. Navigasikan 4 tab di bawah untuk melihat bagaimana foto,
-                suara, surat cinta, dan catatan botani disajikan secara elegan kepada penerima kado.
+                suara, surat cinta, dan video memoir disajikan secara elegan kepada penerima kado.
               </p>
             </header>
 
@@ -141,7 +181,7 @@ export default function SmartQrVault() {
 
               <div className="vault-sim-nav" role="tablist" aria-label="Memory Vault preview">
                 {homeContent.smartVault.mediaTabs.map((tab, index) => {
-                  const tabId = `vault-page-tab-${["foto", "audio", "surat", "botani"][index]}`;
+                  const tabId = `vault-page-tab-${["foto", "audio", "surat", "video"][index]}`;
                   const isSelected = vaultSimTab === tab.kind;
                   return (
                     <button
@@ -153,13 +193,14 @@ export default function SmartQrVault() {
                       aria-selected={isSelected}
                       tabIndex={isSelected ? 0 : -1}
                       className={`vault-sim-btn${isSelected ? " active" : ""}`}
-                    onClick={() => {
-                      setVaultSimTab(tab.kind);
-                      if (vaultAudioRef.current && tab.kind !== "voice-record") {
-                        vaultAudioRef.current.pause();
-                        setIsAudioPlaying(false);
-                      }
-                    }}
+                      onClick={() => {
+                        setVaultSimTab(tab.kind);
+                        if (vaultAudioRef.current && tab.kind !== "voice-record") {
+                          vaultAudioRef.current.pause();
+                          setIsAudioPlaying(false);
+                        }
+                        if (tab.kind !== "video") setIsVideoPlaying(false);
+                      }}
                       onKeyDown={handleVaultTabKeyDown}
                     >
                       {["I.", "II.", "III.", "IV."][index]} {tab.title.toUpperCase()}
@@ -177,7 +218,7 @@ export default function SmartQrVault() {
                     photograph: "foto",
                     "voice-record": "audio",
                     letter: "surat",
-                    "herbarium-notes": "botani",
+                    video: "video",
                   }[vaultSimTab]}`}
                   tabIndex={0}
                 >
@@ -280,30 +321,30 @@ export default function SmartQrVault() {
 
                     return (
                       <div className="sim-panel" key={tab.kind}>
-                        <div className="folio-herbarium">
-                          <header className="folio-herb-header">
-                            <span className="folio-herb-eyebrow">BOTANICAL ATELIER SPECIFICATION</span>
-                            <h4>{tab.taxonomy}</h4>
-                            <p>{tab.certificateDetails}</p>
-                          </header>
-                          <dl className="folio-herb-table">
-                            <div className="folio-herb-row">
-                              <dt>Preservation</dt>
-                              <dd>{tab.preservationMethod}</dd>
-                            </div>
-                            <div className="folio-herb-row">
-                              <dt>Encapsulation</dt>
-                              <dd>{tab.encapsulation}</dd>
-                            </div>
-                            <div className="folio-herb-row">
-                              <dt>Residual moisture</dt>
-                              <dd>{tab.humiditySpec}</dd>
-                            </div>
-                            <div className="folio-herb-row">
-                              <dt>Lab warranty</dt>
-                              <dd>{tab.labWarrantyDuration} archival preservation guarantee</dd>
-                            </div>
-                          </dl>
+                        <div className={`folio-video-card${isVideoPlaying ? " is-playing" : ""}`}>
+                          <button
+                            type="button"
+                            className="folio-video-frame"
+                            onClick={() => setIsVideoPlaying(playing => !playing)}
+                            aria-label={isVideoPlaying ? "Jeda simulasi video memoir" : "Putar simulasi video memoir"}
+                          >
+                            <img
+                              className="folio-video-poster"
+                              src={tab.posterUrl}
+                              alt={tab.caption}
+                              loading="lazy"
+                            />
+                            <span className="folio-video-vignette" aria-hidden="true" />
+                            {!isVideoPlaying && (
+                              <span className="folio-video-play" aria-hidden="true">▶</span>
+                            )}
+                            <span className="folio-video-badge">SIMULASI VIDEO MEMOIR · {tab.durationLabel}</span>
+                            <span className="folio-video-progress" aria-hidden="true">
+                              <span className="folio-video-progress-fill" />
+                            </span>
+                          </button>
+                          <p className="folio-video-caption">{tab.caption}</p>
+                          <span className="folio-video-stamp">{tab.archivalStamp}</span>
                         </div>
                       </div>
                     );

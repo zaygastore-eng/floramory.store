@@ -510,13 +510,18 @@ export interface UploadProgressInfo {
   totalBytes: number;   // total file size in bytes
 }
 
+const DIRECT_UPLOAD_FALLBACK_LIMIT = 3.5 * 1024 * 1024; // Vercel body limit ~4.5 MB
+
 export async function uploadVaultMedia(
   orderId: string,
   fileType: "photo" | "audio" | "video",
   file: File,
   onProgress?: (info: UploadProgressInfo) => void
 ): Promise<string> {
-  // 1. Coba Direct Binary Upload via Signed Upload URL (Bypass limit Vercel 4.5 MB & support real-time progress)
+  let directError: Error | null = null;
+
+  // 1. Direct Binary Upload via Signed Upload URL.
+  //    Bypass limit body Vercel 4.5 MB dan memberi progress event asli dari XHR.
   try {
     const { status, data } = await callVaultSetup({
       action: "get-upload-url",
@@ -526,59 +531,75 @@ export async function uploadVaultMedia(
       file_name: file.name,
     });
 
-    if (status < 400 && data.ok === true && typeof data.signedUrl === "string" && typeof data.publicUrl === "string") {
-      let uploadUrl = data.signedUrl;
-      // Jika signedUrl relatif, gabungkan dengan SUPABASE_URL
-      if (uploadUrl.startsWith("/")) {
-        uploadUrl = `${SUPABASE_URL}/storage/v1${uploadUrl}`;
-      } else if (!uploadUrl.startsWith("http")) {
-        uploadUrl = `${SUPABASE_URL}/storage/v1/upload/resumable/${uploadUrl}`;
-      }
-
-      await new Promise<void>((resolve, reject) => {
-        const xhr = new XMLHttpRequest();
-        xhr.open("PUT", uploadUrl, true);
-        xhr.setRequestHeader("Content-Type", file.type || "application/octet-stream");
-        if (typeof data.token === "string" && data.token) {
-          xhr.setRequestHeader("Authorization", `Bearer ${data.token}`);
-          xhr.setRequestHeader("apikey", SUPABASE_ANON_KEY);
-        }
-
-        xhr.upload.onprogress = (event) => {
-          if (event.lengthComputable && onProgress) {
-            const percent = Math.min(100, Math.round((event.loaded / event.total) * 100));
-            onProgress({
-              percent,
-              loadedBytes: event.loaded,
-              totalBytes: event.total,
-            });
-          }
-        };
-
-        xhr.onload = () => {
-          if (xhr.status >= 200 && xhr.status < 300) {
-            if (onProgress) {
-              onProgress({ percent: 100, loadedBytes: file.size, totalBytes: file.size });
-            }
-            resolve();
-          } else {
-            reject(new Error(`Storage error (${xhr.status}): ${xhr.responseText || "Gagal mengunggah berkas ke storage."}`));
-          }
-        };
-
-        xhr.onerror = () => reject(new Error("Koneksi jaringan terputus saat mengunggah media."));
-        xhr.ontimeout = () => reject(new Error("Waktu unggah habis (timeout). Silakan periksa koneksi internet Anda."));
-
-        xhr.send(file);
-      });
-
-      return data.publicUrl;
+    if (status >= 400 || data.ok !== true) {
+      throw new Error(String(data.message || "Gagal menyiapkan izin unggah media."));
     }
-  } catch (directErr) {
-    console.warn("[DIRECT_UPLOAD_FALLBACK] Menggunakan fallback base64 upload:", directErr);
+    if (typeof data.signedUrl !== "string" || typeof data.publicUrl !== "string") {
+      throw new Error("Server tidak mengembalikan tautan unggah media.");
+    }
+
+    let uploadUrl = data.signedUrl;
+    if (uploadUrl.startsWith("/")) {
+      uploadUrl = `${SUPABASE_URL}/storage/v1${uploadUrl}`;
+    }
+
+    await new Promise<void>((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open("PUT", uploadUrl, true);
+      xhr.setRequestHeader("Content-Type", file.type || "application/octet-stream");
+      xhr.setRequestHeader("x-upsert", "true");
+      xhr.timeout = 10 * 60 * 1000;
+
+      xhr.upload.onprogress = (event) => {
+        if (event.lengthComputable && onProgress) {
+          const percent = Math.min(100, Math.round((event.loaded / event.total) * 100));
+          onProgress({
+            percent,
+            loadedBytes: event.loaded,
+            totalBytes: event.total,
+          });
+        }
+      };
+
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          if (onProgress) {
+            onProgress({ percent: 100, loadedBytes: file.size, totalBytes: file.size });
+          }
+          resolve();
+        } else {
+          let detail = xhr.responseText;
+          try {
+            const parsed = JSON.parse(xhr.responseText);
+            detail = parsed?.message || parsed?.error || detail;
+          } catch {
+            // Response bukan JSON — pakai teks mentah.
+          }
+          reject(new Error(`Gagal mengunggah berkas (${xhr.status})${detail ? `: ${detail}` : "."}`));
+        }
+      };
+
+      xhr.onerror = () => reject(new Error("Koneksi jaringan terputus saat mengunggah media."));
+      xhr.ontimeout = () => reject(new Error("Waktu unggah habis. Periksa koneksi internet lalu coba lagi."));
+
+      xhr.send(file);
+    });
+
+    return data.publicUrl;
+  } catch (error) {
+    directError = error instanceof Error ? error : new Error(String(error));
+    console.warn("[DIRECT_UPLOAD_FAILED]", directError.message);
   }
 
-  // 2. Fallback: Base64 JSON upload (untuk file sangat kecil atau jika direct upload tidak tersedia)
+  // 2. Fallback Base64 JSON hanya untuk berkas kecil. Berkas besar akan selalu
+  //    ditolak Vercel (413), jadi lebih baik menampilkan pesan error yang jelas.
+  if (file.size > DIRECT_UPLOAD_FALLBACK_LIMIT) {
+    throw new Error(
+      directError?.message ||
+        "Gagal mengunggah media. Silakan periksa koneksi internet Anda lalu coba lagi."
+    );
+  }
+
   if (onProgress) onProgress({ percent: 30, loadedBytes: Math.round(file.size * 0.3), totalBytes: file.size });
   const { status, data } = await callVaultSetup({
     action: "upload",

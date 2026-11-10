@@ -18,6 +18,7 @@ import {
   type Product,
 } from "@/lib/api";
 import { homeContent } from "@/content/homeContent";
+import { applyPageMeta } from "@/lib/seo";
 import {
   pageUrl,
   normalizeWhatsApp,
@@ -253,8 +254,9 @@ export default function Home() {
   const [prefilledProductName, setPrefilledProductName] = useState("");
   const [whatsappNumber, setWhatsappNumber] = useState("6285235242425");
   const [vaultSimTab, setVaultSimTab] = useState<
-    "photograph" | "voice-record" | "letter" | "herbarium-notes"
+    "photograph" | "voice-record" | "letter" | "video"
   >("photograph");
+  const [isVideoPlaying, setIsVideoPlaying] = useState(false);
   const [isAudioPlaying, setIsAudioPlaying] = useState(false);
   const [audioCurrentTime, setAudioCurrentTime] = useState(0);
   const [audioDuration, setAudioDuration] = useState(131);
@@ -269,6 +271,15 @@ export default function Home() {
   });
   const formStartRef = useRef(Date.now());
   const commissionPopupRef = useRef<Window | null>(null);
+
+  useEffect(() => {
+    applyPageMeta({
+      title: "A Chapter — Atelier of Botanical Keepsakes & Smart Memory Vault",
+      description:
+        "Aksesori preserved flower dengan Smart-QR Memory Vault. Simpan babak terindah hidupmu dalam keindahan botani abadi.",
+      path: "/",
+    });
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -379,12 +390,12 @@ export default function Home() {
   };
 
   const handleVaultTabKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>) => {
-    const tabs = ["photograph", "voice-record", "letter", "herbarium-notes"] as const;
+    const tabs = ["photograph", "voice-record", "letter", "video"] as const;
     const tabIds = {
       photograph: "vault-tab-foto",
       "voice-record": "vault-tab-audio",
       letter: "vault-tab-surat",
-      "herbarium-notes": "vault-tab-botani",
+      video: "vault-tab-video",
     } as const;
     const currentIndex = tabs.indexOf(vaultSimTab);
     let nextIndex = currentIndex;
@@ -644,7 +655,7 @@ export default function Home() {
 
             <div className="vault-sim-nav" role="tablist" aria-label="Memory Vault preview">
               {homeContent.smartVault.mediaTabs.map((tab, index) => {
-                const tabId = `vault-tab-${["foto", "audio", "surat", "botani"][index]}`;
+                const tabId = `vault-tab-${["foto", "audio", "surat", "video"][index]}`;
                 const isSelected = vaultSimTab === tab.kind;
                 return (
                   <button
@@ -662,6 +673,7 @@ export default function Home() {
                         homeAudioRef.current.pause();
                         setIsAudioPlaying(false);
                       }
+                      if (tab.kind !== "video") setIsVideoPlaying(false);
                     }}
                     onKeyDown={handleVaultTabKeyDown}
                   >
@@ -680,7 +692,7 @@ export default function Home() {
                   photograph: "foto",
                   "voice-record": "audio",
                   letter: "surat",
-                  "herbarium-notes": "botani",
+                  video: "video",
                 }[vaultSimTab]}`}
                 tabIndex={0}
               >
@@ -784,32 +796,30 @@ export default function Home() {
 
                   return (
                     <div className="sim-panel" key={tab.kind}>
-                      <div className="folio-herbarium-card">
-                        <div className="folio-herb-eyebrow">HERBARIUM SPECIMEN · SURABAYA ATELIER</div>
-                        <h3 className="folio-herb-name">{tab.taxonomy}</h3>
-                        <p className="folio-herb-certificate">{tab.certificateDetails}</p>
-                        <dl className="folio-herb-meta">
-                          <div className="folio-herb-row">
-                            <dt>Taxonomy</dt>
-                            <dd><em>{tab.taxonomy}</em></dd>
-                          </div>
-                          <div className="folio-herb-row">
-                            <dt>Preservation</dt>
-                            <dd>{tab.preservationMethod}</dd>
-                          </div>
-                          <div className="folio-herb-row">
-                            <dt>Encapsulation</dt>
-                            <dd>{tab.encapsulation}</dd>
-                          </div>
-                          <div className="folio-herb-row">
-                            <dt>Residual moisture</dt>
-                            <dd>{tab.humiditySpec}</dd>
-                          </div>
-                          <div className="folio-herb-row">
-                            <dt>Lab warranty</dt>
-                            <dd>{tab.labWarrantyDuration} archival preservation guarantee</dd>
-                          </div>
-                        </dl>
+                      <div className={`folio-video-card${isVideoPlaying ? " is-playing" : ""}`}>
+                        <button
+                          type="button"
+                          className="folio-video-frame"
+                          onClick={() => setIsVideoPlaying(playing => !playing)}
+                          aria-label={isVideoPlaying ? "Jeda simulasi video memoir" : "Putar simulasi video memoir"}
+                        >
+                          <img
+                            className="folio-video-poster"
+                            src={tab.posterUrl}
+                            alt={tab.caption}
+                            loading="lazy"
+                          />
+                          <span className="folio-video-vignette" aria-hidden="true" />
+                          {!isVideoPlaying && (
+                            <span className="folio-video-play" aria-hidden="true">▶</span>
+                          )}
+                          <span className="folio-video-badge">SIMULASI VIDEO MEMOIR · {tab.durationLabel}</span>
+                          <span className="folio-video-progress" aria-hidden="true">
+                            <span className="folio-video-progress-fill" />
+                          </span>
+                        </button>
+                        <p className="folio-video-caption">{tab.caption}</p>
+                        <span className="folio-video-stamp">{tab.archivalStamp}</span>
                       </div>
                     </div>
                   );

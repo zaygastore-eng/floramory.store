@@ -79,22 +79,20 @@ export interface LetterTab {
   signature: string;
 }
 
-export interface HerbariumNotesTab {
-  kind: "herbarium-notes";
+export interface VideoMemoirTab {
+  kind: "video";
   title: string;
-  taxonomy: string;
-  certificateDetails: string;
-  preservationMethod: string;
-  encapsulation: string;
-  humiditySpec: string;
-  labWarrantyDuration: string;
+  posterUrl: string;
+  caption: string;
+  durationLabel: string;
+  archivalStamp: string;
 }
 
 export type VaultMediaTab =
   | PhotographTab
   | VoiceRecordTab
   | LetterTab
-  | HerbariumNotesTab;
+  | VideoMemoirTab;
 
 export interface PrivacyPillar {
   id: string;
@@ -346,16 +344,13 @@ export const homeContent = {
         signature: "Selalu Sahabat Terbaikmu",
       },
       {
-        kind: "herbarium-notes",
-        title: "Herbarium Notes",
-        taxonomy: "Hydrangea macrophylla × Gypsophila paniculata",
-        certificateDetails:
-          "A certified botanical pairing, carefully preserved and recorded by the Surabaya Atelier.",
-        preservationMethod:
-          "Lab Cryo-Dehydration (<0.02% Residual Moisture Content)",
-        encapsulation: "Bubble-free UV-shielded bio-epoxy crystal resin",
-        humiditySpec: "<0.02%",
-        labWarrantyDuration: "8–10 years",
+        kind: "video",
+        title: "Video Memoir",
+        posterUrl:
+          "https://images.unsplash.com/photo-1490750967868-88aa4486c946?auto=format&fit=crop&w=900&q=85",
+        caption: "Kenangan bergerak yang tak pernah pudar · Juni 2026",
+        durationLabel: "00:18",
+        archivalStamp: "HD memoir film secured",
       },
     ],
     privacyPillars: [
@@ -389,7 +384,7 @@ export const homeContent = {
         step: 1,
         title: "Unggah Memoar via WhatsApp",
         description:
-          "Setelah pemesanan disepakati, Anda menerima link formulir privat untuk mengirim foto, rekaman suara, dan teks surat langsung dari HP.",
+          "Setelah pemesanan disepakati, Anda menerima link formulir privat untuk mengirim foto, rekaman suara, video, dan teks surat langsung dari HP.",
       },
       {
         step: 2,

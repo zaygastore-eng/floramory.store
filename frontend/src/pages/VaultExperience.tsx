@@ -9,13 +9,13 @@ import {
 } from "@/lib/api";
 import { resolveVaultMedia } from "@/lib/media";
 import { normalizeWhatsApp } from "@/lib/site";
-import { applyProductMeta } from "@/lib/seo";
+import { applyProductMeta, applyNoIndexMeta } from "@/lib/seo";
 
 const AudioPlayer = lazy(() => import("@/components/AudioPlayer"));
 
 const WA_FALLBACK = "6285235242425";
 
-type VaultTab = "photos" | "audio" | "letter" | "herbarium";
+type VaultTab = "photos" | "audio" | "letter" | "video";
 
 export default function VaultExperience({
   params,
@@ -43,6 +43,9 @@ export default function VaultExperience({
 
   // PIN Unlock state
   const [vaultUnlocked, setVaultUnlocked] = useState(Boolean(previewData));
+  const [openingCeremony, setOpeningCeremony] = useState<"idle" | "opening" | "done">(
+    previewData ? "done" : "idle"
+  );
   const [pinDigits, setPinDigits] = useState<string[]>(() => Array(6).fill(""));
   const [pinBusy, setPinBusy] = useState(false);
   const [pinMessage, setPinMessage] = useState("");
@@ -109,11 +112,27 @@ export default function VaultExperience({
             deskripsi: "A secret digital chapter preserved in eternal botanical form.",
             imageUrl: p.foto_vault || p.foto_produk,
           });
+          // Brankas penerima bersifat privat: jangan pernah diindeks mesin pencari.
+          applyNoIndexMeta(document.title);
         }
       })
       .catch(() => setError(true))
       .finally(() => setLoading(false));
   }, [vaultId, previewData]);
+
+  // Animasi pembuka brankas: tampil sebentar setelah PIN benar, lalu menyingkap konten.
+  useEffect(() => {
+    if (openingCeremony !== "opening") return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const timer = window.setTimeout(() => setOpeningCeremony("done"), 3600);
+    return () => {
+      window.clearTimeout(timer);
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [openingCeremony]);
+
+  const finishOpeningCeremony = () => setOpeningCeremony("done");
 
   const handlePinDigitChange = (index: number, val: string) => {
     const digit = val.slice(-1);
@@ -157,6 +176,10 @@ export default function VaultExperience({
         return;
       }
       setVaultUnlocked(true);
+      const prefersReducedMotion =
+        typeof window !== "undefined" &&
+        window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+      setOpeningCeremony(prefersReducedMotion ? "done" : "opening");
       try {
         sessionStorage.setItem(`fm_unlocked_${product.id}`, "true");
       } catch {
@@ -242,7 +265,26 @@ export default function VaultExperience({
   const restOfLetter = letterBody.trim().slice(1);
 
   return (
-    <div className="vault-memoir-wrapper">
+    <div className={`vault-memoir-wrapper${openingCeremony === "opening" ? " is-ceremony" : ""}`}>
+      {openingCeremony === "opening" && (
+        <div className="vault-opening-overlay" role="status" aria-live="polite">
+          <div className="vault-opening-stage">
+            <span className="vault-opening-ring" aria-hidden="true" />
+            <span className="vault-opening-ring ring-two" aria-hidden="true" />
+            <div className="vault-opening-seal" aria-hidden="true">
+              <span className="wax-seal-circle">A · C</span>
+            </div>
+            <span className="vault-opening-kicker">A CHAPTER · MEMORY VAULT</span>
+            <h2 className="vault-opening-title">Membuka babak rahasia...</h2>
+            <p className="vault-opening-sub">
+              Kenangan yang disimpan untuk {product.nama_pembeli || "Anda"}
+            </p>
+            <button type="button" className="vault-opening-skip" onClick={finishOpeningCeremony}>
+              Lewati animasi →
+            </button>
+          </div>
+        </div>
+      )}
       <div className="vault-memoir-container">
         {/* ── 1. WAX SEAL REVEAL HERO ── */}
         <header className="vault-memoir-hero">
@@ -350,11 +392,11 @@ export default function VaultExperience({
               <button
                 type="button"
                 role="tab"
-                aria-selected={activeTab === "herbarium"}
-                className={`vault-roman-btn${activeTab === "herbarium" ? " active" : ""}`}
-                onClick={() => setActiveTab("herbarium")}
+                aria-selected={activeTab === "video"}
+                className={`vault-roman-btn${activeTab === "video" ? " active" : ""}`}
+                onClick={() => setActiveTab("video")}
               >
-                IV. HERBARIUM
+                IV. VIDEO MEMOIR
               </button>
             </nav>
 
@@ -412,7 +454,24 @@ export default function VaultExperience({
               {/* PANEL II: CRYSTAL AUDIO & VIDEO */}
               {activeTab === "audio" && (
                 <div className="vault-audio-panel" role="tabpanel">
-                  {audioMedia.isAudio && audioMedia.url ? (
+                  {audioMedia.type === "spotify" && audioMedia.embedUrl ? (
+                    <div className="vault-crystal-audio-card">
+                      <span className="vault-audio-badge-top">✦ SPOTIFY SOUNDTRACK</span>
+                      <iframe
+                        title="Spotify Memory Soundtrack"
+                        src={audioMedia.embedUrl}
+                        width="100%"
+                        height="152"
+                        allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+                        loading="lazy"
+                        style={{ border: "none", borderRadius: "12px", marginTop: "1rem" }}
+                      />
+                      <blockquote className="vault-audio-quote">
+                        <p>“Lagu yang dipilih khusus untuk mewakili setiap rasa yang tak sempat terucap.”</p>
+                        <footer>— {product.dari || "Atelier Keepsake"}</footer>
+                      </blockquote>
+                    </div>
+                  ) : audioMedia.isAudio && audioMedia.url ? (
                     <div className="vault-crystal-audio-card">
                       <span className="vault-audio-badge-top">✦ AUDIO MEMOIR RECORDING</span>
                       <Suspense fallback={<div className="vault-audio-loading">Memuat pemutar suara...</div>}>
@@ -431,29 +490,6 @@ export default function VaultExperience({
                   ) : (
                     <div className="vault-empty-note">
                       <p>Tidak ada pesan suara yang disematkan dalam brankas ini.</p>
-                    </div>
-                  )}
-
-                  {videoMedia.isVideo && videoMedia.url && (
-                    <div className="vault-video-frame" style={{ marginTop: "1.5rem" }}>
-                      {(videoMedia.type === "youtube" || videoMedia.type === "google_drive") && videoMedia.embedUrl ? (
-                        <iframe
-                          src={videoMedia.embedUrl}
-                          title="Video Kenangan"
-                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                          allowFullScreen
-                          className="vault-video-iframe"
-                        />
-                      ) : (
-                        <video
-                          controls
-                          playsInline
-                          src={videoMedia.url}
-                          className="vault-video-player"
-                        >
-                          Browser tidak mendukung video.
-                        </video>
-                      )}
                     </div>
                   )}
                 </div>
@@ -479,44 +515,38 @@ export default function VaultExperience({
                 </div>
               )}
 
-              {/* PANEL IV: HERBARIUM BOTANICAL CERTIFICATE */}
-              {activeTab === "herbarium" && (
-                <div className="vault-herbarium-panel" role="tabpanel">
-                  <div className="vault-herb-cert">
-                    <span className="cert-eyebrow">OFFICIAL ATELIER HERBARIUM RECORD</span>
-                    <h2 className="cert-title">Botanical Preservation Certificate</h2>
-
-                    <dl className="cert-grid">
-                      <div className="cert-row">
-                        <dt>Botanical Species</dt>
-                        <dd><em>{product.bunga || "Hydrangea macrophylla × Gypsophila paniculata"}</em></dd>
-                      </div>
-                      <div className="cert-row">
-                        <dt>Preservation Standard</dt>
-                        <dd>Lab Cryo-Dehydration (&lt; 0.02% Residual Moisture Content)</dd>
-                      </div>
-                      <div className="cert-row">
-                        <dt>Encapsulation</dt>
-                        <dd>UV-Shielded Crystal Bio-Epoxy (Bubble-Free &amp; Non-Yellowing)</dd>
-                      </div>
-                      <div className="cert-row">
-                        <dt>Form &amp; Frame</dt>
-                        <dd>{[product.ukuran, product.bahan].filter(Boolean).join(" · ") || "Natural Solid Wood Herbarium Stand"}</dd>
-                      </div>
-                      <div className="cert-row">
-                        <dt>Longevity Guarantee</dt>
-                        <dd>8–10 Years Without Water or Soil Maintenance</dd>
-                      </div>
-                      <div className="cert-row">
-                        <dt>Floral Symbolism</dt>
-                        <dd>Gratitude, devotion, and an enduring bond that time cannot fade.</dd>
-                      </div>
-                    </dl>
-
-                    <div className="cert-seal-stamp">
-                      <span className="cert-seal-text">A CHAPTER ATELIER · SURABAYA, INDONESIA</span>
+              {/* PANEL IV: VIDEO MEMOIR */}
+              {activeTab === "video" && (
+                <div className="vault-video-memoir-panel" role="tabpanel">
+                  {videoMedia.isVideo && videoMedia.url ? (
+                    <div className="vault-video-frame">
+                      {(videoMedia.type === "youtube" || videoMedia.type === "google_drive") && videoMedia.embedUrl ? (
+                        <iframe
+                          src={videoMedia.embedUrl}
+                          title="Video Kenangan"
+                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                          allowFullScreen
+                          className="vault-video-iframe"
+                        />
+                      ) : (
+                        <video
+                          controls
+                          playsInline
+                          src={videoMedia.url}
+                          className="vault-video-player"
+                        >
+                          Browser tidak mendukung video.
+                        </video>
+                      )}
+                      <p className="vault-video-caption">
+                        “Sebuah memoir bergerak yang dirangkai untuk mengenang babak terindah.”
+                      </p>
                     </div>
-                  </div>
+                  ) : (
+                    <div className="vault-empty-note">
+                      <p>Tidak ada video kenangan yang disematkan dalam brankas ini.</p>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

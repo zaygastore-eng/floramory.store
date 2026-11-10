@@ -136,7 +136,7 @@
 .admin-brand strong {
   display: block;
   font-family: var(--font-display);
-  font-size: 1.3rem;
+  font-size: 1.12rem;
   line-height: 1.1;
   color: #FFFFFF;
   letter-spacing: 0.02em;
@@ -1616,6 +1616,20 @@
 
 .login-logo {
   margin-bottom: 1rem;
+}
+
+.login-logo .login-logo-img {
+  height: 52px;
+  width: auto;
+  max-width: 210px;
+  margin: 0 auto;
+}
+
+@media (max-width: 640px) {
+  .login-logo .login-logo-img {
+    height: 40px;
+    max-width: 165px;
+  }
 }
 
 .login-subtitle {

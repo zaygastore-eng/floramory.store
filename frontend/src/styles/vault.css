@@ -1,0 +1,1963 @@
+/* ══════════════════════════════════════════════════════════════
+   STAGE 12: LIVING MEMOIR VAULT & SENDER SETUP CONSOLE
+   ══════════════════════════════════════════════════════════════ */
+
+/* ── RECIPIENT LIVING MEMOIR (/vault/:id) ── */
+.vault-memoir-wrapper {
+  min-height: 100vh;
+  background: var(--chapter-ivory, #FBF8F3);
+  display: flex;
+  justify-content: center;
+  padding: 3rem 1rem 5rem;
+}
+
+.vault-memoir-container {
+  width: 100%;
+  max-width: 640px;
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.vault-memoir-loading {
+  min-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.5rem;
+  text-align: center;
+}
+
+.vault-loading-text {
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  font-style: italic;
+  color: var(--chapter-taupe, #756C64);
+}
+
+.vault-memoir-hero {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.25rem;
+}
+
+.vault-wax-seal-hero {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--chapter-burgundy, #531B21);
+  color: #f7e9d8;
+  display: grid;
+  place-items: center;
+  border: 2px solid var(--chapter-gold, #C5A880);
+  box-shadow: 0 4px 18px rgba(83, 27, 33, 0.28);
+  margin: 0 auto;
+  animation: sealFloat 4s ease-in-out infinite alternate;
+}
+
+@keyframes sealFloat {
+  0% { transform: translateY(0); }
+  100% { transform: translateY(-4px); }
+}
+
+.wax-seal-circle {
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.vault-hero-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.vault-hero-kicker {
+  font-family: var(--font-body);
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--chapter-taupe, #756C64);
+}
+
+.vault-hero-recipient {
+  font-family: var(--font-display, 'Cormorant Garamond', Georgia, serif);
+  font-size: clamp(2.4rem, 5vw, 3.2rem);
+  font-weight: 500;
+  color: var(--chapter-slate, #232B38);
+  line-height: 1.15;
+  margin: 0;
+}
+
+.vault-hero-dedication {
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  color: var(--chapter-taupe, #756C64);
+  line-height: 1.6;
+  margin: 0;
+}
+
+/* PIN Verification Card */
+.vault-pin-card {
+  background: #FFFFFF;
+  border: 1px solid rgba(197, 168, 128, 0.4);
+  border-radius: 8px;
+  padding: clamp(1.75rem, 4vw, 2.75rem);
+  text-align: center;
+  box-shadow: 0 16px 40px rgba(35, 43, 56, 0.08);
+}
+
+.vault-pin-icon {
+  font-size: 2rem;
+  margin-bottom: 0.75rem;
+}
+
+.vault-pin-heading {
+  font-family: var(--font-display);
+  font-size: 1.8rem;
+  font-style: italic;
+  font-weight: 500;
+  color: var(--chapter-slate);
+  margin: 0 0 0.5rem;
+}
+
+.vault-pin-desc {
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  color: var(--chapter-taupe);
+  line-height: 1.6;
+  margin: 0 auto 1.5rem;
+  max-width: 44ch;
+}
+
+.vault-pin-form {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+.vault-pin-inputs {
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.vault-pin-digit {
+  width: 3rem;
+  height: 3.5rem;
+  text-align: center;
+  font-family: var(--font-body);
+  font-size: 1.4rem;
+  font-weight: 700;
+  background: var(--chapter-ivory);
+  border: 1.5px solid rgba(35, 43, 56, 0.15);
+  border-radius: 4px;
+  color: var(--chapter-slate);
+  outline: none;
+  transition: border-color 150ms ease;
+}
+
+.vault-pin-digit:focus {
+  border-color: var(--chapter-burgundy);
+  box-shadow: 0 0 0 3px rgba(83, 27, 33, 0.08);
+  background: #FFFFFF;
+}
+
+.vault-pin-message {
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  color: #b71c1c;
+  margin: 0;
+}
+
+.vault-pin-submit {
+  width: 100%;
+  max-width: 320px;
+  height: 48px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.vault-pin-help-link {
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  color: var(--chapter-taupe);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* Unlocked Living Memoir */
+.vault-unlocked-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  animation: folioFadeIn 300ms ease-out;
+}
+
+.vault-roman-nav {
+  display: flex;
+  justify-content: space-between;
+  border-bottom: 1.5px solid rgba(35, 43, 56, 0.1);
+  background: transparent;
+  overflow-x: auto;
+  gap: 0.5rem;
+}
+
+.vault-roman-btn {
+  font-family: var(--font-body);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--chapter-taupe, #756C64);
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  padding: 10px 6px;
+  cursor: pointer;
+  transition: all 150ms ease;
+  white-space: nowrap;
+}
+
+.vault-roman-btn:hover {
+  color: var(--chapter-burgundy, #531B21);
+}
+
+.vault-roman-btn.active {
+  color: var(--chapter-burgundy, #531B21);
+  border-bottom-color: var(--chapter-burgundy, #531B21);
+}
+
+/* Polaroid Touch Carousel */
+.vault-polaroid-touch {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.25rem;
+}
+
+.vault-polaroid-frame {
+  background: #FFFFFF;
+  border: 1px solid rgba(35, 43, 56, 0.08);
+  padding: 14px 14px 44px;
+  box-shadow: 0 16px 40px rgba(35, 43, 56, 0.1);
+  border-radius: 2px;
+  width: 100%;
+  max-width: 380px;
+  position: relative;
+  transform: rotate(-0.5deg);
+}
+
+.vault-polaroid-pin {
+  position: absolute;
+  top: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--chapter-ivory);
+  border: 1px solid var(--chapter-gold);
+  color: var(--chapter-gold);
+  font-size: 0.65rem;
+  display: grid;
+  place-items: center;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+}
+
+.vault-polaroid-image-box {
+  width: 100%;
+  aspect-ratio: 4 / 5;
+  overflow: hidden;
+  background: #e8ede4;
+  border-radius: 1px;
+}
+
+.vault-polaroid-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.vault-polaroid-cursive {
+  font-family: var(--font-script, 'Pinyon Script', cursive);
+  font-size: 1.35rem;
+  color: var(--chapter-burgundy, #531B21);
+  text-align: center;
+  margin: 14px 0 0;
+  line-height: 1.3;
+}
+
+.vault-carousel-dots {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  justify-content: center;
+}
+
+.carousel-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: rgba(35, 43, 56, 0.2);
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  transition: all 150ms ease;
+}
+
+.carousel-dot.active {
+  background: var(--chapter-burgundy);
+  transform: scale(1.3);
+}
+
+.vault-download-link {
+  font-family: var(--font-body);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--chapter-taupe);
+  text-decoration: none;
+  border-bottom: 1px solid rgba(35,43,56,0.15);
+  padding-bottom: 2px;
+}
+
+.vault-download-link:hover {
+  color: var(--chapter-burgundy);
+  border-color: var(--chapter-burgundy);
+}
+
+/* Crystal Audio Player Panel */
+.vault-crystal-audio-card {
+  background: #FFFFFF;
+  border: 1px solid rgba(35, 43, 56, 0.08);
+  border-radius: 8px;
+  padding: 1.75rem;
+  box-shadow: 0 12px 32px rgba(35, 43, 56, 0.06);
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.vault-audio-badge-top {
+  font-family: var(--font-body);
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--chapter-burgundy);
+}
+
+.vault-audio-quote {
+  padding-left: 14px;
+  border-left: 2px solid var(--chapter-gold);
+  margin: 0;
+}
+
+.vault-audio-quote p {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  font-style: italic;
+  color: var(--chapter-slate);
+  line-height: 1.6;
+  margin: 0 0 4px;
+}
+
+.vault-audio-quote footer {
+  font-family: var(--font-body);
+  font-size: 0.72rem;
+  color: var(--chapter-taupe);
+}
+
+.vault-empty-note {
+  background: #FFFFFF;
+  border: 1px solid rgba(35, 43, 56, 0.08);
+  border-radius: 8px;
+  padding: 2rem;
+  text-align: center;
+  color: var(--chapter-taupe);
+  font-family: var(--font-body);
+  font-size: 0.88rem;
+}
+
+/* Parchment Letter Panel */
+.vault-parchment-sheet {
+  background: #fefcf8;
+  border: 1px solid rgba(197, 168, 128, 0.35);
+  border-radius: 4px;
+  padding: clamp(1.75rem, 5vw, 2.75rem);
+  box-shadow: 0 16px 40px rgba(35, 43, 56, 0.06);
+  position: relative;
+}
+
+.vault-parchment-seal {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--chapter-burgundy);
+  color: #f7e9d8;
+  font-family: var(--font-body);
+  font-size: 0.6rem;
+  font-weight: 700;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--chapter-gold);
+}
+
+.vault-letter-salutation {
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  font-weight: 600;
+  color: #6d5943;
+  margin-bottom: 1rem;
+}
+
+.vault-letter-body-text {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-style: italic;
+  color: #514638;
+  line-height: 1.85;
+  max-width: 55ch;
+  margin: 0 0 1.5rem;
+}
+
+.vault-drop-cap {
+  font-family: var(--font-display);
+  font-size: 3rem;
+  line-height: 0.8;
+  float: left;
+  padding-right: 8px;
+  color: var(--chapter-burgundy);
+  font-style: normal;
+}
+
+.vault-letter-signoff {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.signoff-phrase {
+  font-family: var(--font-script);
+  font-size: 1.4rem;
+  color: var(--chapter-burgundy);
+}
+
+.signoff-author {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  color: var(--chapter-slate);
+  font-weight: 600;
+}
+
+/* Herbarium Botanical Certificate */
+.vault-herb-cert {
+  background: #FFFFFF;
+  border: 1px solid rgba(197, 168, 128, 0.45);
+  border-radius: 6px;
+  padding: clamp(1.75rem, 4vw, 2.5rem);
+  box-shadow: 0 12px 32px rgba(35, 43, 56, 0.06);
+}
+
+.cert-eyebrow {
+  font-family: var(--font-body);
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--chapter-taupe);
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
+.cert-title {
+  font-family: var(--font-display);
+  font-size: 1.6rem;
+  font-weight: 500;
+  color: var(--chapter-slate);
+  margin: 0 0 1.5rem;
+  border-bottom: 1px solid rgba(35, 43, 56, 0.08);
+  padding-bottom: 0.75rem;
+}
+
+.cert-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  margin: 0 0 2rem;
+}
+
+.cert-row {
+  display: grid;
+  grid-template-columns: 140px 1fr;
+  gap: 0.5rem;
+  align-items: baseline;
+}
+
+@media (max-width: 480px) {
+  .cert-row {
+    grid-template-columns: 1fr;
+    gap: 0.2rem;
+  }
+}
+
+.cert-row dt {
+  font-family: var(--font-body);
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--chapter-taupe);
+}
+
+.cert-row dd {
+  font-family: var(--font-display);
+  font-size: 0.92rem;
+  color: var(--chapter-slate);
+  margin: 0;
+  line-height: 1.4;
+}
+
+.cert-seal-stamp {
+  text-align: center;
+  border-top: 1px dashed rgba(197, 168, 128, 0.5);
+  padding-top: 1rem;
+}
+
+.cert-seal-text {
+  font-family: var(--font-body);
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  color: var(--chapter-gold);
+}
+
+/* Colophon Footer */
+.vault-memoir-footer {
+  text-align: center;
+  margin-top: 3rem;
+  padding-top: 2rem;
+  border-top: 1px solid rgba(35, 43, 56, 0.08);
+}
+
+.vault-footer-leaf {
+  font-size: 1.4rem;
+  margin-bottom: 0.5rem;
+}
+
+.vault-footer-text {
+  font-family: var(--font-body);
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--chapter-taupe);
+}
+
+/* ── SENDER SETUP CONSOLE (/vault-setup) ── */
+.vault-setup-page {
+  min-height: 100vh;
+  background: var(--chapter-ivory, #FBF8F3);
+  padding: 3rem 1.5rem 5rem;
+}
+
+.vault-setup-container {
+  max-width: 740px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.vault-setup-header {
+  text-align: center;
+  margin-bottom: 1rem;
+}
+
+.vault-setup-kicker {
+  display: block;
+  font-family: var(--font-body);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--chapter-gold);
+  margin: 0.5rem 0;
+}
+
+.vault-setup-main-title {
+  font-family: var(--font-display);
+  font-size: 2.4rem;
+  font-weight: 500;
+  color: var(--chapter-slate);
+  margin: 0 0 0.5rem;
+}
+
+.vault-setup-lead {
+  font-family: var(--font-body);
+  font-size: 0.92rem;
+  color: var(--chapter-taupe);
+  line-height: 1.65;
+  max-width: 58ch;
+  margin: 0 auto;
+}
+
+.vault-setup-meta-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #FFFFFF;
+  border: 1px solid rgba(35, 43, 56, 0.08);
+  border-radius: 6px;
+  padding: 1rem 1.5rem;
+}
+
+.meta-bar-tag {
+  display: block;
+  font-family: var(--font-body);
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--chapter-taupe);
+}
+
+.meta-bar-id {
+  font-family: var(--font-body);
+  color: var(--chapter-burgundy);
+  font-size: 1rem;
+}
+
+.meta-bar-name {
+  font-family: var(--font-display);
+  color: var(--chapter-slate);
+  font-size: 1.15rem;
+}
+
+.vault-setup-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.vault-setup-card {
+  background: #FFFFFF;
+  border: 1px solid rgba(35, 43, 56, 0.08);
+  border-radius: 8px;
+  padding: clamp(1.5rem, 4vw, 2.5rem);
+  box-shadow: 0 8px 30px rgba(35, 43, 56, 0.04);
+  position: relative;
+}
+
+.card-step-badge {
+  font-family: var(--font-body);
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--chapter-gold);
+  margin-bottom: 0.35rem;
+}
+
+.vault-setup-card-title {
+  font-family: var(--font-display);
+  font-size: 1.6rem;
+  font-weight: 500;
+  color: var(--chapter-slate);
+  margin: 0 0 0.4rem;
+}
+
+.vault-setup-card-sub {
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  color: var(--chapter-taupe);
+  line-height: 1.55;
+  margin: 0 0 1.25rem;
+}
+
+.vault-drop-zone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 140px;
+  border: 1.5px dashed rgba(197, 168, 128, 0.6);
+  border-radius: 6px;
+  background: #fdfcf9;
+  cursor: pointer;
+  padding: 1.5rem;
+  text-align: center;
+  gap: 4px;
+  transition: border-color 150ms ease;
+}
+
+.vault-drop-zone:hover {
+  border-color: var(--chapter-burgundy);
+}
+
+.drop-icon {
+  font-size: 1.8rem;
+  margin-bottom: 4px;
+}
+
+.drop-title {
+  font-family: var(--font-body);
+  font-size: 0.88rem;
+  color: var(--chapter-slate);
+}
+
+.drop-hint {
+  font-family: var(--font-body);
+  font-size: 0.72rem;
+  color: var(--chapter-taupe);
+}
+
+.vault-audio-toggle-row {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.25rem;
+}
+
+.audio-toggle-btn {
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 8px 14px;
+  border-radius: 4px;
+  background: var(--chapter-ivory);
+  border: 1px solid rgba(35, 43, 56, 0.15);
+  color: var(--chapter-slate);
+  cursor: pointer;
+  transition: all 150ms ease;
+}
+
+.audio-toggle-btn.active {
+  background: var(--chapter-burgundy);
+  color: #FFFFFF;
+  border-color: var(--chapter-burgundy);
+}
+
+.recorder-btn {
+  font-family: var(--font-body);
+  font-size: 0.82rem;
+  font-weight: 700;
+  padding: 12px 20px;
+  border-radius: 4px;
+  cursor: pointer;
+  border: none;
+  transition: background 150ms ease;
+}
+
+.recorder-btn.record {
+  background: var(--chapter-burgundy);
+  color: #FFFFFF;
+}
+
+.recorder-btn.stop {
+  background: #b71c1c;
+  color: #FFFFFF;
+  animation: pulse 1s infinite;
+}
+
+.vault-browser-recorder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1.5rem;
+  background: #fdfcf9;
+  border: 1px solid rgba(35, 43, 56, 0.08);
+  border-radius: 6px;
+  text-align: center;
+}
+
+.vault-file-label {
+  display: block;
+  font-family: var(--font-body);
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--chapter-slate);
+  margin-bottom: 0.5rem;
+}
+
+.vault-setup-textarea {
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  line-height: 1.7;
+  width: 100%;
+}
+
+.char-counter {
+  font-family: var(--font-body);
+  font-size: 0.72rem;
+  color: var(--chapter-taupe);
+  display: block;
+  text-align: right;
+  margin-top: 4px;
+}
+
+.letter-dropcap-preview {
+  background: #fdfbf7;
+  border: 1px dashed rgba(197, 168, 128, 0.4);
+  border-radius: 4px;
+  padding: 1.25rem;
+  margin-top: 1.25rem;
+}
+
+.preview-label {
+  font-family: var(--font-body);
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--chapter-gold);
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
+.preview-body {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-style: italic;
+  color: #514638;
+  line-height: 1.7;
+}
+
+.preview-signoff {
+  font-family: var(--font-script);
+  font-size: 1.2rem;
+  color: var(--chapter-burgundy);
+  margin-top: 0.75rem;
+}
+
+.vault-pin-config-input {
+  max-width: 200px;
+  font-size: 1.2rem;
+  letter-spacing: 4px;
+  text-align: center;
+  font-weight: 700;
+}
+
+.vault-setup-error {
+  background: #fff0ed;
+  color: #b71c1c;
+  border: 1px solid rgba(183, 28, 28, 0.2);
+  border-radius: 4px;
+  padding: 0.85rem 1rem;
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+}
+
+.vault-setup-action-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  margin-top: 1rem;
+}
+
+.vault-setup-preview-btn {
+  background: #FFFFFF;
+  border: 1.5px solid rgba(35, 43, 56, 0.2);
+  font-family: var(--font-body);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--chapter-slate);
+  padding: 14px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 150ms ease;
+}
+
+.vault-setup-preview-btn:hover {
+  border-color: var(--chapter-burgundy);
+  color: var(--chapter-burgundy);
+}
+
+.vault-setup-save-btn {
+  width: 100%;
+  height: 50px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.82rem;
+}
+
+.vault-preview-modal-dialog {
+  background: var(--chapter-ivory);
+  width: 100%;
+  max-width: 680px;
+  max-height: 90vh;
+  border-radius: 8px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 25px 60px rgba(0,0,0,0.3);
+}
+
+.vault-preview-modal-bar {
+  background: #232B38;
+  color: var(--chapter-gold);
+  padding: 10px 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: var(--font-body);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+}
+
+.vault-preview-close {
+  background: transparent;
+  border: none;
+  color: #FFFFFF;
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
+.vault-preview-content {
+  overflow-y: auto;
+  flex: 1;
+  padding: 1rem;
+}
+
+/* ── EDITORIAL PRODUCT CLUSTERS ── */
+.chapters-section,
+.gift-packaging-section {
+  background: var(--bg-surface);
+}
+
+.single-stems-section {
+  padding: clamp(3.5rem, 6vw, 6rem) clamp(1rem, 4vw, 3rem);
+  background: var(--bg-surface-tint, #F5EFE6);
+}
+
+.cluster-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.cluster-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 2rem;
+  margin-bottom: 2.5rem;
+}
+
+.cluster-heading--single {
+  margin-bottom: 2rem;
+}
+
+.cluster-title {
+  margin: 0 0 0.75rem;
+  color: var(--text-slate);
+  font-family: var(--font-display);
+  font-size: clamp(1.6rem, 3vw, 2.4rem);
+  font-weight: 500;
+  line-height: 1.15;
+}
+
+.cluster-description {
+  max-width: 680px;
+  margin: 0;
+  color: var(--text-taupe);
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+  line-height: 1.7;
+}
+
+.cluster-heading .catalog-explore-all-link {
+  flex: 0 0 auto;
+  margin-bottom: 0.25rem;
+}
+
+.showcase-products-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1.5rem;
+}
+
+.single-stems-section .showcase-products-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.editorial-product-card {
+  min-width: 0;
+  border-color: var(--border-hairline);
+  border-radius: 3px;
+  background: var(--bg-surface);
+  text-align: left;
+}
+
+.editorial-product-card .product-img {
+  aspect-ratio: 4 / 5;
+  background: var(--bg-surface-tint);
+}
+
+.editorial-product-card .product-img-primary {
+  z-index: 1;
+}
+
+.editorial-product-card .product-img-secondary {
+  z-index: 2;
+  opacity: 0;
+  transform: scale(1);
+  transition:
+    opacity 350ms ease,
+    transform 500ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.editorial-product-card.has-secondary-image:hover .product-img-secondary,
+.editorial-product-card.has-secondary-image:focus-visible .product-img-secondary {
+  opacity: 1;
+  transform: scale(1.04);
+}
+
+.editorial-product-card.has-secondary-image:hover .product-img-layer img,
+.editorial-product-card.has-secondary-image:focus-visible .product-img-layer img {
+  transform: none;
+}
+
+.editorial-product-card.single-image:hover .product-img-primary img,
+.editorial-product-card.single-image:focus-visible .product-img-primary img {
+  transform: scale(1.04);
+}
+
+.editorial-product-card .product-badge {
+  top: 0.75rem;
+  right: auto;
+  left: 0.75rem;
+  max-width: calc(100% - 1.5rem);
+  overflow: hidden;
+  border: 0;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.85);
+  color: var(--text-slate);
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.product-qr-badge {
+  position: absolute;
+  right: 0.75rem;
+  bottom: 0.75rem;
+  z-index: 3;
+  display: inline-flex;
+  min-height: 28px;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  background: var(--brand-burgundy);
+  color: var(--bg-ivory);
+  font-family: var(--font-body);
+  font-size: 0.7rem;
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+.product-qr-badge svg {
+  flex: 0 0 auto;
+}
+
+.editorial-product-card .product-info {
+  gap: 0.35rem;
+  padding: 1rem 1rem 1.1rem;
+}
+
+.editorial-product-card .product-name {
+  margin: 0;
+  color: var(--text-slate);
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  font-weight: 600;
+  line-height: 1.15;
+}
+
+.product-latin-name {
+  color: var(--text-taupe);
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  font-style: italic;
+  line-height: 1.4;
+}
+
+.editorial-product-card .product-desc {
+  margin: 0.25rem 0 0.65rem;
+  font-size: 0.78rem;
+  line-height: 1.5;
+  -webkit-line-clamp: 2;
+}
+
+.editorial-product-card .product-footer {
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.editorial-product-card .product-price {
+  color: var(--text-slate);
+  font-size: 0.85rem;
+}
+
+.editorial-product-card .product-btn {
+  color: var(--brand-burgundy);
+  font-size: 0.68rem;
+  letter-spacing: 0.025em;
+  text-align: right;
+  text-transform: none;
+}
+
+.packaging-showcase-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 2rem;
+  margin-top: 2.5rem;
+}
+
+.packaging-showcase-card {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--border-hairline);
+  background: var(--bg-ivory);
+}
+
+.packaging-showcase-image {
+  position: relative;
+  aspect-ratio: 16 / 10;
+  overflow: hidden;
+  background: var(--bg-surface-tint);
+}
+
+.packaging-showcase-image > img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 500ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.packaging-showcase-card:hover .packaging-showcase-image > img {
+  transform: scale(1.03);
+}
+
+.packaging-image-placeholder {
+  display: grid;
+  width: 100%;
+  height: 100%;
+  place-items: center;
+  background: var(--bg-surface-tint);
+  color: var(--text-taupe);
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+}
+
+.packaging-showcase-tag {
+  position: absolute;
+  bottom: 1rem;
+  left: 1rem;
+  max-width: calc(100% - 2rem);
+  padding: 0.45rem 0.7rem;
+  background: rgba(255, 255, 255, 0.88);
+  color: var(--text-slate);
+  font-family: var(--font-body);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.packaging-showcase-copy {
+  padding: clamp(1.25rem, 3vw, 2rem);
+}
+
+.packaging-showcase-copy .section-eyebrow {
+  margin-bottom: 0.5rem;
+  font-size: 0.65rem;
+}
+
+.packaging-showcase-copy h3 {
+  margin: 0 0 0.75rem;
+  color: var(--text-slate);
+  font-family: var(--font-display);
+  font-size: clamp(1.4rem, 2.5vw, 1.8rem);
+  font-weight: 600;
+  line-height: 1.15;
+}
+
+.packaging-showcase-copy p {
+  margin: 0 0 1.25rem;
+  color: var(--text-taupe);
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  line-height: 1.7;
+}
+
+.packaging-showcase-included {
+  color: var(--brand-burgundy);
+  font-family: var(--font-body);
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.packaging-showcase-cta {
+  display: inline-flex;
+  min-height: 46px;
+  align-items: center;
+  justify-content: center;
+  padding: 0.75rem 1.1rem;
+  background: var(--brand-burgundy);
+  color: var(--bg-ivory);
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-decoration: none;
+  transition: background 180ms ease;
+}
+
+.packaging-showcase-cta:hover {
+  background: var(--brand-burgundy-hover);
+}
+
+@media (max-width: 1023px) {
+  .showcase-products-grid,
+  .single-stems-section .showcase-products-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1.25rem;
+  }
+}
+
+@media (max-width: 767px) {
+  .cluster-heading {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 1rem;
+    margin-bottom: 1.75rem;
+  }
+
+  .cluster-heading .catalog-explore-all-link {
+    margin: 0;
+  }
+
+  .showcase-products-grid,
+  .single-stems-section .showcase-products-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem;
+  }
+
+  .editorial-product-card .product-info {
+    padding: 0.75rem 0.65rem 0.85rem;
+  }
+
+  .editorial-product-card .product-name {
+    font-size: 1.12rem;
+  }
+
+  .editorial-product-card .product-desc {
+    font-size: 0.72rem;
+  }
+
+  .editorial-product-card .product-footer {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .editorial-product-card .product-btn {
+    text-align: left;
+  }
+
+  .product-qr-badge {
+    right: 0.45rem;
+    bottom: 0.45rem;
+    min-height: 26px;
+    padding: 4px 6px;
+    font-size: 0.62rem;
+  }
+
+  .editorial-product-card .product-badge {
+    top: 0.45rem;
+    left: 0.45rem;
+    font-size: 0.62rem;
+  }
+
+  .packaging-showcase-grid {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+    margin-top: 1.5rem;
+  }
+}
+
+/* ── INTERACTIVE MEMORY VAULT FOLIO ── */
+#vault,
+#memory-vault {
+  scroll-margin-top: 80px;
+}
+
+.vault-section {
+  padding: clamp(3.5rem, 6vw, 6rem) clamp(1rem, 4vw, 3rem);
+  background: var(--bg-ivory);
+}
+
+.vault-section .vault-inner {
+  width: 100%;
+  max-width: 1160px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.vault-section-header {
+  max-width: 760px;
+  margin: 0 auto 2.5rem;
+  text-align: center;
+}
+
+.vault-section .vault-eyebrow,
+.vault-copy-eyebrow {
+  display: block;
+  margin-bottom: 0.75rem;
+  color: var(--text-taupe);
+  font: 600 0.68rem/1.4 var(--font-body);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.vault-section .vault-title {
+  margin: 0 0 0.8rem;
+  color: var(--text-slate);
+  font: 400 clamp(2rem, 4vw, 3.2rem)/1.12 var(--font-display);
+}
+
+.vault-section .vault-desc {
+  max-width: 66ch;
+  margin: 0 auto;
+  color: var(--text-taupe);
+  font: 400 0.95rem/1.8 var(--font-body);
+}
+
+.vault-simulator-wrap {
+  width: 100%;
+  max-width: 1040px;
+  margin: 0 auto;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-hairline);
+  border-radius: 8px;
+  box-shadow: 0 16px 48px rgba(35, 43, 56, 0.08);
+  overflow: hidden;
+}
+
+.vault-simulator-header {
+  min-height: 36px;
+  padding: 0 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border-hairline);
+}
+
+.folio-label-left,
+.folio-label-right {
+  color: var(--text-taupe);
+  font: 500 0.65rem/1.4 var(--font-body);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.folio-label-right {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  white-space: nowrap;
+}
+
+.folio-status-dot {
+  width: 7px;
+  height: 7px;
+  display: inline-block;
+  border-radius: 50%;
+  background: #77916B;
+  box-shadow: 0 0 0 3px rgba(119, 145, 107, 0.12);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.vault-sim-nav {
+  display: flex;
+  gap: 0.5rem;
+  padding: 0 1.5rem;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: thin;
+  background: var(--bg-surface-tint);
+  border-bottom: 1px solid var(--border-hairline);
+}
+
+.vault-sim-btn {
+  flex: 0 0 auto;
+  min-height: 48px;
+  padding: 0.7rem 0.85rem;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  color: var(--text-taupe);
+  background: transparent;
+  font: 500 0.68rem/1.3 var(--font-body);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color 150ms ease, border-color 150ms ease, background 150ms ease;
+}
+
+.vault-sim-btn:hover,
+.vault-sim-btn.active {
+  color: var(--brand-burgundy);
+}
+
+.vault-sim-btn.active {
+  background: var(--bg-surface);
+  border-bottom-color: var(--brand-burgundy);
+  font-weight: 600;
+}
+
+.vault-sim-btn:focus-visible,
+.folio-play-btn:focus-visible,
+.vault-sim-body:focus-visible {
+  outline: 2px solid var(--brand-burgundy);
+  outline-offset: -2px;
+}
+
+.vault-folio-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  gap: clamp(1.75rem, 4vw, 2.5rem);
+  align-items: center;
+  padding: clamp(2rem, 4vw, 3.5rem);
+}
+
+.vault-section .vault-sim-body {
+  min-width: 0;
+  min-height: 440px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sim-panel {
+  width: 100%;
+  animation: folioFadeIn 200ms ease-out both;
+}
+
+.folio-polaroid {
+  width: 100%;
+  max-width: 340px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.folio-polaroid-frame {
+  width: 100%;
+  padding: 14px 14px 44px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-hairline);
+  box-shadow:
+    0 2px 4px rgba(35, 43, 56, 0.04),
+    0 8px 16px rgba(35, 43, 56, 0.06),
+    0 16px 36px rgba(35, 43, 56, 0.1);
+  transform: rotate(-2.5deg);
+  transition: transform 300ms ease;
+}
+
+.folio-polaroid-frame:hover {
+  transform: rotate(0deg);
+}
+
+.folio-polaroid-img {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  border-radius: 2px;
+  background: var(--bg-surface-tint);
+}
+
+.folio-polaroid-placeholder {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  display: grid;
+  place-items: center;
+  color: var(--brand-burgundy);
+  background:
+    radial-gradient(ellipse at 30% 35%, rgba(197, 168, 128, 0.28), transparent 38%),
+    var(--bg-surface-tint);
+  font: 400 2.5rem/1 var(--font-display);
+}
+
+.folio-polaroid-script {
+  margin: 1rem 0 0.75rem;
+  color: var(--brand-burgundy);
+  font: 400 1.45rem/1.25 var(--font-script);
+  text-align: center;
+}
+
+.folio-polaroid-stamp {
+  width: 100%;
+  padding-top: 8px;
+  border-top: 1px solid var(--border-hairline);
+  color: var(--text-muted);
+  font: 500 0.62rem/1.4 var(--font-body);
+  letter-spacing: 0.14em;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.folio-audio-card,
+.folio-herbarium-card {
+  width: 100%;
+  max-width: 440px;
+  margin: 0 auto;
+  padding: clamp(1.25rem, 3vw, 1.75rem);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-hairline);
+  border-radius: 6px;
+  box-shadow: 0 8px 24px rgba(35, 43, 56, 0.06);
+}
+
+.folio-audio-kicker,
+.folio-herb-eyebrow {
+  margin-bottom: 1.25rem;
+  color: var(--text-taupe);
+  font: 600 0.66rem/1.5 var(--font-body);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.folio-waveform {
+  height: 48px;
+  margin-bottom: 1rem;
+  padding: 0 10px;
+  display: flex;
+  align-items: center;
+  gap: 2.5px;
+  background: rgba(35, 43, 56, 0.03);
+  border-radius: 4px;
+}
+
+.folio-waveform span {
+  flex: 1;
+  min-width: 2px;
+  border-radius: 2px;
+  background: linear-gradient(to top, var(--brand-burgundy), var(--accent-gold));
+  opacity: 0.72;
+  transform-origin: center;
+}
+
+.folio-waveform.is-playing span {
+  animation: folioWave 650ms ease-in-out infinite alternate;
+  animation-delay: calc(var(--wave-index, 0) * -27ms);
+}
+
+.folio-audio-controls {
+  margin-bottom: 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.folio-play-btn {
+  min-height: 40px;
+  padding: 0.5rem 0.75rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  border: 0;
+  border-radius: 999px;
+  color: var(--bg-ivory);
+  background: var(--brand-burgundy);
+  font: 600 0.65rem/1.3 var(--font-body);
+  letter-spacing: 0.06em;
+  cursor: pointer;
+}
+
+.folio-play-btn:hover {
+  background: var(--brand-burgundy-hover);
+}
+
+.folio-play-btn > span {
+  font-size: 0.76rem;
+}
+
+.folio-audio-time {
+  color: var(--text-taupe);
+  font: 500 0.72rem/1.4 var(--font-body);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.folio-audio-quote {
+  margin: 0;
+  padding-left: 14px;
+  border-left: 2px solid rgba(197, 168, 128, 0.6);
+}
+
+.folio-audio-quote p {
+  margin-bottom: 6px;
+  color: var(--text-slate);
+  font: italic 1.12rem/1.55 var(--font-display);
+}
+
+.folio-audio-quote footer {
+  color: var(--text-taupe);
+  font: 400 0.68rem/1.5 var(--font-body);
+}
+
+.folio-letter-card {
+  position: relative;
+  width: 100%;
+  max-width: 440px;
+  margin: 0 auto;
+  padding: clamp(1.5rem, 4vw, 2.5rem);
+  background-color: #fefcf8;
+  background-image: repeating-linear-gradient(
+    0deg,
+    rgba(113, 91, 63, 0.025) 0,
+    rgba(113, 91, 63, 0.025) 1px,
+    transparent 1px,
+    transparent 4px
+  );
+  border: 1px solid rgba(93, 77, 50, 0.14);
+  box-shadow: 0 12px 32px rgba(35, 43, 56, 0.1);
+}
+
+.folio-wax-seal {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--accent-gold);
+  border-radius: 50%;
+  color: #f7e9d8;
+  background: var(--brand-burgundy);
+  box-shadow: 0 3px 10px rgba(83, 27, 33, 0.22);
+  font: 700 0.6rem/1 var(--font-body);
+  letter-spacing: 0.04em;
+}
+
+.folio-letter-head {
+  max-width: calc(100% - 3rem);
+  margin-bottom: 1rem;
+  color: #6d5943;
+  font: 600 1.3rem/1.3 var(--font-display);
+}
+
+.folio-letter-body {
+  margin: 0;
+  color: #2b2b2b;
+  font: italic 0.95rem/1.8 var(--font-display);
+}
+
+.folio-drop-cap {
+  float: left;
+  padding: 0 8px 0 0;
+  color: var(--brand-burgundy);
+  font: 600 3rem/0.85 var(--font-display);
+}
+
+.folio-letter-sign {
+  margin-top: 1.25rem;
+  color: var(--text-slate);
+  font: 400 0.9rem/1.5 var(--font-display);
+}
+
+.folio-letter-sign span {
+  display: inline-block;
+  color: var(--brand-burgundy);
+  font: 400 1.5rem/1.2 var(--font-script);
+}
+
+.folio-herb-eyebrow {
+  margin-bottom: 0.6rem;
+}
+
+.folio-herb-name {
+  margin: 0 0 0.7rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--border-hairline);
+  color: var(--text-slate);
+  font: italic 1.25rem/1.3 var(--font-display);
+}
+
+.folio-herb-certificate {
+  margin-bottom: 1rem;
+  color: var(--text-taupe);
+  font: 400 0.78rem/1.55 var(--font-body);
+}
+
+.folio-herb-meta {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.folio-herb-row {
+  display: grid;
+  grid-template-columns: minmax(6.5rem, 0.8fr) minmax(0, 1.6fr);
+  gap: 0.65rem;
+  align-items: baseline;
+}
+
+.folio-herb-row dt {
+  color: var(--text-taupe);
+  font: 600 0.63rem/1.4 var(--font-body);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.folio-herb-row dd {
+  margin: 0;
+  color: var(--text-slate);
+  font: 400 0.78rem/1.5 var(--font-body);
+  overflow-wrap: anywhere;
+}
+
+.vault-copy {
+  min-width: 0;
+}
+
+.vault-copy-eyebrow {
+  color: var(--brand-burgundy);
+}
+
+.vault-copy-title {
+  margin: 0 0 1rem;
+  color: var(--text-slate);
+  font: 500 clamp(1.6rem, 2.5vw, 2.2rem)/1.15 var(--font-display);
+}
+
+.vault-copy-description {
+  margin-bottom: 1.5rem;
+  color: var(--text-taupe);
+  font: 400 0.9rem/1.8 var(--font-body);
+}
+
+.vault-commission-cta {
+  width: fit-content;
+  min-height: 48px;
+  text-decoration: none;
+}
+
+.vault-privacy,
+.vault-workflow {
+  margin: 3.5rem auto 0;
+  width: 100%;
+  max-width: 1100px;
+}
+
+.vault-block-heading {
+  margin-bottom: 1.5rem;
+  text-align: center;
+}
+
+.vault-block-heading .vault-eyebrow {
+  margin-bottom: 0.5rem;
+}
+
+.vault-block-heading h3 {
+  color: var(--text-slate);
+  font: 500 clamp(1.5rem, 2.8vw, 2rem)/1.2 var(--font-display);
+}
+
+.vault-privacy-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.vault-privacy-card {
+  min-width: 0;
+  padding: 1.25rem;
+  background: rgba(255, 255, 255, 0.68);
+  border: 1px solid var(--border-hairline);
+}
+
+.vault-card-index {
+  display: block;
+  margin-bottom: 0.7rem;
+  color: var(--accent-gold);
+  font: italic 1.15rem/1 var(--font-display);
+}
+
+.vault-privacy-card h4,
+.vault-workflow-card h4 {
+  margin-bottom: 0.55rem;
+  color: var(--text-slate);
+  font: 600 1rem/1.35 var(--font-display);
+}
+
+.vault-privacy-card p,
+.vault-workflow-card p {
+  color: var(--text-taupe);
+  font: 400 0.78rem/1.65 var(--font-body);
+}
+
+.vault-workflow-grid {
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 2rem;
+  list-style: none;
+}
+
+.vault-workflow-card {
+  position: relative;
+  min-width: 0;
+  padding: 1.25rem;
+  border-top: 1px solid rgba(83, 27, 33, 0.24);
+}
+
+.vault-workflow-number {
+  display: block;
+  margin-bottom: 0.75rem;
+  color: var(--brand-burgundy);
+  font: italic 1.3rem/1 var(--font-display);
+}
+
+@keyframes folioWave {
+  from { transform: scaleY(0.55); opacity: 0.55; }
+  to { transform: scaleY(1); opacity: 1; }
+}
+
+@media (max-width: 900px) {
+  .vault-privacy-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 767px) {
+  .vault-folio-body {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2rem;
+    padding: 1.75rem 1.25rem;
+  }
+
+  .vault-section .vault-sim-body {
+    min-height: 480px;
+  }
+
+  .vault-copy {
+    text-align: center;
+  }
+
+  .vault-copy .vault-commission-cta {
+    margin: 0 auto;
+  }
+
+  .vault-privacy,
+  .vault-workflow {
+    margin-top: 2.75rem;
+  }
+
+  .vault-workflow-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.75rem;
+  }
+
+  .vault-workflow-card {
+    padding: 1rem 1.1rem;
+  }
+}
+
+@media (max-width: 520px) {
+  .vault-simulator-header {
+    align-items: flex-start;
+    flex-direction: column;
+    justify-content: center;
+    gap: 0.25rem;
+    min-height: 52px;
+    padding: 0.55rem 1rem;
+  }
+
+  .folio-label-left,
+  .folio-label-right {
+    font-size: 0.58rem;
+  }
+
+  .vault-sim-nav {
+    gap: 0.15rem;
+    padding: 0 0.6rem;
+  }
+
+  .vault-sim-btn {
+    min-height: 46px;
+    padding: 0.65rem 0.6rem;
+    font-size: 0.61rem;
+  }
+
+  .vault-section .vault-sim-body {
+    min-height: 480px;
+  }
+
+  .folio-herb-row {
+    grid-template-columns: minmax(5.5rem, 0.75fr) minmax(0, 1.5fr);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vault-section .sim-panel {
+    animation: none;
+  }
+
+  .vault-section .folio-waveform.is-playing span {
+    animation: none;
+  }
+
+  .vault-sim-btn,
+  .folio-polaroid-frame {
+    transition: none;
+  }
+}
+

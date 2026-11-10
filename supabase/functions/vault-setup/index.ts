@@ -8,6 +8,11 @@ const PHOTO_MAX_BYTES = 10 * 1024 * 1024; // 10 MB
 const AUDIO_MAX_BYTES = 25 * 1024 * 1024; // 25 MB
 const VIDEO_MAX_BYTES = 50 * 1024 * 1024; // 50 MB
 const PHOTO_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
+const PHOTO_EXTENSIONS: Record<string, string> = {
+  "image/jpeg": "jpg",
+  "image/png": "png",
+  "image/webp": "webp",
+};
 const AUDIO_EXTENSIONS: Record<string, string> = {
   "audio/mpeg": "mp3",
   "audio/mp3": "mp3",
@@ -108,7 +113,7 @@ async function handleGetUploadUrl(
 
   const bucket = isPhoto ? "product-images" : "vault-media";
   const filePath = isPhoto
-    ? `vault/${orderId}/polaroid.webp`
+    ? `vault/${orderId}/polaroid.${PHOTO_EXTENSIONS[mimeType] || "webp"}`
     : isAudio
       ? `vault/${orderId}/audio.${AUDIO_EXTENSIONS[mimeType] || "mp3"}`
       : `vault/${orderId}/video.${VIDEO_EXTENSIONS[mimeType] || "mp4"}`;
@@ -180,7 +185,7 @@ async function handleUpload(
 
   const bucket = isPhoto ? "product-images" : "vault-media";
   const filePath = isPhoto
-    ? `vault/${orderId}/polaroid.webp`
+    ? `vault/${orderId}/polaroid.${PHOTO_EXTENSIONS[mimeType] || "webp"}`
     : isAudio
       ? `vault/${orderId}/audio.${AUDIO_EXTENSIONS[mimeType] || "mp3"}`
       : `vault/${orderId}/video.${VIDEO_EXTENSIONS[mimeType] || "mp4"}`;
