@@ -51,6 +51,28 @@ export default defineConfig(({ mode }) => {
       outDir: path.resolve(import.meta.dirname, "dist"),
       emptyOutDir: true,
       sourcemap: sentryPlugin !== null,
+      rollupOptions: {
+        output: {
+          // Pisahkan vendor besar agar cache browser tidak invalid setiap deploy.
+          // Hanya library spesifik yang dipecah; sisanya mengikuti chunking otomatis Vite.
+          manualChunks(id: string) {
+            if (!id.includes("node_modules")) return;
+            if (id.includes("@sentry")) return "vendor-sentry";
+            if (id.includes("@supabase")) return "vendor-supabase";
+            if (id.includes("lucide-react")) return "vendor-icons";
+            if (id.includes("qrcode")) return "vendor-qr";
+            if (
+              id.includes("react-dom") ||
+              id.includes("/react/") ||
+              id.includes("scheduler") ||
+              id.includes("wouter")
+            ) {
+              return "vendor-react";
+            }
+            return;
+          },
+        },
+      },
     },
     server: {
       port,
