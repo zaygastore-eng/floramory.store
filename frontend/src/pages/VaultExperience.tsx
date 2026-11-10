@@ -213,7 +213,7 @@ export default function VaultExperience({
     e.preventDefault();
     if (!product) return;
     const pin = pinDigits.join("");
-    if (!/^\d{6}$/.test(pin)) return;
+    if (!/^\d{4,6}$/.test(pin)) return;
 
     setPinBusy(true);
     setPinMessage("");

@@ -70,7 +70,7 @@ export async function sendAdminEmail(
   }
 }
 
-export function emailLayout(title: string, rows: Array<[string, string]>, footer = ""): string {
+export function emailLayout(title: string, rows: string[][], footer = ""): string {
   const cells = rows
     .map(
       ([label, value]) =>

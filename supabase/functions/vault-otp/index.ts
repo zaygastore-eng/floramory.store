@@ -315,8 +315,8 @@ async function handleOpen(
     }
   }
 
-  if (!/^\d{6}$/.test(pin)) {
-    return json(req, { ok: false, verified: false, message: "PIN harus berupa 6 digit angka." }, 400);
+  if (!/^\d{4,6}$/.test(pin)) {
+    return json(req, { ok: false, verified: false, message: "PIN harus berupa 4–6 digit angka." }, 400);
   }
 
   if (isLocked(product)) {
