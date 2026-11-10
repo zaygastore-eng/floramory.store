@@ -1508,7 +1508,8 @@ export default function Admin() {
           const activeBaseUrl = (localStorage.getItem(BASE_URL_KEY) || baseUrl || PRODUCTION_SITE_URL)
             .trim()
             .replace(/\/+$/, "");
-          const vaultUrl = `${activeBaseUrl}/vault-setup?order=${encodeURIComponent(order.id || "")}`;
+          const setupToken = order.vault_setup_token || order.id || "";
+          const vaultUrl = `${activeBaseUrl}/vault-setup?token=${encodeURIComponent(setupToken)}`;
           return (
             <div className="admin-list-item admin-order-row" key={order.id || `${order.whatsapp}-${order.created_at}`}>
               <div className="admin-order-main">

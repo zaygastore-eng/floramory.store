@@ -50,6 +50,8 @@ export default function VaultSetup() {
   const [saving, setSaving] = useState(false);
   const [uploadError, setUploadError] = useState("");
   const [saved, setSaved] = useState(false);
+  const [vaultLocked, setVaultLocked] = useState(false);
+  const [vaultExpired, setVaultExpired] = useState(false);
   const [previewModalOpen, setPreviewModalOpen] = useState(false);
   const [photoDragActive, setPhotoDragActive] = useState(false);
   const [compressingPhoto, setCompressingPhoto] = useState(false);
@@ -71,10 +73,12 @@ export default function VaultSetup() {
       .then(result => {
         if (!active) return;
         if (!result.ok || !result.order) {
+          setVaultExpired(Boolean(result.vaultExpired));
           setPageError(result.message || "Link tidak valid atau pesanan tidak ditemukan.");
           return;
         }
         setOrder(result.order);
+        setVaultLocked(Boolean(result.vaultLocked));
         setPersonalMessage(result.order.personal_message || "");
         setPhotoUrl(result.order.foto_vault || "");
         setPhotoPreview(result.order.foto_vault || "");
@@ -315,8 +319,8 @@ export default function VaultSetup() {
       setUploadError("Periksa kembali link Spotify. Gunakan tautan track, album, atau playlist yang valid.");
       return;
     }
-    if (customPin && !/^\d{4,6}$/.test(customPin)) {
-      setUploadError("PIN rahasia harus terdiri dari 4 sampai 6 digit angka.");
+    if (customPin && !/^\d{6}$/.test(customPin)) {
+      setUploadError("PIN rahasia harus terdiri dari 6 digit angka.");
       return;
     }
 
@@ -329,8 +333,10 @@ export default function VaultSetup() {
         audio_url: audioSource === "spotify" ? spotifyUrl.trim() : audioUrl,
         audio_durasi: audioSource === "spotify" ? 0 : audioDuration,
         video_url: videoUrl.trim(),
+        vault_pin: customPin.trim(),
       });
       if (!result.ok) throw new Error(result.message);
+      setVaultLocked(true);
       setSaved(true);
     } catch (error) {
       setUploadError(error instanceof Error ? error.message : "Gagal menyimpan Memory Vault.");
@@ -374,12 +380,16 @@ export default function VaultSetup() {
         ) : pageError || !order ? (
           <section className="vault-setup-card text-center" role="alert">
             <div className="vault-setup-empty-icon" aria-hidden="true">🌿</div>
-            <h2 className="vault-setup-card-title">Link Tidak Valid atau Pesanan Dibatalkan</h2>
+            <h2 className="vault-setup-card-title">
+              {vaultExpired ? "Link Konfigurasi Kedaluwarsa" : "Link Tidak Valid atau Pesanan Dibatalkan"}
+            </h2>
             <p className="vault-setup-hint">
-              Periksa kembali tautan yang dikirimkan oleh atelier A Chapter atau hubungi kurator WhatsApp kami.
+              {vaultExpired
+                ? "Masa berlaku tautan ini sudah habis. Hubungi kurator A Chapter melalui WhatsApp untuk mendapatkan tautan baru."
+                : "Periksa kembali tautan yang dikirimkan oleh atelier A Chapter atau hubungi kurator WhatsApp kami."}
             </p>
           </section>
-        ) : saved ? (
+        ) : saved || vaultLocked ? (
           <section className="vault-setup-card text-center vault-setup-success-card" role="status">
             <div className="vault-wax-seal-hero" aria-hidden="true" style={{ margin: "0 auto 1.5rem" }}>
               <span className="wax-seal-circle">A · C</span>
@@ -801,7 +811,7 @@ export default function VaultSetup() {
                 <div className="card-step-badge">OPTIONAL SECURITY</div>
                 <h2 className="vault-setup-card-title">Secret PIN Protection</h2>
                 <p className="vault-setup-card-sub">
-                  Atur 4–6 digit PIN (opsional): Hanya orang yang tahu kode ini yang dapat membuka brankas memori.
+                  Atur 6 digit PIN (opsional): Hanya orang yang tahu kode ini yang dapat membuka brankas memori.
                 </p>
 
                 <input

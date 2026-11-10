@@ -5,7 +5,7 @@ import ProductSpecimen from "@/components/ProductSpecimen";
 import VaultExperience from "@/pages/VaultExperience";
 const AudioPlayer = lazy(() => import("@/components/AudioPlayer"));
 import {
-  fetchProductById,
+  fetchVaultPreview,
   fetchWhatsAppNumber,
   verifyVaultPin,
   tierLabel,
@@ -24,6 +24,7 @@ export default function Produk() {
   const [error, setError] = useState(false);
   const [waNumber, setWaNumber] = useState(WA_FALLBACK);
   const [vaultUnlocked, setVaultUnlocked] = useState(false);
+  const [hasVault, setHasVault] = useState(false);
   const [pinDigits, setPinDigits] = useState<string[]>(() => Array(6).fill(""));
   const [pinMessage, setPinMessage] = useState("");
   const [pinLocked, setPinLocked] = useState(false);
@@ -39,17 +40,15 @@ export default function Produk() {
       if (value) setWaNumber(normalizeWhatsApp(value) || WA_FALLBACK);
     });
 
-    fetchProductById(id)
-      .then((p) => {
-        if (!p) {
+    fetchVaultPreview(id)
+      .then((preview) => {
+        if (!preview) {
           setError(true);
         } else {
+          const p = preview.product;
           setProduct(p);
-          try {
-            setVaultUnlocked(sessionStorage.getItem(`fm_unlocked_${p.id}`) === "true");
-          } catch {
-            setVaultUnlocked(false);
-          }
+          setHasVault(preview.hasVault);
+          setVaultUnlocked(preview.unlocked);
           applyProductMeta({
             id: p.id,
             nama_produk: p.nama_produk,
@@ -99,7 +98,7 @@ export default function Produk() {
 
   // When a physical QR is scanned pointing to /produk?id=UUID:
   // If the product has a linked memoir vault or is a custom order, immediately render VaultExperience
-  if (hasMemoir || !product.is_catalog) {
+  if (hasVault || hasMemoir || !product.is_catalog) {
     return <VaultExperience productIdOverride={product.id} />;
   }
 

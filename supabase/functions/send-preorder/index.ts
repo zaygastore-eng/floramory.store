@@ -104,6 +104,15 @@ function createOrderNumber(): string {
   return `ORD-${crypto.randomUUID().replace(/-/g, "").slice(0, 12).toUpperCase()}`;
 }
 
+// Token privat untuk konsol pengirim (/vault-setup). Dipisahkan dari
+// order id agar tautan yang bocor tidak otomatis memberi akses tulis
+// ke pesanan lain, dan agar bisa kedaluwarsa.
+function createSetupToken(): string {
+  const bytes = new Uint8Array(32);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes).map((byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
 function getStr(payload: Record<string, unknown>, key: string): string {
   return typeof payload[key] === "string" ? String(payload[key]) : "";
 }
@@ -258,6 +267,8 @@ Deno.serve(async (req: Request) => {
       total_amount: totalAmount,
       dp_amount: dpAmount,
       wa_sent: false,
+      vault_setup_token: createSetupToken(),
+      vault_setup_expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
     })
     .select("id")
     .single();

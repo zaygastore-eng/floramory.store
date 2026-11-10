@@ -60,7 +60,7 @@ Deno.serve(async (req: Request) => {
     });
     const { data: order, error } = await admin
       .from("preorder_orders")
-      .select("id, order_number, customer_name, whatsapp, product_name")
+      .select("id, order_number, customer_name, whatsapp, product_name, vault_setup_token")
       .eq("id", orderId)
       .maybeSingle();
     if (error) {
@@ -70,14 +70,19 @@ Deno.serve(async (req: Request) => {
     if (!order) return json({ message: "Pesanan tidak ditemukan." }, 404);
 
     // Update status to dp_verified if still in waiting state
-    await admin
+    const { error: statusError } = await admin
       .from("preorder_orders")
       .update({ status: "dp_verified" })
       .eq("id", orderId);
+    if (statusError) {
+      console.error("[DP_NOTIFICATION_ERROR] Could not update status:", statusError.message);
+      return json({ message: "Gagal memperbarui status pesanan." }, 500);
+    }
 
     const customerName = order.customer_name || "Pemesan";
     const orderNum = order.order_number || order.id.slice(0, 8).toUpperCase();
-    const vaultUrl = `https://www.achapter.my.id/vault-setup?token=${order.id}`;
+    const setupToken = String(order.vault_setup_token || order.id).trim();
+    const vaultUrl = `https://www.achapter.my.id/vault-setup?token=${encodeURIComponent(setupToken)}`;
 
     const waText = `Terima kasih Kak ${customerName}, pembayaran DP 50% untuk pesanan #${orderNum} telah kami terima.\n\nBunga pilihan Anda saat ini sedang memasuki tahap dehidrasi laboratorium.\nSilakan lengkapi rekaman suara, foto polaroid, dan surat rahasia melalui link privat atelier berikut:\n🔗 ${vaultUrl}\n\nKarya akan mulai dicasting setelah memori selesai Anda susun.`;
 

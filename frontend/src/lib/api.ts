@@ -68,6 +68,9 @@ export interface PreOrder {
   video_url?: string;
   vault_submitted_at?: string;
   vault_pin?: string;
+  vault_setup_token?: string;
+  vault_setup_expires_at?: string;
+  vault_locked_at?: string;
   status?: string;
   created_at?: string;
 }
@@ -449,6 +452,65 @@ export async function verifyVaultPin(
   };
 }
 
+export interface VaultPreviewResult {
+  product: Product;
+  hasPin: boolean;
+  hasVault: boolean;
+  unlocked: boolean;
+  locked: boolean;
+}
+
+/**
+ * Metadata brankas yang aman ditampilkan sebelum PIN dimasukkan.
+ * Isi surat/media hanya ikut jika produk memang tidak punya PIN.
+ */
+export async function fetchVaultPreview(productId: string): Promise<VaultPreviewResult | null> {
+  const data = await callVaultPin({ action: "preview", product_id: productId });
+  if (data.ok !== true || !isRecord(data.product)) return null;
+  return {
+    product: normalizeProduct(data.product as Partial<Product>),
+    hasPin: data.has_pin === true,
+    hasVault: data.has_vault === true,
+    unlocked: data.unlocked === true,
+    locked: data.locked === true,
+  };
+}
+
+export interface VaultOpenResult {
+  ok: boolean;
+  verified: boolean;
+  product?: Product;
+  token?: string;
+  locked?: boolean;
+  attemptsRemaining?: number;
+  message?: string;
+}
+
+/**
+ * Buka isi brankas dengan PIN atau token sesi 30 menit. Isi vault
+ * hanya dikirim server setelah PIN valid.
+ */
+export async function openVault(
+  productId: string,
+  options: { pin?: string; token?: string }
+): Promise<VaultOpenResult> {
+  const data = await callVaultPin({
+    action: "open",
+    product_id: productId,
+    ...(options.pin ? { pin: options.pin } : {}),
+    ...(options.token ? { token: options.token } : {}),
+  });
+  return {
+    ok: data.ok === true,
+    verified: data.verified === true,
+    ...(isRecord(data.product) ? { product: normalizeProduct(data.product as Partial<Product>) } : {}),
+    ...(typeof data.token === "string" ? { token: data.token } : {}),
+    ...(data.locked === true ? { locked: true } : {}),
+    ...(typeof data.attemptsRemaining === "number" ? { attemptsRemaining: data.attemptsRemaining } : {}),
+    ...(typeof data.message === "string" ? { message: data.message } : {}),
+  };
+}
+
 async function callVaultSetup(payload: Record<string, unknown>): Promise<{
   status: number;
   data: Record<string, unknown>;
@@ -472,8 +534,17 @@ export async function fetchVaultSetup(orderId: string): Promise<{
   ok: boolean;
   order?: PreOrder;
   message?: string;
+  vaultLocked?: boolean;
+  vaultExpired?: boolean;
 }> {
   const { status, data } = await callVaultSetup({ action: "get", order_id: orderId });
+  if (data.expired === true || data.vault_expired === true) {
+    return {
+      ok: false,
+      vaultExpired: true,
+      message: String(data.message || "Link konfigurasi sudah kedaluwarsa."),
+    };
+  }
   const rawOrder = data.order;
   if (status >= 400 || data.ok !== true || !rawOrder || typeof rawOrder !== "object" || Array.isArray(rawOrder)) {
     return {
@@ -484,6 +555,8 @@ export async function fetchVaultSetup(orderId: string): Promise<{
   return {
     ok: true,
     order: normalizePreOrder(rawOrder as Partial<PreOrder> & Record<string, unknown>),
+    vaultLocked: data.vault_locked === true,
+    vaultExpired: data.vault_expired === true,
   };
 }
 
@@ -623,8 +696,9 @@ export async function saveVaultSetup(
     audio_url: string;
     audio_durasi?: number;
     video_url: string;
+    vault_pin?: string;
   }
-): Promise<{ ok: boolean; message: string }> {
+): Promise<{ ok: boolean; message: string; locked?: boolean; pin?: string }> {
   const { status, data } = await callVaultSetup({
     action: "save",
     order_id: orderId,
@@ -633,6 +707,8 @@ export async function saveVaultSetup(
   return {
     ok: status < 400 && data.ok === true,
     message: String(data.message || "Gagal menyimpan Memory Vault."),
+    ...(data.locked === true ? { locked: true } : {}),
+    ...(typeof data.pin === "string" ? { pin: data.pin } : {}),
   };
 }
 
@@ -762,6 +838,9 @@ function normalizePreOrder(obj: Partial<PreOrder> & Record<string, unknown>): Pr
     video_url: String(obj.video_url || "").trim(),
     vault_submitted_at: String(obj.vault_submitted_at || "").trim(),
     vault_pin: String(obj.vault_pin || "").trim(),
+    vault_setup_token: String(obj.vault_setup_token || "").trim(),
+    vault_setup_expires_at: String(obj.vault_setup_expires_at || "").trim(),
+    vault_locked_at: String(obj.vault_locked_at || "").trim(),
     status: String(obj.status || "new").trim(),
     created_at: String(obj.created_at || "").trim(),
   };
@@ -907,8 +986,11 @@ export async function fetchProductById(id: string): Promise<Product | null> {
   const normalizedId = id.trim().toUpperCase();
 
   try {
+    // Kolom aman untuk publik. Isi Memory Vault (surat, foto, audio,
+    // video, nama penerima, nomor WA penerima) tidak lagi dapat dibaca
+    // lewat PostgREST — gunakan fetchVaultPreview/openVault.
     const res = await fetch(
-      `${SUPABASE_URL}/rest/v1/products?id=eq.${encodeURIComponent(normalizedId)}&status=eq.active&select=id,nama_produk,tier,harga,bunga,deskripsi,bahan,ukuran,nama_pembeli,dari,pesan_personal,foto_produk,foto_qr,audio_url,audio_durasi,video_url,foto_vault,is_catalog,status&limit=1`,
+      `${SUPABASE_URL}/rest/v1/products?id=eq.${encodeURIComponent(normalizedId)}&status=eq.active&select=id,nama_produk,tier,harga,bunga,deskripsi,bahan,ukuran,foto_produk,foto_qr,is_catalog,status&limit=1`,
       { headers: supabaseHeaders() }
     );
     if (!res.ok) return null;
@@ -1134,7 +1216,7 @@ function isTierConstraintError(message: string): boolean {
 
 // Kolom eksplisit (bukan select=*). updated_at tidak dipakai UI.
 const PREORDER_SELECT =
-  "id,order_number,customer_name,whatsapp,product_id,product_name,custom_request,recipient_name,sender_name,personal_message,recipient_whatsapp,foto_vault,audio_url,audio_durasi,video_url,vault_submitted_at,vault_pin,status,created_at";
+  "id,order_number,customer_name,whatsapp,product_id,product_name,custom_request,recipient_name,sender_name,personal_message,recipient_whatsapp,foto_vault,audio_url,audio_durasi,video_url,vault_submitted_at,vault_pin,vault_setup_token,vault_setup_expires_at,vault_locked_at,status,created_at";
 
 export interface PreOrderPage {
   orders: PreOrder[];

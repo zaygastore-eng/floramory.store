@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef, Suspense, lazy } from "react";
 import { useRoute } from "wouter";
 import {
-  fetchProductById,
+  fetchVaultPreview,
   fetchWhatsAppNumber,
-  verifyVaultPin,
+  openVault,
   getVaultAudioUrl,
   type Product,
 } from "@/lib/api";
@@ -89,35 +89,86 @@ export default function VaultExperience({
       return;
     }
 
-    fetchWhatsAppNumber().then(num => {
-      setWaNumber(normalizeWhatsApp(num) || WA_FALLBACK);
+    let active = true;
+
+    fetchWhatsAppNumber().then((num) => {
+      if (active) setWaNumber(normalizeWhatsApp(num) || WA_FALLBACK);
     });
 
-    fetchProductById(vaultId)
-      .then(p => {
-        if (!p) {
-          setError(true);
-        } else {
-          setProduct(p);
+    const tokenKey = (id: string) => `fm_vault_token_${id}`;
+
+    const loadVault = async () => {
+      // Preview hanya berisi metadata aman. Isi surat/media baru
+      // dikirim server setelah PIN atau token sesi valid.
+      const preview = await fetchVaultPreview(vaultId);
+      if (!active) return;
+      if (!preview) {
+        setError(true);
+        return;
+      }
+
+      let current = preview.product;
+      setProduct(current);
+
+      applyProductMeta({
+        id: current.id,
+        nama_produk: `${current.nama_pembeli ? `Memoir untuk ${current.nama_pembeli}` : current.nama_produk} — A Chapter Memory Vault`,
+        deskripsi: "A secret digital chapter preserved in eternal botanical form.",
+        imageUrl: current.foto_vault || current.foto_produk,
+      });
+      // Brankas penerima bersifat privat: jangan pernah diindeks mesin pencari.
+      applyNoIndexMeta(document.title);
+
+      // Produk tanpa PIN (katalog) memang tidak pernah terkunci.
+      if (preview.unlocked) {
+        setVaultUnlocked(true);
+        setOpeningCeremony("done");
+        return;
+      }
+
+      // Coba buka ulang sesi 30 menit dari sessionStorage.
+      let savedToken = "";
+      try {
+        savedToken = sessionStorage.getItem(tokenKey(current.id)) || "";
+      } catch {
+        savedToken = "";
+      }
+      if (!savedToken) return;
+
+      const opened = await openVault(current.id, { token: savedToken });
+      if (!active) return;
+      if (opened.ok && opened.product) {
+        current = opened.product;
+        setProduct(current);
+        setVaultUnlocked(true);
+        setOpeningCeremony("done");
+        if (opened.token) {
           try {
-            const isUnlocked = sessionStorage.getItem(`fm_unlocked_${p.id}`) === "true";
-            // If product has no pin or is already unlocked
-            setVaultUnlocked(isUnlocked || Boolean(p.is_catalog && !p.vault_pin));
+            sessionStorage.setItem(tokenKey(current.id), opened.token);
           } catch {
-            setVaultUnlocked(false);
+            // storage tidak tersedia: tetap tampilkan konten sesi ini
           }
-          applyProductMeta({
-            id: p.id,
-            nama_produk: `${p.nama_pembeli ? `Memoir untuk ${p.nama_pembeli}` : p.nama_produk} — A Chapter Memory Vault`,
-            deskripsi: "A secret digital chapter preserved in eternal botanical form.",
-            imageUrl: p.foto_vault || p.foto_produk,
-          });
-          // Brankas penerima bersifat privat: jangan pernah diindeks mesin pencari.
-          applyNoIndexMeta(document.title);
         }
+        return;
+      }
+      try {
+        sessionStorage.removeItem(tokenKey(current.id));
+      } catch {
+        // ignore
+      }
+    };
+
+    loadVault()
+      .catch(() => {
+        if (active) setError(true);
       })
-      .catch(() => setError(true))
-      .finally(() => setLoading(false));
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
   }, [vaultId, previewData]);
 
   // Animasi pembuka brankas: tampil sebentar setelah PIN benar, lalu menyingkap konten.
@@ -162,29 +213,32 @@ export default function VaultExperience({
     e.preventDefault();
     if (!product) return;
     const pin = pinDigits.join("");
-    if (!/^\d{4,6}$/.test(pin)) return;
+    if (!/^\d{6}$/.test(pin)) return;
 
     setPinBusy(true);
     setPinMessage("");
     setPinLocked(false);
 
     try {
-      const res = await verifyVaultPin(product.id, pin);
+      const res = await openVault(product.id, { pin });
       if (!res.ok || !res.verified) {
         setPinMessage(res.message || "PIN rahasia tidak sesuai. Periksa kartu ucapan.");
         setPinLocked(Boolean(res.locked));
         return;
+      }
+      if (res.product) setProduct(res.product);
+      if (res.token) {
+        try {
+          sessionStorage.setItem(`fm_vault_token_${product.id}`, res.token);
+        } catch {
+          // storage tidak tersedia: konten tetap tampil untuk sesi ini
+        }
       }
       setVaultUnlocked(true);
       const prefersReducedMotion =
         typeof window !== "undefined" &&
         window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
       setOpeningCeremony(prefersReducedMotion ? "done" : "opening");
-      try {
-        sessionStorage.setItem(`fm_unlocked_${product.id}`, "true");
-      } catch {
-        // ignore storage error
-      }
     } catch (err) {
       setPinMessage(err instanceof Error ? err.message : "Terjadi kesalahan saat memeriksa PIN.");
     } finally {
