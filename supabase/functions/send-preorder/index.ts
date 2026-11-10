@@ -19,6 +19,8 @@
 // ============================================================
 
 import { createClient } from "jsr:@supabase/supabase-js@2";
+import { checkDbRateLimit } from "../_shared/rate-limit.ts";
+import { emailLayout, escapeHtml, sendAdminEmail } from "../_shared/email.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "";
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
@@ -215,6 +217,12 @@ Deno.serve(async (req: Request) => {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 
+  // 6b) Rate limit per-IP lintas instance (DB). In-memory di atas hanya
+  // berlaku per instance; lapisan ini konsisten di semua replika.
+  if (!(await checkDbRateLimit(admin, "send-preorder-ip", clientIp, MAX_REQUESTS_PER_IP, 10 * 60))) {
+    return json({ message: "Terlalu banyak permintaan. Silakan coba lagi nanti." }, 429);
+  }
+
   // 7) Validasi produk: harus ada dan berstatus active (tidak percaya client).
   const { data: product, error: productError } = await admin
     .from("products")
@@ -276,6 +284,20 @@ Deno.serve(async (req: Request) => {
     console.error("[PREORDER_INSERT_ERROR]", insertError.message);
     return json({ message: "Gagal menyimpan pre-order." }, 500);
   }
+
+  // Notifikasi email ke atelier. Tidak pernah menggagalkan pemesanan.
+  await sendAdminEmail(
+    `Pre-order baru #${orderNumber} — ${String(product.nama_produk || "").trim()}`,
+    emailLayout("Pre-order baru masuk", [
+      ["Nomor", escapeHtml(orderNumber)],
+      ["Pelanggan", escapeHtml(getStr(body, "customer_name").trim())],
+      ["WhatsApp", `<a href="https://wa.me/${escapeHtml(whatsapp)}">${escapeHtml(whatsapp)}</a>`],
+      ["Produk", escapeHtml(String(product.nama_produk || ""))],
+      ["Penerima", escapeHtml(getStr(body, "recipient_name").trim())],
+      ["Total", `Rp ${totalAmount.toLocaleString("id-ID")}`],
+      ["DP 50%", `Rp ${dpAmount.toLocaleString("id-ID")}`],
+    ], "Buka panel Admin untuk memverifikasi pembayaran dan memproses pesanan.")
+  );
 
   console.log(
     "[PREORDER_CREATED] Order " +

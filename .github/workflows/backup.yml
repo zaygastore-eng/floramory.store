@@ -1,0 +1,44 @@
+name: Database backup
+
+on:
+  schedule:
+    # Setiap Minggu 18:00 UTC (Senin 01:00 WIB).
+    - cron: "0 18 * * 0"
+  workflow_dispatch:
+
+jobs:
+  backup:
+    name: pg_dump
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+    steps:
+      - name: Skip when secret is not configured
+        if: env.SUPABASE_DB_URL == ''
+        run: |
+          echo "SUPABASE_DB_URL belum diatur. Tambahkan secret berisi connection string"
+          echo "Postgres Supabase (mode Session/Direct, sslmode=require) untuk mengaktifkan backup."
+
+      - name: Install PostgreSQL client
+        if: env.SUPABASE_DB_URL != ''
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+
+      - name: Dump database
+        if: env.SUPABASE_DB_URL != ''
+        run: |
+          mkdir -p backups
+          pg_dump "$SUPABASE_DB_URL" \
+            --no-owner \
+            --no-privileges \
+            --format=custom \
+            --file="backups/achapter-$(date +%Y-%m-%d).dump"
+
+      - name: Upload artifact
+        if: env.SUPABASE_DB_URL != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: db-backup-${{ github.run_id }}
+          path: backups/
+          retention-days: 30

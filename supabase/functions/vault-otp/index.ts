@@ -1,4 +1,5 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
+import { checkDbRateLimit } from "../_shared/rate-limit.ts";
 
 // ============================================================
 // A Chapter — Edge Function: vault-otp
@@ -405,7 +406,8 @@ Deno.serve(async (req: Request) => {
     return json(req, { ok: false, message: "Server belum dikonfigurasi dengan benar." }, 500);
   }
 
-  if (isIpRateLimited(getClientIp(req))) {
+  const clientIp = getClientIp(req);
+  if (isIpRateLimited(clientIp)) {
     return json(req, { ok: false, message: "Terlalu banyak permintaan. Silakan coba lagi nanti." }, 429);
   }
 
@@ -425,6 +427,10 @@ Deno.serve(async (req: Request) => {
   const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
+
+  if (!(await checkDbRateLimit(admin, "vault-otp-ip", clientIp, MAX_REQUESTS_PER_IP, 10 * 60))) {
+    return json(req, { ok: false, message: "Terlalu banyak permintaan. Silakan coba lagi nanti." }, 429);
+  }
 
   try {
     if (action === "preview") return await handlePreview(req, admin, body);

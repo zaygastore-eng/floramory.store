@@ -1,4 +1,5 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
+import { emailLayout, escapeHtml, sendAdminEmail } from "../_shared/email.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "";
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") || "";
@@ -90,6 +91,19 @@ Deno.serve(async (req: Request) => {
     if (digits.startsWith("0")) digits = `62${digits.slice(1)}`;
     else if (digits.startsWith("8") && !digits.startsWith("62")) digits = `62${digits}`;
     const waUrl = digits ? `https://wa.me/${digits}?text=${encodeURIComponent(waText)}` : "";
+
+    // Notifikasi email ke atelier (pelanggan tetap dihubungi manual
+    // lewat WhatsApp agar tidak melanggar kebijakan akun WA).
+    await sendAdminEmail(
+      `DP terverifikasi #${orderNum} — ${String(order.product_name || "").trim()}`,
+      emailLayout("Pembayaran DP terverifikasi", [
+        ["Nomor", escapeHtml(orderNum)],
+        ["Pelanggan", escapeHtml(customerName)],
+        ["WhatsApp", digits ? `<a href="https://wa.me/${escapeHtml(digits)}">${escapeHtml(digits)}</a>` : "-"],
+        ["Produk", escapeHtml(String(order.product_name || ""))],
+        ["Konsol vault", `<a href="${escapeHtml(vaultUrl)}">Buka tautan pengirim</a>`],
+      ], "Status berubah ke dp_verified. Kirim tautan vault ke pelanggan secara manual.")
+    );
 
     console.log(
       "[DP_CONFIRMED] Order " +

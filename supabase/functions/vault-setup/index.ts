@@ -1,4 +1,6 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
+import { checkDbRateLimit } from "../_shared/rate-limit.ts";
+import { emailLayout, escapeHtml, sendAdminEmail } from "../_shared/email.ts";
 
 // ============================================================
 // A Chapter — Edge Function: vault-setup
@@ -194,6 +196,47 @@ function cleanMediaUrl(value: unknown, orderId: string, allowEmbedHosts: boolean
 
   if (!allowEmbedHosts) return "";
   return EMBED_HOSTS.has(url.host) ? raw : "";
+}
+
+/**
+ * Hapus berkas media di folder vault pesanan yang tidak lagi dipakai
+ * (mis. audio.mp3 lama setelah pengirim mengganti ke audio.webm).
+ * Dipanggil saat save agar hanya berkas yang benar-benar tersimpan
+ * yang tertinggal — mencegah orphan Storage.
+ */
+async function pruneOrderMedia(
+  admin: ReturnType<typeof createClient>,
+  orderId: string,
+  keepUrls: string[]
+): Promise<void> {
+  const keep = new Set(keepUrls.map((url) => String(url || "").trim()).filter(Boolean));
+  const folder = `vault/${orderId}`;
+
+  for (const bucket of ["product-images", "vault-media"]) {
+    try {
+      const { data: entries, error } = await admin.storage.from(bucket).list(folder, { limit: 100 });
+      if (error || !entries) continue;
+
+      const stale = entries
+        .map((entry) => `${folder}/${entry.name}`)
+        .filter((path) => {
+          const publicUrl = admin.storage.from(bucket).getPublicUrl(path).data.publicUrl;
+          return !keep.has(publicUrl);
+        });
+
+      if (stale.length > 0) {
+        const { error: removeError } = await admin.storage.from(bucket).remove(stale);
+        if (removeError) {
+          console.warn("[VAULT_SETUP_STORAGE_CLEANUP]", removeError.message);
+        }
+      }
+    } catch (error) {
+      console.warn(
+        "[VAULT_SETUP_STORAGE_CLEANUP]",
+        error instanceof Error ? error.message : "Unexpected error."
+      );
+    }
+  }
 }
 
 async function loadOrder(admin: ReturnType<typeof createClient>, token: string) {
@@ -493,6 +536,23 @@ async function handleSave(
     return json(req, { ok: false, message: "Gagal menyimpan Memory Vault." }, 500);
   }
 
+  const orderNumber = String(result.order.order_number || orderId.slice(0, 8).toUpperCase());
+
+  // Bersihkan berkas media yang tidak lagi dipakai setelah save sukses.
+  await pruneOrderMedia(admin, orderId, [fotoVault, audioUrl, videoUrl]);
+
+  // Notifikasi email ke atelier agar kartu PIN bisa segera dicetak.
+  // PIN sengaja tidak dimasukkan ke email.
+  await sendAdminEmail(
+    `Memory Vault siap #${orderNumber}`,
+    emailLayout("Memory Vault selesai dikunci", [
+      ["Nomor", escapeHtml(orderNumber)],
+      ["Penerima", escapeHtml(String(result.order.recipient_name || ""))],
+      ["Produk", escapeHtml(String(result.order.product_name || ""))],
+      ["PIN kartu", "Tersedia di panel Admin (tidak dikirim lewat email)"],
+    ], "Vault terkunci. Cetak PIN fisik dari panel Admin, lalu hubungi pelanggan secara manual.")
+  );
+
   return json(req, {
     ok: true,
     message: "Kenangan berhasil disimpan dan dikunci ke Memory Vault!",
@@ -512,7 +572,8 @@ Deno.serve(async (req: Request) => {
     return json(req, { ok: false, message: "Server belum dikonfigurasi dengan benar." }, 500);
   }
 
-  if (isIpRateLimited(getClientIp(req))) {
+  const clientIp = getClientIp(req);
+  if (isIpRateLimited(clientIp)) {
     return json(req, { ok: false, message: "Terlalu banyak permintaan. Silakan coba lagi nanti." }, 429);
   }
 
@@ -535,6 +596,10 @@ Deno.serve(async (req: Request) => {
   const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
+
+  if (!(await checkDbRateLimit(admin, "vault-setup-ip", clientIp, MAX_REQUESTS_PER_IP, 10 * 60))) {
+    return json(req, { ok: false, message: "Terlalu banyak permintaan. Silakan coba lagi nanti." }, 429);
+  }
 
   try {
     if (body.action === "get") return await handleGet(req, admin, token);

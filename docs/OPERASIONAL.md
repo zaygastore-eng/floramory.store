@@ -426,3 +426,22 @@ tersedia fungsi serverless Vercel `api/produk.ts`:
 - Jika produk tidak muncul, cek `status` produk di Supabase harus `active`.
 - Jika admin tiba-tiba logout / gagal, cek console: fungsi `admin` harus
   ter-deploy dan rewrite `/api` di `vercel.json` menunjuk URL proyek yang benar.
+
+## Keamanan vault (ringkas)
+
+- Isi Memory Vault (surat, foto, audio, video, nama penerima) **tidak lagi
+  dapat dibaca anon** lewat PostgREST. Hanya Edge Function `vault-otp` yang
+  mengembalikannya setelah PIN valid.
+- PIN disimpan sebagai hash (`products.vault_pin_hash`); PIN plaintext hanya
+  dipakai admin untuk mencetak kartu fisik.
+- Link `/vault-setup` memakai token acak (`vault_setup_token`), kedaluwarsa
+  30 hari, dan terkunci setelah penyimpanan pertama.
+- Setelah 5 percobaan PIN salah, brankas terkunci 15 menit.
+
+## Backup, deploy, dan monitoring
+
+Lihat dokumen terpisah:
+
+- `docs/BACKUP_RESTORE.md` — backup otomatis/manual, restore, audit log.
+- `docs/DEPLOYMENT.md` — urutan deploy migrasi + Edge Functions, secret
+  Resend, rate limit, CI, health check `/api/health`, dan checklist pasca-deploy.
