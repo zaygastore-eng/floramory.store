@@ -295,6 +295,7 @@ async function revokeSession(accessToken: string, refreshToken: string): Promise
       const res = await fetch(`${SUPABASE_URL}/auth/v1/logout`, {
         method: "POST",
         headers: { apikey: ANON_KEY, Authorization: `Bearer ${token}` },
+        signal: AbortSignal.timeout(4000),
       });
       return res.ok;
     } catch {
