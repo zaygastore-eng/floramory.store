@@ -1,10 +1,11 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "wouter";
 import SiteHeader from "@/components/SiteHeader";
 import SiteFooter from "@/components/SiteFooter";
 import ProductImage from "@/components/ProductImage";
 import { homeContent } from "@/content/homeContent";
 import { applyPageMeta } from "@/lib/seo";
+import { useAudioPlayback } from "@/hooks/useAudioPlayback";
 
 const VAULT_FAQS = [
   {
@@ -30,10 +31,19 @@ export default function SmartQrVault() {
     "photograph" | "voice-record" | "letter" | "video"
   >("photograph");
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
-  const [isAudioPlaying, setIsAudioPlaying] = useState(false);
-  const [audioCurrentTime, setAudioCurrentTime] = useState(0);
-  const [audioDuration, setAudioDuration] = useState(131);
-  const vaultAudioRef = useRef<HTMLAudioElement | null>(null);
+  const {
+    isPlaying: isAudioPlaying,
+    currentTime: audioCurrentTime,
+    duration: audioDuration,
+    rate: audioRate,
+    toggle: toggleAudio,
+    pause: pauseAudio,
+    seekTo: seekAudio,
+    skip: skipAudio,
+    cycleRate: cycleAudioRate,
+    seekStart: handleAudioSeekStart,
+    seekEnd: handleAudioSeekEnd,
+  } = useAudioPlayback(131);
   const [activeFaq, setActiveFaq] = useState<number | null>(null);
 
   useEffect(() => {
@@ -46,40 +56,6 @@ export default function SmartQrVault() {
     });
   }, []);
 
-  const toggleAudio = (src?: string) => {
-    if (!vaultAudioRef.current && src) {
-      const audio = new Audio(src);
-      vaultAudioRef.current = audio;
-
-      audio.addEventListener("loadedmetadata", () => {
-        if (Number.isFinite(audio.duration) && audio.duration > 0) {
-          setAudioDuration(audio.duration);
-        }
-      });
-      audio.addEventListener("timeupdate", () => {
-        setAudioCurrentTime(audio.currentTime);
-      });
-      audio.addEventListener("ended", () => {
-        setIsAudioPlaying(false);
-        setAudioCurrentTime(0);
-      });
-    }
-
-    const audio = vaultAudioRef.current;
-    if (!audio) return;
-
-    if (isAudioPlaying) {
-      audio.pause();
-      setIsAudioPlaying(false);
-    } else {
-      audio.play().then(() => {
-        setIsAudioPlaying(true);
-      }).catch((err) => {
-        console.warn("Audio playback error:", err);
-      });
-    }
-  };
-
   const handleVaultTabKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>) => {
     const tabs = ["photograph", "voice-record", "letter", "video"] as const;
     const currentIndex = tabs.indexOf(vaultSimTab);
@@ -91,10 +67,7 @@ export default function SmartQrVault() {
     if (nextIndex !== currentIndex) {
       event.preventDefault();
       setVaultSimTab(tabs[nextIndex]);
-      if (vaultAudioRef.current && tabs[nextIndex] !== "voice-record") {
-        vaultAudioRef.current.pause();
-        setIsAudioPlaying(false);
-      }
+      if (tabs[nextIndex] !== "voice-record") pauseAudio();
       if (tabs[nextIndex] !== "video") setIsVideoPlaying(false);
     }
   };
@@ -195,10 +168,7 @@ export default function SmartQrVault() {
                       className={`vault-sim-btn${isSelected ? " active" : ""}`}
                       onClick={() => {
                         setVaultSimTab(tab.kind);
-                        if (vaultAudioRef.current && tab.kind !== "voice-record") {
-                          vaultAudioRef.current.pause();
-                          setIsAudioPlaying(false);
-                        }
+                        if (tab.kind !== "voice-record") pauseAudio();
                         if (tab.kind !== "video") setIsVideoPlaying(false);
                       }}
                       onKeyDown={handleVaultTabKeyDown}
@@ -268,6 +238,25 @@ export default function SmartQrVault() {
                               {tab.quoteExcerpt}
                             </blockquote>
                             <p className="folio-audio-cite">— {tab.quoteAttribution}</p>
+                            <div className="folio-audio-scrub">
+                              <input
+                                type="range"
+                                className="folio-audio-range"
+                                min={0}
+                                max={audioDuration > 0 ? audioDuration : 0}
+                                step={0.1}
+                                value={Math.min(audioCurrentTime, audioDuration || 0)}
+                                onChange={(event) => seekAudio(Number(event.target.value))}
+                                onMouseDown={handleAudioSeekStart}
+                                onMouseUp={handleAudioSeekEnd}
+                                onTouchStart={handleAudioSeekStart}
+                                onTouchEnd={handleAudioSeekEnd}
+                                aria-label="Geser posisi lagu"
+                                style={{
+                                  background: `linear-gradient(to right, var(--brand-burgundy) ${audioDuration > 0 ? (audioCurrentTime / audioDuration) * 100 : 0}%, rgba(83, 27, 33, 0.15) ${audioDuration > 0 ? (audioCurrentTime / audioDuration) * 100 : 0}%)`,
+                                }}
+                              />
+                            </div>
                             <div className="folio-audio-player">
                               <button
                                 type="button"
@@ -297,6 +286,32 @@ export default function SmartQrVault() {
                               <span className="folio-play-time">
                                 {isAudioPlaying || audioCurrentTime > 0 ? curTimeStr : "00:00"}
                               </span>
+                            </div>
+                            <div className="folio-audio-extra">
+                              <button
+                                type="button"
+                                className="folio-skip-btn"
+                                onClick={() => skipAudio(-10)}
+                                aria-label="Mundur 10 detik"
+                              >
+                                −10s
+                              </button>
+                              <button
+                                type="button"
+                                className="folio-skip-btn"
+                                onClick={() => skipAudio(10)}
+                                aria-label="Maju 10 detik"
+                              >
+                                +10s
+                              </button>
+                              <button
+                                type="button"
+                                className="folio-speed-btn"
+                                onClick={cycleAudioRate}
+                                aria-label={`Kecepatan putar ${audioRate} kali`}
+                              >
+                                {audioRate}x
+                              </button>
                             </div>
                           </div>
                         </div>

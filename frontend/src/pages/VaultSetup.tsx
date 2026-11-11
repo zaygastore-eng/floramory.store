@@ -633,7 +633,8 @@ export default function VaultSetup() {
                           title="Spotify Preview"
                           src={spotifyEmbedPreviewUrl}
                           width="100%"
-                          height="152"
+                          height="352"
+                          className="vault-spotify-embed"
                           allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
                           style={{ marginTop: "1rem", borderRadius: "8px", border: "none" }}
                         />
@@ -645,6 +646,11 @@ export default function VaultSetup() {
                         >
                           Buka langsung di Spotify ↗
                         </a>
+                        <p className="drop-hint" style={{ marginTop: "0.75rem" }}>
+                          Judul dan nama artis muncul otomatis dari Spotify. Kutipan lirik atau alasan
+                          memilih lagu ini akan tampil di bawah pemutar, diambil dari surat personal Anda
+                          di bagian bawah halaman.
+                        </p>
                       </>
                     ) : spotifyUrl.trim() ? (
                       <p className="drop-hint" style={{ marginTop: "0.75rem" }}>

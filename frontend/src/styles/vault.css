@@ -1961,3 +1961,105 @@
   }
 }
 
+
+/* ── SPOTIFY-STYLE FOLIO CONTROLS (Home & Smart QR Vault) ── */
+.folio-audio-player {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.folio-play-time {
+  color: var(--text-taupe);
+  font: 500 0.72rem/1.4 var(--font-body);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.folio-audio-scrub {
+  display: flex;
+  align-items: center;
+  min-height: 32px;
+  margin-bottom: 0.85rem;
+}
+
+.folio-audio-range {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 5px;
+  border-radius: 999px;
+  outline: none;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.folio-audio-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--brand-burgundy);
+  box-shadow: 0 2px 6px rgba(83, 27, 33, 0.28);
+  cursor: pointer;
+  transition: transform 0.12s ease;
+}
+
+.folio-audio-range::-webkit-slider-thumb:hover {
+  transform: scale(1.18);
+}
+
+.folio-audio-range::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border: none;
+  border-radius: 50%;
+  background: var(--brand-burgundy);
+  box-shadow: 0 2px 6px rgba(83, 27, 33, 0.28);
+  cursor: pointer;
+}
+
+.folio-audio-extra {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.35rem;
+}
+
+.folio-skip-btn,
+.folio-speed-btn {
+  min-height: 34px;
+  padding: 0.35rem 0.75rem;
+  border: 1px solid rgba(83, 27, 33, 0.2);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-taupe);
+  font: 600 0.68rem/1.3 var(--font-body);
+  letter-spacing: 0.04em;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+}
+
+.folio-skip-btn:hover,
+.folio-speed-btn:hover {
+  color: var(--brand-burgundy);
+  border-color: rgba(83, 27, 33, 0.45);
+  background: rgba(83, 27, 33, 0.04);
+}
+
+.folio-speed-btn {
+  margin-left: auto;
+  color: var(--brand-burgundy);
+  border-color: rgba(83, 27, 33, 0.3);
+}
+
+/* Official Spotify embed should span the card evenly */
+.vault-spotify-embed {
+  display: block;
+  width: 100%;
+  border: none;
+  border-radius: 12px;
+}

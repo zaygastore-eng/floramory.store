@@ -1,5 +1,8 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
 
+const PLAYBACK_RATES = [1, 1.25, 1.5, 2] as const;
+type PlaybackRate = (typeof PLAYBACK_RATES)[number];
+
 export interface AudioPlayerProps {
   src: string;
   initialDuration?: number; // fallback duration in seconds
@@ -34,6 +37,14 @@ export default function AudioPlayer({
   );
   const [isLoading, setIsLoading] = useState(false);
   const [hasError, setHasError] = useState(false);
+  const [playbackRate, setPlaybackRate] = useState<PlaybackRate>(1);
+
+  // Keep the native element in sync with the selected speed.
+  useEffect(() => {
+    if (audioRef.current) {
+      audioRef.current.playbackRate = playbackRate;
+    }
+  }, [playbackRate, src]);
 
   // Sync initial duration if updated from props
   useEffect(() => {
@@ -141,6 +152,25 @@ export default function AudioPlayer({
     isSeekingRef.current = false;
   };
 
+  const skipBy = useCallback(
+    (delta: number) => {
+      const audio = audioRef.current;
+      if (!audio || hasError || !src) return;
+      const max = Number.isFinite(audio.duration) ? audio.duration : duration;
+      const next = Math.min(Math.max(0, audio.currentTime + delta), max || 0);
+      audio.currentTime = next;
+      setCurrentTime(next);
+    },
+    [duration, hasError, src]
+  );
+
+  const cycleRate = useCallback(() => {
+    setPlaybackRate((prev) => {
+      const index = PLAYBACK_RATES.indexOf(prev);
+      return PLAYBACK_RATES[(index + 1) % PLAYBACK_RATES.length];
+    });
+  }, []);
+
   const progressPercent =
     duration > 0 ? Math.min(100, Math.max(0, (currentTime / duration) * 100)) : 0;
 
@@ -222,6 +252,36 @@ export default function AudioPlayer({
             />
           </div>
         </div>
+      </div>
+
+      <div className="audio-controls-row">
+        <button
+          type="button"
+          className="audio-skip-btn"
+          onClick={() => skipBy(-10)}
+          disabled={hasError || !src}
+          aria-label="Mundur 10 detik"
+        >
+          −10s
+        </button>
+        <button
+          type="button"
+          className="audio-skip-btn"
+          onClick={() => skipBy(10)}
+          disabled={hasError || !src}
+          aria-label="Maju 10 detik"
+        >
+          +10s
+        </button>
+        <button
+          type="button"
+          className="audio-speed-btn"
+          onClick={cycleRate}
+          disabled={hasError || !src}
+          aria-label={`Kecepatan putar ${playbackRate} kali`}
+        >
+          {playbackRate}x
+        </button>
       </div>
 
       {hasError && (

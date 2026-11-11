@@ -515,13 +515,26 @@ export default function VaultExperience({
                         title="Spotify Memory Soundtrack"
                         src={audioMedia.embedUrl}
                         width="100%"
-                        height="152"
+                        height="352"
+                        className="vault-spotify-embed"
                         allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
                         loading="lazy"
                         style={{ border: "none", borderRadius: "12px", marginTop: "1rem" }}
                       />
+                      <a
+                        className="spotify-open-link"
+                        href={product.audio_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        Buka langsung di Spotify ↗
+                      </a>
                       <blockquote className="vault-audio-quote">
-                        <p>“Lagu yang dipilih khusus untuk mewakili setiap rasa yang tak sempat terucap.”</p>
+                        <p>
+                          {product.pesan_personal?.trim()
+                            ? `“${product.pesan_personal.trim()}”`
+                            : "“Lagu yang dipilih khusus untuk mewakili setiap rasa yang tak sempat terucap.”"}
+                        </p>
                         <footer>— {product.dari || "Atelier Keepsake"}</footer>
                       </blockquote>
                     </div>

@@ -26,6 +26,7 @@ import {
   formatBespokeCommissionWhatsApp,
 } from "@/lib/site";
 import useToast from "@/hooks/useToast";
+import { useAudioPlayback } from "@/hooks/useAudioPlayback";
 
 function ProductCard({
   product,
@@ -257,10 +258,19 @@ export default function Home() {
     "photograph" | "voice-record" | "letter" | "video"
   >("photograph");
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
-  const [isAudioPlaying, setIsAudioPlaying] = useState(false);
-  const [audioCurrentTime, setAudioCurrentTime] = useState(0);
-  const [audioDuration, setAudioDuration] = useState(131);
-  const homeAudioRef = useRef<HTMLAudioElement | null>(null);
+  const {
+    isPlaying: isAudioPlaying,
+    currentTime: audioCurrentTime,
+    duration: audioDuration,
+    rate: audioRate,
+    toggle: toggleAudio,
+    pause: pauseAudio,
+    seekTo: seekAudio,
+    skip: skipAudio,
+    cycleRate: cycleAudioRate,
+    seekStart: handleAudioSeekStart,
+    seekEnd: handleAudioSeekEnd,
+  } = useAudioPlayback(131);
   const [orderForm, setOrderForm] = useState({
     nama: "",
     wa: "",
@@ -354,40 +364,6 @@ export default function Home() {
 
   const [heroFirstLine, heroSecondLine] = splitHeroHeadline(heroConfig.headline);
   const commissionProductGroups = getCommissionProductGroups(products);
-
-  const toggleAudio = (src?: string) => {
-    if (!homeAudioRef.current && src) {
-      const audio = new Audio(src);
-      homeAudioRef.current = audio;
-
-      audio.addEventListener("loadedmetadata", () => {
-        if (Number.isFinite(audio.duration) && audio.duration > 0) {
-          setAudioDuration(audio.duration);
-        }
-      });
-      audio.addEventListener("timeupdate", () => {
-        setAudioCurrentTime(audio.currentTime);
-      });
-      audio.addEventListener("ended", () => {
-        setIsAudioPlaying(false);
-        setAudioCurrentTime(0);
-      });
-    }
-
-    const audio = homeAudioRef.current;
-    if (!audio) return;
-
-    if (isAudioPlaying) {
-      audio.pause();
-      setIsAudioPlaying(false);
-    } else {
-      audio.play().then(() => {
-        setIsAudioPlaying(true);
-      }).catch((err) => {
-        console.warn("Audio playback error:", err);
-      });
-    }
-  };
 
   const handleVaultTabKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>) => {
     const tabs = ["photograph", "voice-record", "letter", "video"] as const;
@@ -669,10 +645,7 @@ export default function Home() {
                     className={`vault-sim-btn${isSelected ? " active" : ""}`}
                     onClick={() => {
                       setVaultSimTab(tab.kind);
-                      if (tab.kind !== "voice-record" && homeAudioRef.current) {
-                        homeAudioRef.current.pause();
-                        setIsAudioPlaying(false);
-                      }
+                      if (tab.kind !== "voice-record") pauseAudio();
                       if (tab.kind !== "video") setIsVideoPlaying(false);
                     }}
                     onKeyDown={handleVaultTabKeyDown}
@@ -751,6 +724,25 @@ export default function Home() {
                               />
                             ))}
                           </div>
+                          <div className="folio-audio-scrub">
+                            <input
+                              type="range"
+                              className="folio-audio-range"
+                              min={0}
+                              max={audioDuration > 0 ? audioDuration : 0}
+                              step={0.1}
+                              value={Math.min(audioCurrentTime, audioDuration || 0)}
+                              onChange={(event) => seekAudio(Number(event.target.value))}
+                              onMouseDown={handleAudioSeekStart}
+                              onMouseUp={handleAudioSeekEnd}
+                              onTouchStart={handleAudioSeekStart}
+                              onTouchEnd={handleAudioSeekEnd}
+                              aria-label="Geser posisi lagu"
+                              style={{
+                                background: `linear-gradient(to right, var(--brand-burgundy) ${audioDuration > 0 ? (audioCurrentTime / audioDuration) * 100 : 0}%, rgba(83, 27, 33, 0.15) ${audioDuration > 0 ? (audioCurrentTime / audioDuration) * 100 : 0}%)`,
+                              }}
+                            />
+                          </div>
                           <div className="folio-audio-controls">
                             <button
                               type="button"
@@ -765,6 +757,32 @@ export default function Home() {
                             <span className="folio-audio-time">
                               {isAudioPlaying || audioCurrentTime > 0 ? curTimeStr : "00:00"} / {totalTimeStr}
                             </span>
+                          </div>
+                          <div className="folio-audio-extra">
+                            <button
+                              type="button"
+                              className="folio-skip-btn"
+                              onClick={() => skipAudio(-10)}
+                              aria-label="Mundur 10 detik"
+                            >
+                              −10s
+                            </button>
+                            <button
+                              type="button"
+                              className="folio-skip-btn"
+                              onClick={() => skipAudio(10)}
+                              aria-label="Maju 10 detik"
+                            >
+                              +10s
+                            </button>
+                            <button
+                              type="button"
+                              className="folio-speed-btn"
+                              onClick={cycleAudioRate}
+                              aria-label={`Kecepatan putar ${audioRate} kali`}
+                            >
+                              {audioRate}x
+                            </button>
                           </div>
                           <blockquote className="folio-audio-quote">
                             <p>{tab.quoteExcerpt}</p>

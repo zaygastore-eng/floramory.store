@@ -316,11 +316,26 @@ export default function Produk() {
                   style={{ borderRadius: "14px", border: "none" }}
                   src={audioMedia.embedUrl}
                   width="100%"
-                  height="152"
+                  height="352"
+                  className="vault-spotify-embed"
                   allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
                   loading="lazy"
                   title="Lagu Kenangan Spotify"
                 />
+                <a
+                  className="spotify-open-link"
+                  href={product.audio_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Buka langsung di Spotify ↗
+                </a>
+                {hasPersonalMessage && (
+                  <blockquote className="vault-audio-quote">
+                    <p>“{product.pesan_personal.trim()}”</p>
+                    <footer>— {product.dari || "Atelier Keepsake"}</footer>
+                  </blockquote>
+                )}
               </div>
             )}
             {hasAudio && audioMedia.type === "direct_audio" && (
