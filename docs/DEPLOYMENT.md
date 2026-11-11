@@ -14,12 +14,15 @@ sudah membaca kolom/tabel baru.
    - `20261113000000_rate_limit_and_operations.sql`
 3. **Edge Functions**:
    ```bash
+   supabase functions deploy admin
    supabase functions deploy vault-otp
    supabase functions deploy vault-setup
    supabase functions deploy send-preorder
    supabase functions deploy notify-dp-confirmed
    ```
    Folder `_shared/` ikut ter-bundle otomatis; tidak perlu di-deploy sendiri.
+   Setelah `admin` versi baru aktif, semua admin akan diminta login ulang
+   sekali karena cookie `fm_seen` belum ada (fail-closed).
 4. **Vercel**: redeploy (termasuk `api/seo.ts`, `api/health.ts`).
 
 ## Secret Edge Function
@@ -37,6 +40,23 @@ supabase secrets set \
 - Tanpa `RESEND_API_KEY`, email menjadi no-op; pemesanan & vault tetap jalan.
 - `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` sudah
   disediakan otomatis oleh Supabase.
+- `ADMIN_IDLE_TTL_SECONDS` **opsional**, hanya untuk staging: menurunkan idle
+  timeout admin (min. 60 detik, default 3600 = 60 menit). Jangan diisi di
+  produksi.
+
+## Sesi admin & idle timeout
+
+- Sesi admin memakai cookie HttpOnly: `fm_at` (1 jam), `fm_rt` (30 hari),
+  `fm_csrf`, dan `fm_seen` (timestamp aktivitas terakhir).
+- `fm_seen` hanya diperbarui oleh action `touch`, yang dikirim frontend saat
+  tab admin **terlihat dan window fokus** (heartbeat 60 detik).
+- Bila jarak `fm_seen` melebihi 60 menit, server menolak seluruh request
+  (`status`/`proxy`/`touch`), menghapus cookie, dan mencabut sesi Supabase.
+  Refresh token tidak dapat menghidupkan kembali sesi yang sudah idle.
+- Konsekuensi: panel yang ditinggal (pindah tab/minimize/tutup browser)
+  lebih dari 60 menit mewajibkan login ulang; panel yang sedang dilihat
+  tidak pernah ter-logout.
+- Logout manual juga mencabut refresh token di Supabase (best-effort).
 
 ## Env Vercel
 
@@ -85,3 +105,5 @@ belum tersedia, supaya pemesanan tidak ikut mati saat deploy bertahap.
 - [ ] `/vault-setup?token=...` bisa dibuka, lalu terkunci setelah simpan.
 - [ ] Pre-order baru masuk dan email atelier terkirim (jika Resend aktif).
 - [ ] Audit log bertambah saat produk/pesanan diubah.
+- [ ] Login admin → panel dilihat >60 menit tetap login; tab ditinggal
+      >60 menit lalu dibuka lagi → diminta login ulang.

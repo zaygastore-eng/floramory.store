@@ -15,11 +15,15 @@
 //   fm_rt   = refresh_token (30 hari, HttpOnly, Secure, SameSite=Strict)
 //   fm_csrf = token anti-CSRF (dibaca JS, bukan HttpOnly) untuk mencegah
 //             cross-site request memakai cookie sesi (defense in depth).
+//   fm_seen = timestamp aktivitas terakhir (HttpOnly). Hanya diperbarui oleh
+//             action "touch" saat tab admin terlihat & fokus. Bila jaraknya
+//             melebihi IDLE_TTL, seluruh sesi ditolak (idle timeout).
 //
 // Action yang diterima (method POST, JSON):
 //   { action: "login",  email, password }
 //   { action: "logout" }
 //   { action: "status" }
+//   { action: "touch" }
 //   { action: "proxy",  method, path, query?, body?, prefer? }
 //
 // Keamanan:
@@ -40,8 +44,18 @@ const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") || "";
 const ACCESS_COOKIE = "fm_at";
 const REFRESH_COOKIE = "fm_rt";
 const CSRF_COOKIE = "fm_csrf";
+const SEEN_COOKIE = "fm_seen";
 const ACCESS_TTL = 60 * 60; // 1 jam
 const REFRESH_TTL = 60 * 60 * 24 * 30; // 30 hari
+
+// Idle timeout: sesi mati bila tidak ada aktivitas panel selama 60 menit.
+// Bisa diturunkan lewat secret ADMIN_IDLE_TTL_SECONDS (min. 60 detik) untuk
+// pengujian di staging; produksi tidak perlu mengisinya.
+const IDLE_TTL = (() => {
+  const raw = Number(Deno.env.get("ADMIN_IDLE_TTL_SECONDS") || 0);
+  if (!Number.isFinite(raw) || raw < 60) return 60 * 60;
+  return Math.min(Math.floor(raw), 60 * 60 * 24);
+})();
 
 const PROXY_PATHS = new Set([
   "/rest/v1/products",
@@ -172,15 +186,28 @@ function cookieBase(req: Request): string {
   return `Path=/; HttpOnly; SameSite=Strict; ${secure}`.trim().replace(/\s+/g, " ").trim();
 }
 
-function setTokenCookies(req: Request, accessToken: string, refreshToken: string): string[] {
+function seenCookie(req: Request, ts: number): string {
+  return `${SEEN_COOKIE}=${ts}; Max-Age=${IDLE_TTL}; ${cookieBase(req)}`;
+}
+
+function setTokenCookies(
+  req: Request,
+  accessToken: string,
+  refreshToken: string,
+  seenAt?: number
+): string[] {
   const base = cookieBase(req);
   const csrf = crypto.randomUUID();
   const csrfBase = base.replace("; HttpOnly", "");
-  return [
+  const cookies = [
     `${ACCESS_COOKIE}=${accessToken}; Max-Age=${ACCESS_TTL}; ${base}`,
     `${REFRESH_COOKIE}=${refreshToken}; Max-Age=${REFRESH_TTL}; ${base}`,
     `${CSRF_COOKIE}=${csrf}; Max-Age=${REFRESH_TTL}; ${csrfBase}`,
   ];
+  // Hanya login yang menyegarkan fm_seen. Jalur refresh token TIDAK boleh
+  // memperpanjang idle, kalau tidak sesi bisa hidup selamanya.
+  if (seenAt !== undefined) cookies.push(seenCookie(req, seenAt));
+  return cookies;
 }
 
 function clearTokenCookies(req: Request): string[] {
@@ -190,7 +217,16 @@ function clearTokenCookies(req: Request): string[] {
     `${ACCESS_COOKIE}=; Max-Age=0; ${base}`,
     `${REFRESH_COOKIE}=; Max-Age=0; ${base}`,
     `${CSRF_COOKIE}=; Max-Age=0; ${basePublic}`,
+    `${SEEN_COOKIE}=; Max-Age=0; ${base}`,
   ];
+}
+
+// Fail-closed: cookie hilang/rusak dianggap sesi kedaluwarsa.
+function idleExpired(cookies: Record<string, string>, now = Date.now()): boolean {
+  const last = Number(cookies[SEEN_COOKIE] || 0);
+  if (!Number.isFinite(last) || last <= 0) return true;
+  if (last > now + 60_000) return true; // timestamp dari masa depan = aneh
+  return now - last > IDLE_TTL * 1000;
 }
 
 function safeEqual(a: string, b: string): boolean {
@@ -249,6 +285,30 @@ async function checkIsAdmin(accessToken: string): Promise<boolean> {
   }
 }
 
+// Best-effort: cabut sesi Supabase agar refresh token yang sudah terlanjur
+// bocor tidak bisa dipakai lagi. Kalau access token sudah kedaluwarsa,
+// coba refresh dulu lalu logout. Kegagalan di sini tidak menghalangi
+// pembersihan cookie di sisi browser.
+async function revokeSession(accessToken: string, refreshToken: string): Promise<void> {
+  const tryLogout = async (token: string): Promise<boolean> => {
+    try {
+      const res = await fetch(`${SUPABASE_URL}/auth/v1/logout`, {
+        method: "POST",
+        headers: { apikey: ANON_KEY, Authorization: `Bearer ${token}` },
+      });
+      return res.ok;
+    } catch {
+      return false;
+    }
+  };
+
+  if (accessToken && (await tryLogout(accessToken))) return;
+  if (refreshToken) {
+    const refreshed = await refreshTokens(refreshToken);
+    if (refreshed) await tryLogout(refreshed.accessToken);
+  }
+}
+
 interface ResolvedSession {
   token: string;
   setCookies: string[];
@@ -259,6 +319,15 @@ async function resolveSession(req: Request): Promise<ResolvedSession | null> {
   const accessToken = cookies[ACCESS_COOKIE];
   const refreshToken = cookies[REFRESH_COOKIE];
 
+  if (!accessToken && !refreshToken) return null;
+
+  // Idle timeout diperiksa SEBELUM token divalidasi: refresh token tidak
+  // boleh menghidupkan kembali sesi yang sudah ditinggalkan.
+  if (idleExpired(cookies)) {
+    await revokeSession(accessToken, refreshToken);
+    return null;
+  }
+
   if (accessToken && (await authUser(accessToken)).ok) {
     return { token: accessToken, setCookies: [] };
   }
@@ -268,6 +337,7 @@ async function resolveSession(req: Request): Promise<ResolvedSession | null> {
     if (refreshed) {
       return {
         token: refreshed.accessToken,
+        // Tanpa seenAt: refresh token tidak memperpanjang idle.
         setCookies: setTokenCookies(req, refreshed.accessToken, refreshed.refreshToken),
       };
     }
@@ -309,7 +379,7 @@ async function handleLogin(req: Request, body: Record<string, unknown>): Promise
     return json(
       { ok: true },
       200,
-      setTokenCookies(req, data.access_token, data.refresh_token)
+      setTokenCookies(req, data.access_token, data.refresh_token, Date.now())
     );
   } catch {
     return json({ message: "Gagal menghubungi layanan autentikasi." }, 502);
@@ -317,31 +387,74 @@ async function handleLogin(req: Request, body: Record<string, unknown>): Promise
 }
 
 async function handleLogout(req: Request): Promise<Response> {
+  const cookies = parseCookies(req);
+  await revokeSession(cookies[ACCESS_COOKIE] || "", cookies[REFRESH_COOKIE] || "");
   return json({ ok: true }, 200, clearTokenCookies(req));
 }
 
 async function handleStatus(req: Request): Promise<Response> {
+  const cookies = parseCookies(req);
+  const hadSession = Boolean(cookies[ACCESS_COOKIE] || cookies[REFRESH_COOKIE]);
   const session = await resolveSession(req);
   if (!session) {
-    return json({ authenticated: false, isAdmin: false }, 200, clearTokenCookies(req));
+    const reason = hadSession && idleExpired(cookies) ? "idle" : "none";
+    return json({ authenticated: false, isAdmin: false, reason }, 200, clearTokenCookies(req));
   }
   const isAdmin = await checkIsAdmin(session.token);
   return json({ authenticated: true, isAdmin }, 200, session.setCookies);
+}
+
+function csrfValid(req: Request, cookies: Record<string, string>): boolean {
+  const csrfCookie = cookies[CSRF_COOKIE] || "";
+  const csrfHeader = req.headers.get("x-csrf-token") || "";
+  return Boolean(csrfCookie && csrfHeader && safeEqual(csrfCookie, csrfHeader));
+}
+
+// Dipanggil frontend hanya saat tab admin terlihat & window fokus.
+// Memperbarui fm_seen, sekaligus mengembalikan sisa waktu idle ke UI.
+async function handleTouch(req: Request): Promise<Response> {
+  const cookies = parseCookies(req);
+  if (!csrfValid(req, cookies)) {
+    return json({ message: "Token keamanan tidak valid. Silakan muat ulang halaman." }, 403);
+  }
+
+  const session = await resolveSession(req);
+  if (!session) {
+    const reason = idleExpired(cookies) ? "idle" : "none";
+    return json(
+      { message: "Sesi admin sudah kadaluarsa. Silakan login kembali.", reason },
+      401,
+      clearTokenCookies(req)
+    );
+  }
+  if (!(await checkIsAdmin(session.token))) {
+    return json({ message: "Anda tidak memiliki akses admin." }, 403, session.setCookies);
+  }
+
+  const now = Date.now();
+  return json(
+    { ok: true, idleTtl: IDLE_TTL, expiresAt: now + IDLE_TTL * 1000 },
+    200,
+    [...session.setCookies, seenCookie(req, now)]
+  );
 }
 
 async function handleProxy(req: Request, body: Record<string, unknown>): Promise<Response> {
   const cookies = parseCookies(req);
 
   // Validasi CSRF (double-submit): header harus cocok dengan cookie fm_csrf.
-  const csrfCookie = cookies[CSRF_COOKIE] || "";
-  const csrfHeader = req.headers.get("x-csrf-token") || "";
-  if (!csrfCookie || !csrfHeader || !safeEqual(csrfCookie, csrfHeader)) {
+  if (!csrfValid(req, cookies)) {
     return json({ message: "Token keamanan tidak valid. Silakan muat ulang halaman." }, 403);
   }
 
   const session = await resolveSession(req);
   if (!session) {
-    return json({ message: "Sesi admin sudah kadaluarsa. Silakan login kembali." }, 401, clearTokenCookies(req));
+    const reason = idleExpired(cookies) ? "idle" : "none";
+    return json(
+      { message: "Sesi admin sudah kadaluarsa. Silakan login kembali.", reason },
+      401,
+      clearTokenCookies(req)
+    );
   }
   if (!(await checkIsAdmin(session.token))) {
     return json({ message: "Anda tidak memiliki akses admin." }, 403, session.setCookies);
@@ -458,6 +571,8 @@ Deno.serve(async (req: Request) => {
       return handleLogout(req);
     case "status":
       return handleStatus(req);
+    case "touch":
+      return handleTouch(req);
     case "proxy":
       return handleProxy(req, payload);
     default:
