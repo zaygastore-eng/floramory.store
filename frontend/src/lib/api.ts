@@ -205,11 +205,23 @@ async function adminCall(
       apikey: SUPABASE_ANON_KEY,
       Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
       "Content-Type": "application/json",
-      "X-CSRF-Token": action === "proxy" ? adminCsrfToken() : "",
+      "X-CSRF-Token": action === "proxy" || action === "touch" ? adminCsrfToken() : "",
     },
     body: JSON.stringify({ action, ...payload }),
   });
   const data = await res.json().catch(() => ({}));
+  // 401 dari proxy/touch berarti sesi sudah tidak berlaku (termasuk idle
+  // timeout di server). Beri tahu Admin.tsx agar langsung kembali ke login,
+  // tanpa menunggu request berikutnya.
+  if (res.status === 401 && action !== "login" && action !== "logout") {
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(
+        new CustomEvent("fm:admin-expired", {
+          detail: { reason: data.reason === "idle" ? "idle" : "none" },
+        })
+      );
+    }
+  }
   return { status: res.status, data, headers: res.headers };
 }
 
@@ -329,6 +341,7 @@ export function hasSupabaseConfig(): boolean {
 export interface AdminSessionStatus {
   authenticated: boolean;
   isAdmin: boolean;
+  reason?: "idle" | "none";
 }
 
 export async function statusAdminSession(): Promise<AdminSessionStatus> {
@@ -340,9 +353,21 @@ export async function statusAdminSession(): Promise<AdminSessionStatus> {
     return {
       authenticated: data.authenticated === true,
       isAdmin: data.isAdmin === true,
+      reason: data.reason === "idle" ? "idle" : "none",
     };
   } catch {
     return { authenticated: false, isAdmin: false };
+  }
+}
+
+// Menyegarkan fm_seen di server. Hanya dipanggil saat tab admin terlihat
+// dan window fokus; kalau gagal karena jaringan, jangan logout.
+export async function touchAdminSession(): Promise<void> {
+  if (!isSupabaseConfigured()) return;
+  try {
+    await adminCall("touch");
+  } catch {
+    // Diamkan: 401 sudah men-trigger event fm:admin-expired di adminCall.
   }
 }
 

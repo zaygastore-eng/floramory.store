@@ -35,6 +35,7 @@ import {
   signInAdmin,
   signOutAdmin,
   statusAdminSession,
+  touchAdminSession,
   updatePreOrderStatus,
   updateHeroConfig,
   updateWhatsAppNumber,
@@ -187,7 +188,7 @@ function formatCurrency(value: number): string {
   }).format(value);
 }
 
-function LoginGate({ onLogin }: { onLogin: () => void }) {
+function LoginGate({ onLogin, notice }: { onLogin: () => void; notice?: string }) {
   const supabaseReady = hasSupabaseConfig();
   const [email, setEmail] = useState("");
   const [pw, setPw] = useState("");
@@ -242,6 +243,24 @@ function LoginGate({ onLogin }: { onLogin: () => void }) {
         </div>
         <div className="login-subtitle">Admin Panel</div>
         <div className="login-icon">Admin</div>
+        {notice && (
+          <div
+            role="status"
+            style={{
+              margin: "0 0 14px",
+              padding: "10px 12px",
+              borderRadius: 10,
+              background: "rgba(197, 168, 128, 0.14)",
+              border: "1px solid rgba(197, 168, 128, 0.45)",
+              color: "#531B21",
+              fontSize: 13,
+              lineHeight: 1.55,
+              textAlign: "center",
+            }}
+          >
+            {notice}
+          </div>
+        )}
         <form onSubmit={submit} style={{ width: "100%" }}>
           <div className="login-input-wrap" style={{ marginBottom: 10 }}>
             <input
@@ -280,6 +299,7 @@ function LoginGate({ onLogin }: { onLogin: () => void }) {
 
 export default function Admin() {
   const [authed, setAuthed] = useState(false);
+  const [sessionNotice, setSessionNotice] = useState("");
   const [activeTab, setActiveTab] = useState<AdminTab>("dashboard");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
     if (window.innerWidth < 768) return true;
@@ -383,11 +403,88 @@ export default function Admin() {
 
   useEffect(() => {
     if (!hasSupabaseConfig()) return;
-    statusAdminSession().then((status: any) => {
-      if (status.authenticated && status.isAdmin) setAuthed(true);
-      else void signOutAdmin();
+    let active = true;
+    statusAdminSession().then((status) => {
+      if (!active) return;
+      if (status.authenticated && status.isAdmin) {
+        setSessionNotice("");
+        setAuthed(true);
+        return;
+      }
+      if (status.reason === "idle") {
+        setSessionNotice(
+          "Sesi berakhir karena panel admin tidak aktif lebih dari 60 menit. Silakan login kembali."
+        );
+      }
+      void signOutAdmin();
     });
+    return () => {
+      active = false;
+    };
   }, []);
+
+  // Sesi berakhir di server (idle timeout / refresh token mati): langsung
+  // kembalikan UI ke halaman login tanpa menunggu request berikutnya.
+  useEffect(() => {
+    const onExpired = (event: Event) => {
+      const reason = (event as CustomEvent<{ reason?: string }>).detail?.reason;
+      setSessionNotice(
+        reason === "idle"
+          ? "Sesi berakhir karena panel admin tidak aktif lebih dari 60 menit. Silakan login kembali."
+          : "Sesi admin berakhir. Silakan login kembali."
+      );
+      setAuthed(false);
+    };
+    window.addEventListener("fm:admin-expired", onExpired);
+    return () => window.removeEventListener("fm:admin-expired", onExpired);
+  }, []);
+
+  // Heartbeat idle timeout: hanya berjalan saat tab terlihat DAN window fokus.
+  // Pindah tab/minimize/aplikasi lain menghentikannya, sehingga setelah
+  // 60 menit panel ditinggalkan sesi ditolak server. Selama panel benar-benar
+  // dilihat, sesi tidak pernah mendekati kedaluwarsa.
+  useEffect(() => {
+    if (!authed) return;
+    let timer: number | undefined;
+
+    const isActive = () =>
+      document.visibilityState === "visible" && document.hasFocus();
+    const beat = () => {
+      if (isActive()) void touchAdminSession();
+    };
+    const start = () => {
+      if (timer !== undefined) return;
+      beat();
+      timer = window.setInterval(beat, 60_000);
+    };
+    const stop = () => {
+      if (timer === undefined) return;
+      window.clearInterval(timer);
+      timer = undefined;
+    };
+    const sync = () => {
+      if (isActive()) start();
+      else stop();
+    };
+
+    sync();
+    document.addEventListener("visibilitychange", sync);
+    document.addEventListener("pointerdown", sync);
+    document.addEventListener("keydown", sync);
+    window.addEventListener("focus", sync);
+    window.addEventListener("blur", stop);
+    window.addEventListener("pagehide", stop);
+
+    return () => {
+      stop();
+      document.removeEventListener("visibilitychange", sync);
+      document.removeEventListener("pointerdown", sync);
+      document.removeEventListener("keydown", sync);
+      window.removeEventListener("focus", sync);
+      window.removeEventListener("blur", stop);
+      window.removeEventListener("pagehide", stop);
+    };
+  }, [authed]);
 
   useEffect(() => {
     if (!authed) return;
@@ -816,6 +913,7 @@ export default function Admin() {
 
   const logout = async () => {
     await signOutAdmin();
+    setSessionNotice("");
     setAuthed(false);
   };
 
@@ -1086,7 +1184,15 @@ export default function Admin() {
     { id: "pengaturan", label: "Pengaturan", icon: Settings },
   ];
 
-  if (!authed) return <LoginGate onLogin={() => setAuthed(true)} />;
+  if (!authed) return (
+    <LoginGate
+      notice={sessionNotice}
+      onLogin={() => {
+        setSessionNotice("");
+        setAuthed(true);
+      }}
+    />
+  );
 
   const renderProductForm = () => (
     <>
