@@ -34,36 +34,6 @@ export function formatHarga(raw: string): string {
   return `Rp${normalized.replace(/\B(?=(\d{3})+(?!\d))/g, ".")}`;
 }
 
-export function createWhatsAppOrderMessage(productName?: string, orderNumber?: string): string {
-  if (orderNumber) {
-    return `Halo A Chapter, saya ingin konfirmasi pesanan #${orderNumber}${productName ? ` (${productName})` : ""}.`;
-  }
-  return productName
-    ? `Halo A Chapter, saya tertarik untuk memesan karya botani ${productName}.`
-    : "Halo A Chapter, saya ingin berkonsultasi mengenai pemesanan kado botani & memory vault.";
-}
-
-export function formatOrderReceiptWhatsApp(params: {
-  orderNumber: string;
-  customerName: string;
-  productName: string;
-  totalPrice?: number | string;
-  dpAmount?: number | string;
-  recipientName?: string;
-}): string {
-  const total = typeof params.totalPrice === "number" ? formatHarga(String(params.totalPrice)) : (params.totalPrice ? formatHarga(String(params.totalPrice).replace(/[^\d]/g, "")) : "0");
-  const dp = typeof params.dpAmount === "number" ? formatHarga(String(params.dpAmount)) : (params.dpAmount ? formatHarga(String(params.dpAmount).replace(/[^\d]/g, "")) : "0");
-
-  return `Halo A Chapter Atelier, saya ingin konfirmasi pesanan:
-• No. Arsip: #${params.orderNumber}
-• Pemesan: ${params.customerName}
-• Karya: ${params.productName}
-• Total: ${total} (DP 50%: ${dp})
-• Penerima Kado: ${params.recipientName || "-"}
-
-Mohon informasi nomor rekening resmi atelier untuk pelunasan DP 50%. Terima kasih.`;
-}
-
 export function formatBespokeCommissionWhatsApp(params: {
   customerName: string;
   productName: string;
@@ -77,27 +47,4 @@ export function formatBespokeCommissionWhatsApp(params: {
 • Catatan Khusus: ${params.notes?.trim() || "-"}
 
 Mohon info ketersediaan slot dan langkah pengunggahan brankas memori berikutnya. Terima kasih.`;
-}
-
-export function formatVaultSetupInvitationWhatsApp(params: {
-  orderNumber: string;
-  customerName: string;
-  tokenOrOrderId: string;
-}): string {
-  return `Terima kasih Kak ${params.customerName}, pembayaran DP 50% untuk pesanan #${params.orderNumber} telah kami terima.
-
-Bunga pilihan Anda saat ini sedang memasuki tahap dehidrasi laboratorium.
-Silakan lengkapi rekaman suara, foto polaroid, dan surat rahasia melalui link privat atelier berikut:
-🔗 https://www.achapter.my.id/vault-setup?token=${params.tokenOrOrderId}
-
-Karya akan mulai dicasting setelah memori selesai Anda susun.`;
-}
-
-export function formatGiftRecipientDeliverySurpriseWhatsApp(params: {
-  recipientName: string;
-  senderName: string;
-}): string {
-  return `Halo Kak ${params.recipientName}, sebuah kiriman karya botani abadi "A Chapter" telah tiba untuk Kakak dari seseorang yang spesial: ${params.senderName}.
-
-Dekatkan kamera ponsel Kakak ke micro-chip yang tertanam di dasar bingkai untuk membuka babak kenangan rahasia yang tersimpan di dalamnya. ✨`;
 }

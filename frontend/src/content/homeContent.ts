@@ -33,23 +33,6 @@ export interface ProductCategory {
   items: ProductSpecimen[];
 }
 
-export interface GiftPackagingItem {
-  id: string;
-  name: string;
-  price: string;
-  description: string;
-  imageUrl: string;
-  tag?: string;
-  ctaLabel?: string;
-  ctaHref?: string;
-}
-
-export interface GiftPackagingCategory {
-  sectionTitle: string;
-  sectionDescription: string;
-  items: GiftPackagingItem[];
-}
-
 export interface PhotographTab {
   kind: "photograph";
   title: string;
@@ -127,7 +110,6 @@ export interface HomeContent {
   hero: HeroContent;
   chapters: ProductCategory;
   singleStems: ProductCategory;
-  giftPackaging: GiftPackagingCategory;
   smartVault: SmartVaultContent;
   concierge: ConciergeContent;
 }
@@ -267,44 +249,6 @@ export const homeContent = {
           "https://images.unsplash.com/photo-1501004318641-b39e6451bec6?auto=format&fit=crop&w=1200&q=85",
         description:
           "Satu helaian pakis berkilau dalam presentasi linen, sebagai aksen botani minimalis yang berkesan.",
-      },
-    ],
-  },
-  giftPackaging: {
-    sectionTitle: "Gift Cards & Archival Packaging",
-    sectionDescription:
-      "Kemasan standar museum dan kartu kado digital/fisik untuk momen yang tak terlupakan.",
-    items: [
-      {
-        id: "archival-wood-box",
-        name: "The Archival Wooden Box",
-        price: "Termasuk dalam setiap bingkai",
-        description:
-          "Setiap bingkai dikirimkan dalam kotak kayu protektif anti-benturan berstandar pengiriman seluruh Indonesia, siap langsung diberikan sebagai kado tanpa perlu dibungkus ulang.",
-        imageUrl:
-          "https://images.unsplash.com/photo-1602143407151-7111542de6e8?auto=format&fit=crop&w=1200&q=85",
-        tag: "Included with every framed keepsake",
-      },
-      {
-        id: "atelier-gift-card",
-        name: "The Digital / Physical Gift Card",
-        price: "Mulai Rp 250.000",
-        description:
-          "Bebaskan penerima untuk merancang babak kenangannya sendiri. Tersedia dalam format voucher fisik eksklusif atau kartu digital instan yang dikirim langsung ke WhatsApp penerima.",
-        imageUrl:
-          "https://images.unsplash.com/photo-1512909006721-3d6018887383?auto=format&fit=crop&w=1200&q=85",
-        tag: "Physical letterpress or instant digital",
-        ctaLabel: "PILIH KARTU KADO →",
-        ctaHref: "/gift-card",
-      },
-      {
-        id: "wax-seal-message-card",
-        name: "Wax Seal Message Card",
-        price: "Mulai Rp 45.000",
-        description:
-          "Kartu ucapan personal dalam amplop arsip dengan sentuhan segel lilin.",
-        imageUrl:
-          "https://images.unsplash.com/photo-1455390582262-044cdead277a?auto=format&fit=crop&w=1200&q=85",
       },
     ],
   },

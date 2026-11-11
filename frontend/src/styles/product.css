@@ -834,8 +834,7 @@
 }
 
 /* Audio Player Component Styling */
-.achapter-audio-card,
-.floramory-audio-card {
+.achapter-audio-card {
   width: 100%;
   background: #ffffff;
   border: 1px solid #e9e5d9;

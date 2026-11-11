@@ -1325,25 +1325,6 @@ export async function fetchPreOrders(offset = 0): Promise<PreOrderPage> {
   return { orders, hasMore, total };
 }
 
-// Hitung pesanan menunggu DP lewat count=exact — hanya kolom id,
-// bukan seluruh baris.
-export async function fetchNewPreOrderCount(): Promise<number> {
-  if (!isSupabaseConfigured()) return 0;
-  try {
-    const { status, headers } = await adminCall("proxy", {
-      method: "GET",
-      path: "/rest/v1/preorder_orders",
-      query: "select=id&status=in.(waiting_dp,new)&limit=1&order=created_at.desc",
-      prefer: "count=exact",
-    });
-    if (status >= 400) return 0;
-    const total = parseContentRangeTotal(headers.get("content-range"));
-    return typeof total === "number" ? total : 0;
-  } catch {
-    return 0;
-  }
-}
-
 export async function fetchPreOrderStatusCounts(): Promise<PreOrderStatusCounts> {
   if (!isSupabaseConfigured()) {
     return { waiting_dp: 0, dp_verified: 0, completed: 0, cancelled: 0 };
@@ -1399,31 +1380,4 @@ export function tierLabel(tier: string): string {
     masterpiece: "A Chapter Masterpiece",
   };
   return labels[normalizeTierValue(tier)] || "A Chapter";
-}
-
-export function tierEmoji(tier: string): string {
-  const emojis: Record<string, string> = {
-    classic: "🌸",
-    signature: "🎓",
-    masterpiece: "✨",
-  };
-  return emojis[normalizeTierValue(tier)] || "🌸";
-}
-
-export function tierBg(tier: string): string {
-  const bgs: Record<string, string> = {
-    classic: "#edf3fb",
-    signature: "#f4f7fc",
-    masterpiece: "#fff5c7",
-  };
-  return bgs[normalizeTierValue(tier)] || "#edf3fb";
-}
-
-export function tierBadgeClass(tier: string): string {
-  const classes: Record<string, string> = {
-    classic: "badge-classic",
-    signature: "badge-signature",
-    masterpiece: "badge-masterpiece",
-  };
-  return classes[normalizeTierValue(tier)] || "badge-classic";
 }

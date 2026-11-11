@@ -33,6 +33,11 @@ Urutan
   untuk hasil terbaik, unggah ulang lewat tombol "Unggah & Optimasi" di panel admin.
 - Migrasi pembayaran (`20261102000000_preorder_payment_metadata.sql`): jalankan sebelum
   deploy Edge Function `send-preorder` yang mengirim instruksi DP otomatis.
+- Catatan migrasi PIN: `20261106000000_add_vault_pin_system.sql` dan
+  `20261106010000_add_vault_pin_system.sql` isinya identik dan **keduanya sudah
+  tercatat di riwayat migrasi remote**. Jangan hapus salah satunya tanpa
+  `supabase migration repair`, karena `supabase db push` akan menganggap riwayat
+  lokal dan remote tidak sinkron. File duplikat ini sengaja dipertahankan.
 - Catatan privasi (`preorder_orders`): data berisi kontak & pesan pribadi. Status aman
   dicapai lewat KOMBINASI privilege + RLS:
   - `anon` : tanpa grant apa pun -> tidak bisa membaca/menulis.
