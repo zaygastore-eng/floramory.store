@@ -782,9 +782,8 @@
   padding: 1.4rem 1.5rem;
   border: 1px solid rgba(107, 31, 42, 0.18);
   border-radius: 6px;
-  background: rgba(251, 241, 228, 0.95);
-  box-shadow: 0 20px 44px rgba(20, 8, 10, 0.32);
-  backdrop-filter: blur(4px);
+  background: rgba(251, 241, 228, 0.97);
+  box-shadow: 0 16px 36px rgba(20, 8, 10, 0.24);
 }
 
 .landing-v2 .lp-scene-note p {
@@ -868,6 +867,8 @@
   position: relative;
   width: min(100%, 920px);
   aspect-ratio: 4 / 3;
+  transform: translateZ(0);
+  contain: layout paint;
 }
 
 .landing-v2 .lp-corkboard-surface {
