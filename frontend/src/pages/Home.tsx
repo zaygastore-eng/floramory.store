@@ -633,14 +633,6 @@ export default function Home() {
               <span className="lp-band-line" aria-hidden="true" />
             </div>
             <div className="lp-products-body">
-              <div className="lp-products-head">
-                <span className="lp-eyebrow">THE CURATED EDITIONS · PRESERVED BOTANICAL ARTWARE</span>
-                <h3 className="lp-products-title">The Chapters — Framed Keepsakes</h3>
-                <p>
-                  Setiap karya dirangkai khusus berdasarkan ceritamu. Lengkapi detail di bawah ini
-                  untuk mengamankan slot Pre-Order eksklusifmu sebelum pintu galeri ditutup.
-                </p>
-              </div>
               {renderProductGrid(showcaseProducts)}
               <div className="lp-products-actions">
                 <div className="slider-nav-btns" aria-label="Navigasi geser produk">
@@ -866,46 +858,6 @@ export default function Home() {
                   </>
                 )}
               </div>
-            </div>
-          </section>
-
-          {/* ── LETTER SCENE ── */}
-          <section className="lp-scene lp-scene--letter" id="letter">
-            <img
-              className="lp-scene-img"
-              src="/landing/letter-scene.webp"
-              alt="Kolase surat personal di taman bunga"
-              loading="lazy"
-            />
-            <div className="lp-scene-note lp-scene-note--letter">
-              <span className="lp-eyebrow">A LETTER, PRESERVED</span>
-              <p>
-                Surat personal yang kamu tulis akan tersimpan di dalam Memory Vault, siap dibaca
-                kembali kapan pun penerima merindukannya.
-              </p>
-              <Link href="/smart-qr-vault" className="lp-btn lp-btn--wine">
-                Kenali Memory Vault →
-              </Link>
-            </div>
-          </section>
-
-          {/* ── MESSAGE SCENE ── */}
-          <section className="lp-scene lp-scene--message" id="message">
-            <img
-              className="lp-scene-img"
-              src="/landing/message-scene.webp"
-              alt="Kartu pesan personal dengan amplop pink"
-              loading="lazy"
-            />
-            <div className="lp-scene-note lp-scene-note--message">
-              <span className="lp-eyebrow">A MESSAGE, SEALED</span>
-              <p>
-                Pesan, doa, dan kutipan lirik favoritmu akan tersegel rapi di dalam brankas — hanya
-                untuk mata yang tepat.
-              </p>
-              <a href="#pesan" className="lp-btn lp-btn--outline">
-                Tulis Pesanmu →
-              </a>
             </div>
           </section>
 
@@ -1233,23 +1185,6 @@ export default function Home() {
 
               <img className="lp-faq-envelope" src="/landing/envelope-pink.webp" alt="" aria-hidden="true" loading="lazy" />
               <img className="lp-faq-applique" src="/landing/flower-applique.webp" alt="" aria-hidden="true" loading="lazy" />
-            </div>
-          </section>
-
-          {/* ── CLOSING ── */}
-          <section className="lp-closing" id="closing">
-            <img className="lp-closing-bg" src="/landing/closing-scene.webp" alt="" aria-hidden="true" loading="lazy" />
-            <div className="lp-closing-veil" aria-hidden="true" />
-            <div className="lp-closing-card">
-              <span className="lp-eyebrow">YOUR STORY DESERVES A CHAPTER</span>
-              <h2 className="lp-script">Begin your chapter</h2>
-              <p>
-                Satu karya botani, satu brankas kenangan, dan satu babak hidup yang tidak akan
-                pernah layu.
-              </p>
-              <a href="#pesan" className="lp-btn lp-btn--wine">
-                Commission Your Chapter
-              </a>
             </div>
           </section>
         </main>

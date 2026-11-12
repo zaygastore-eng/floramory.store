@@ -395,7 +395,7 @@
 }
 
 .landing-v2 .lp-products-body {
-  padding: clamp(3rem, 6vw, 6rem) clamp(1rem, 5vw, 5rem);
+  padding: clamp(2.5rem, 5vw, 4.5rem) clamp(1rem, 5vw, 5rem);
   background-color: #4a1019;
   background-image:
     radial-gradient(ellipse at 50% 0%, rgba(139, 58, 74, 0.55), transparent 62%),
@@ -404,29 +404,7 @@
 }
 
 .landing-v2 .lp-products-head {
-  max-width: 760px;
-  margin: 0 auto clamp(2rem, 4vw, 3rem);
-  text-align: center;
-}
-
-.landing-v2 .lp-products-head .lp-eyebrow {
-  color: #d9bfa9;
-}
-
-.landing-v2 .lp-products-title {
-  margin: 0.7rem 0 0.8rem;
-  font-family: var(--lp-display);
-  font-size: clamp(1.8rem, 3.4vw, 2.8rem);
-  font-weight: 500;
-  letter-spacing: 0.02em;
-  color: #fbf1e4;
-}
-
-.landing-v2 .lp-products-head p {
-  font-family: var(--lp-body);
-  font-size: 0.95rem;
-  line-height: 1.85;
-  color: rgba(251, 240, 228, 0.8);
+  display: none;
 }
 
 .landing-v2 .lp-products .product-slider-track {
@@ -452,25 +430,33 @@
 
 .landing-v2 .lp-products .product-img {
   position: relative;
-  aspect-ratio: 4 / 5;
-  border-radius: 8px;
+  aspect-ratio: 7 / 10;
+  border-radius: 6px;
   overflow: visible;
-  background: rgba(0, 0, 0, 0.12);
+  background: #b4c6ee;
   box-shadow: 0 18px 34px rgba(20, 8, 10, 0.35);
 }
 
 .landing-v2 .lp-products .product-img-layer {
+  position: absolute;
+  inset: 0;
   overflow: hidden;
-  border-radius: 8px;
+  border-radius: 6px;
+  background: #b4c6ee;
+}
+
+.landing-v2 .lp-products .product-thumb {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .landing-v2 .lp-products .product-img::after {
   content: "";
   position: absolute;
-  inset: -7% -9%;
+  inset: 0;
   z-index: 4;
-  background: url("/landing/ornate-frame-cut.webp") center / 100% 100% no-repeat;
-  filter: drop-shadow(0 8px 12px rgba(20, 8, 10, 0.32));
+  background: url("/landing/ornate-card-mat.webp") center / 100% 100% no-repeat;
   pointer-events: none;
 }
 
@@ -486,14 +472,27 @@
 }
 
 .landing-v2 .lp-products .product-img-monogram {
-  background:
-    radial-gradient(circle at 50% 42%, rgba(232, 201, 168, 0.16), transparent 62%),
-    linear-gradient(160deg, #7a2733 0%, #4a1019 100%);
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #b4c6ee;
+  background-image: radial-gradient(circle at 50% 48%, #c9d8fb 0%, #b0c2ee 100%);
 }
 
 .landing-v2 .lp-products .product-monogram-inner {
-  border-color: rgba(232, 201, 168, 0.55);
-  color: #e8c9a8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  border: 1px dashed rgba(83, 27, 33, 0.45);
+  color: var(--lp-wine, #531B21);
+  font-family: var(--lp-display);
+  font-size: 1.15rem;
+  letter-spacing: 0.1em;
 }
 
 .landing-v2 .lp-products .product-name {
