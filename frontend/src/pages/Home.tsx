@@ -32,6 +32,23 @@ import { useAudioPlayback } from "@/hooks/useAudioPlayback";
 // catalog only has a couple of active pieces.
 const editorialChapters = getHomeContentCatalogProducts("framed");
 
+const PHOTOBOOTH_THEMES = [
+  { id: "cream", name: "Atelier Cream", bg: "#FAF7F2", border: "#E5DDD0", text: "#531B21", dot: "#D8C7B0" },
+  { id: "wine", name: "Wine Romance", bg: "#531B21", border: "#6D252D", text: "#FBF3E8", dot: "#8C3843" },
+  { id: "periwinkle", name: "Periwinkle Blue", bg: "#BCC8F5", border: "#A2B3ED", text: "#3B1418", dot: "#8CA2E5" },
+  { id: "midnight", name: "Midnight Noir", bg: "#1D1A1B", border: "#353031", text: "#F3ECE1", dot: "#524A4B" },
+  { id: "blossom", name: "Blossom Pink", bg: "#F5D8DB", border: "#E8BAC0", text: "#531B21", dot: "#DB9FA8" },
+] as const;
+
+type PhotoboothBorderId = typeof PHOTOBOOTH_THEMES[number]["id"];
+
+const PHOTOBOOTH_SAMPLE_PHOTOS = [
+  { id: "cut-1", src: "/landing/polaroid-1.webp", alt: "Flower market morning bouquet" },
+  { id: "cut-2", src: "/landing/polaroid-2.webp", alt: "Fragrance of fresh roses" },
+  { id: "cut-3", src: "/landing/polaroid-3.webp", alt: "Candid laughter and joy" },
+  { id: "cut-4", src: "/landing/polaroid-4.webp", alt: "Keepsake flowers framed" },
+];
+
 function ProductCard({
   product,
   onClick,
@@ -261,6 +278,17 @@ export default function Home() {
   const [vaultSimTab, setVaultSimTab] = useState<
     "photograph" | "voice-record" | "letter" | "video"
   >("photograph");
+  const [photoboothBorder, setPhotoboothBorder] = useState<PhotoboothBorderId>("cream");
+  const [letterText, setLetterText] = useState(
+    "Untuk Sahabat & Belahan Jiwa yang Terkasih,\n\nWaktu mungkin membawa kita ke persimpangan jalan yang berbeda, namun kenangan yang telah kita ukir bersama takkan pernah lekang oleh jarak dan masa. Sebagaimana kelopak bunga ini yang diawetkan abadi di laboratorium A Chapter, rasa sayang, syukur, dan doa tulusku akan selalu menyertai setiap langkahmu.\n\nIni bukan akhir, melainkan sebuah babak baru. Until we meet again, simpanlah memori ini selamanya.\n\nDengan cinta terdalam,\nSelalu Sahabat Terbaikmu"
+  );
+  const [letterFont, setLetterFont] = useState<"parisienne" | "cinzel" | "cormorant" | "sans">("parisienne");
+  const [letterSize, setLetterSize] = useState<"sm" | "md" | "lg" | "xl">("md");
+  const [letterBold, setLetterBold] = useState(false);
+  const [letterItalic, setLetterItalic] = useState(false);
+  const [letterUnderline, setLetterUnderline] = useState(false);
+  const [letterAlign, setLetterAlign] = useState<"left" | "center" | "right">("center");
+  const [letterColor, setLetterColor] = useState<string>("#531B21");
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
   const {
     isPlaying: isAudioPlaying,
@@ -876,251 +904,473 @@ export default function Home() {
                 </p>
               </header>
 
-              <div className="lp-corkboard-wrap">
-                <div className="lp-corkboard">
-                  <img
-                    className="lp-corkboard-surface"
-                    src="/landing/corkboard.webp"
-                    alt=""
-                    aria-hidden="true"
-                    loading="lazy"
-                  />
-                  <img className="lp-cork-clip" src="/landing/wood-clip.webp" alt="" aria-hidden="true" loading="lazy" />
-                  <img className="lp-cork-polaroid lp-p1" src="/landing/polaroid-1.webp" alt="" aria-hidden="true" loading="lazy" />
-                  <img className="lp-cork-polaroid lp-p2" src="/landing/polaroid-2.webp" alt="" aria-hidden="true" loading="lazy" />
-                  <img className="lp-cork-polaroid lp-p3" src="/landing/polaroid-3.webp" alt="" aria-hidden="true" loading="lazy" />
-                  <img className="lp-cork-polaroid lp-p4" src="/landing/polaroid-4.webp" alt="" aria-hidden="true" loading="lazy" />
-                  <img className="lp-cork-crystal lp-c1" src="/landing/crystal-pink.webp" alt="" aria-hidden="true" loading="lazy" />
-                  <img className="lp-cork-crystal lp-c2" src="/landing/crystal-purple.webp" alt="" aria-hidden="true" loading="lazy" />
-                  <img className="lp-cork-crystal lp-c3" src="/landing/crystal-green.webp" alt="" aria-hidden="true" loading="lazy" />
+              <article className="vault-simulator-wrap lp-vault-sim" aria-label="Interactive memory vault preview">
+                <div className="vault-simulator-header">
+                  <span className="folio-label-left">FOLIO ARCHIVE NO. 2026-A · SURABAYA ATELIER</span>
+                  <span className="folio-label-right">
+                    PERMANENT CLOUD RECORD · SECURED
+                    <span className="folio-status-dot" aria-hidden="true" />
+                  </span>
+                </div>
 
-                  <article className="vault-simulator-wrap lp-vault-sim" aria-label="Interactive memory vault preview">
-                    <div className="vault-simulator-header">
-                      <span className="folio-label-left">FOLIO ARCHIVE NO. 2026-A · SURABAYA ATELIER</span>
-                      <span className="folio-label-right">
-                        PERMANENT CLOUD RECORD · SECURED
-                        <span className="folio-status-dot" aria-hidden="true" />
-                      </span>
-                    </div>
-
-                    <div className="vault-sim-nav" role="tablist" aria-label="Memory Vault preview">
-                      {homeContent.smartVault.mediaTabs.map((tab, index) => {
-                        const tabId = `vault-tab-${["foto", "audio", "surat", "video"][index]}`;
-                        const isSelected = vaultSimTab === tab.kind;
-                        return (
-                          <button
-                            key={tab.kind}
-                            type="button"
-                            role="tab"
-                            id={tabId}
-                            aria-controls="vault-panel"
-                            aria-selected={isSelected}
-                            tabIndex={isSelected ? 0 : -1}
-                            className={`vault-sim-btn${isSelected ? " active" : ""}`}
-                            onClick={() => {
-                              setVaultSimTab(tab.kind);
-                              if (tab.kind !== "voice-record") pauseAudio();
-                              if (tab.kind !== "video") setIsVideoPlaying(false);
-                            }}
-                            onKeyDown={handleVaultTabKeyDown}
-                          >
-                            {["I.", "II.", "III.", "IV."][index]} {tab.title.toUpperCase()}
-                          </button>
-                        );
-                      })}
-                    </div>
-
-                    <div className="vault-folio-body">
-                      <div
-                        className="vault-sim-body"
-                        id="vault-panel"
-                        role="tabpanel"
-                        aria-labelledby={`vault-tab-${{
-                          photograph: "foto",
-                          "voice-record": "audio",
-                          letter: "surat",
-                          video: "video",
-                        }[vaultSimTab]}`}
-                        tabIndex={0}
+                <div className="vault-sim-nav" role="tablist" aria-label="Memory Vault preview">
+                  {homeContent.smartVault.mediaTabs.map((tab, index) => {
+                    const tabId = `vault-tab-${["foto", "audio", "surat", "video"][index]}`;
+                    const isSelected = vaultSimTab === tab.kind;
+                    return (
+                      <button
+                        key={tab.kind}
+                        type="button"
+                        role="tab"
+                        id={tabId}
+                        aria-controls="vault-panel"
+                        aria-selected={isSelected}
+                        tabIndex={isSelected ? 0 : -1}
+                        className={`vault-sim-btn${isSelected ? " active" : ""}`}
+                        onClick={() => {
+                          setVaultSimTab(tab.kind);
+                          if (tab.kind !== "voice-record") pauseAudio();
+                          if (tab.kind !== "video") setIsVideoPlaying(false);
+                        }}
+                        onKeyDown={handleVaultTabKeyDown}
                       >
-                        {homeContent.smartVault.mediaTabs.map((tab) => {
-                          if (tab.kind !== vaultSimTab) return null;
+                        {["I.", "II.", "III.", "IV."][index]} {tab.title.toUpperCase()}
+                      </button>
+                    );
+                  })}
+                </div>
 
-                          if (tab.kind === "photograph") {
-                            return (
-                              <div className="sim-panel" key={tab.kind}>
-                                <div className="folio-polaroid">
-                                  <div className="folio-polaroid-frame">
-                                    <ProductImage
-                                      className="folio-polaroid-img"
-                                      src={tab.imageUrl}
-                                      size="large"
-                                      alt={tab.excerpt}
-                                      width={900}
-                                      height={675}
-                                      fallback={<div className="folio-polaroid-placeholder">A · C</div>}
-                                    />
-                                  </div>
-                                  <p className="folio-polaroid-script">{tab.handwrittenCaption}</p>
-                                  <span className="folio-polaroid-stamp">{tab.archivalStamp}</span>
+                <div className="vault-folio-body">
+                  <div
+                    className="vault-sim-body"
+                    id="vault-panel"
+                    role="tabpanel"
+                    aria-labelledby={`vault-tab-${{
+                      photograph: "foto",
+                      "voice-record": "audio",
+                      letter: "surat",
+                      video: "video",
+                    }[vaultSimTab]}`}
+                    tabIndex={0}
+                  >
+                    {homeContent.smartVault.mediaTabs.map((tab) => {
+                      if (tab.kind !== vaultSimTab) return null;
+
+                      if (tab.kind === "photograph") {
+                        const activeTheme = PHOTOBOOTH_THEMES.find((t) => t.id === photoboothBorder) || PHOTOBOOTH_THEMES[0];
+                        return (
+                          <div className="sim-panel sim-panel--photobooth" key={tab.kind}>
+                            <div className="photobooth-experience">
+                              {/* Border / Style Picker */}
+                              <div className="photobooth-controls">
+                                <div className="photobooth-control-header">
+                                  <span className="photobooth-control-badge">STUDIO PHOTOBOOTH</span>
+                                  <h4 className="photobooth-control-title">Pilih Gaya Border Photobooth</h4>
+                                  <p className="photobooth-control-desc">
+                                    Unggah 4 momen terbaikmu layaknya berfoto di studio photobooth, pilih bordermu sendiri, dan simpan selamanya di dalam chip QR.
+                                  </p>
+                                </div>
+                                <div className="photobooth-theme-chips" role="radiogroup" aria-label="Pilih border photobooth">
+                                  {PHOTOBOOTH_THEMES.map((theme) => {
+                                    const isSelected = photoboothBorder === theme.id;
+                                    return (
+                                      <button
+                                        key={theme.id}
+                                        type="button"
+                                        role="radio"
+                                        aria-checked={isSelected}
+                                        className={`photobooth-theme-chip${isSelected ? " is-active" : ""}`}
+                                        onClick={() => setPhotoboothBorder(theme.id)}
+                                        style={{
+                                          backgroundColor: theme.bg,
+                                          color: theme.text,
+                                          borderColor: isSelected ? theme.text : theme.border,
+                                        }}
+                                      >
+                                        <span className="theme-dot" style={{ backgroundColor: theme.dot }} />
+                                        <span className="theme-name">{theme.name}</span>
+                                        {isSelected && <span className="theme-check">✓</span>}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                                <div className="photobooth-perks">
+                                  <span className="photobooth-perk-item">✦ 4-Cut Vertical Strip</span>
+                                  <span className="photobooth-perk-item">✦ High-Res Cloud Record</span>
+                                  <span className="photobooth-perk-item">✦ Scan to Relive</span>
                                 </div>
                               </div>
-                            );
-                          }
 
-                          if (tab.kind === "voice-record") {
-                            const formatTime = (sec: number) => {
-                              if (!Number.isFinite(sec) || sec < 0) return "00:00";
-                              const m = Math.floor(sec / 60);
-                              const s = Math.floor(sec % 60);
-                              return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
-                            };
-                            const curTimeStr = formatTime(audioCurrentTime);
-                            const totalTimeStr = formatTime(audioDuration);
-
-                            return (
-                              <div className="sim-panel" key={tab.kind}>
-                                <div className="folio-audio-card">
-                                  <div className="folio-audio-kicker">
-                                    {tab.songTitle || "SEE YOU AGAIN — ACOUSTIC KEEPSAKE MEMOIR"}
+                              {/* The Photobooth Strip */}
+                              <div className="photobooth-strip-wrap">
+                                <div
+                                  className="photobooth-strip"
+                                  style={{
+                                    backgroundColor: activeTheme.bg,
+                                    color: activeTheme.text,
+                                    borderColor: activeTheme.border,
+                                  }}
+                                >
+                                  <div className="photobooth-strip-head">
+                                    <span className="strip-atelier-tag">A CHAPTER ATELIER</span>
+                                    <span className="strip-edition">ARCHIVAL PHOTOBOOTH · 4 CUTS</span>
                                   </div>
-                                  <div
-                                    className={`folio-waveform${isAudioPlaying ? " is-playing" : ""}`}
-                                    aria-hidden="true"
-                                    onClick={() => toggleAudio(tab.audioSrc || "/see-you-again.mp3")}
-                                    style={{ cursor: "pointer" }}
-                                    title="Klik untuk memutar lagu"
-                                  >
-                                    {[24, 38, 58, 34, 72, 48, 88, 55, 96, 42, 68, 34, 82, 50, 100, 58, 75, 38, 64, 46, 86, 54, 72, 32, 60, 42, 92, 48, 68, 36, 78, 52].map((height, index) => (
-                                      <span
-                                        key={index}
-                                        style={{ height: `${height}%`, animationDelay: `${index * -27}ms` }}
+
+                                  <div className="photobooth-strip-grid">
+                                    {PHOTOBOOTH_SAMPLE_PHOTOS.map((photo, pIdx) => (
+                                      <div key={photo.id} className="photobooth-strip-frame">
+                                        <img
+                                          src={photo.src}
+                                          alt={photo.alt}
+                                          className="photobooth-strip-img"
+                                          loading="lazy"
+                                        />
+                                        <span className="photobooth-frame-num" aria-hidden="true">0{pIdx + 1}</span>
+                                      </div>
+                                    ))}
+                                  </div>
+
+                                  <div className="photobooth-strip-foot">
+                                    <div className="strip-foot-meta">
+                                      <span className="strip-date">JUNE 2026 · SURABAYA ATELIER</span>
+                                      <span className="strip-stamp">№ 2026-CH-0482</span>
+                                    </div>
+                                    <div className="strip-monogram" aria-hidden="true">
+                                      <span>A</span>
+                                      <span>·</span>
+                                      <span>C</span>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      }
+
+                      if (tab.kind === "voice-record") {
+                        const formatTime = (sec: number) => {
+                          if (!Number.isFinite(sec) || sec < 0) return "00:00";
+                          const m = Math.floor(sec / 60);
+                          const s = Math.floor(sec % 60);
+                          return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
+                        };
+                        const curTimeStr = formatTime(audioCurrentTime);
+                        const totalTimeStr = formatTime(audioDuration);
+
+                        return (
+                          <div className="sim-panel" key={tab.kind}>
+                            <div className="folio-audio-card">
+                              <div className="folio-audio-kicker">
+                                {tab.songTitle || "SEE YOU AGAIN — ACOUSTIC KEEPSAKE MEMOIR"}
+                              </div>
+                              <div
+                                className={`folio-waveform${isAudioPlaying ? " is-playing" : ""}`}
+                                aria-hidden="true"
+                                onClick={() => toggleAudio(tab.audioSrc || "/see-you-again.mp3")}
+                                style={{ cursor: "pointer" }}
+                                title="Klik untuk memutar lagu"
+                              >
+                                {[24, 38, 58, 34, 72, 48, 88, 55, 96, 42, 68, 34, 82, 50, 100, 58, 75, 38, 64, 46, 86, 54, 72, 32, 60, 42, 92, 48, 68, 36, 78, 52].map((height, index) => (
+                                  <span
+                                    key={index}
+                                    style={{ height: `${height}%`, animationDelay: `${index * -27}ms` }}
+                                  />
+                                ))}
+                              </div>
+                              <div className="folio-audio-scrub">
+                                <input
+                                  type="range"
+                                  className="folio-audio-range"
+                                  min={0}
+                                  max={audioDuration > 0 ? audioDuration : 0}
+                                  step={0.1}
+                                  value={Math.min(audioCurrentTime, audioDuration || 0)}
+                                  onChange={(event) => seekAudio(Number(event.target.value))}
+                                  onMouseDown={handleAudioSeekStart}
+                                  onMouseUp={handleAudioSeekEnd}
+                                  onTouchStart={handleAudioSeekStart}
+                                  onTouchEnd={handleAudioSeekEnd}
+                                  aria-label="Geser posisi lagu"
+                                  style={{
+                                    background: `linear-gradient(to right, var(--brand-burgundy) ${audioDuration > 0 ? (audioCurrentTime / audioDuration) * 100 : 0}%, rgba(83, 27, 33, 0.15) ${audioDuration > 0 ? (audioCurrentTime / audioDuration) * 100 : 0}%)`,
+                                  }}
+                                />
+                              </div>
+                              <div className="folio-audio-controls">
+                                <button
+                                  type="button"
+                                  className="folio-play-btn"
+                                  aria-label={isAudioPlaying ? "Jeda lagu See You Again" : "Putar lagu See You Again"}
+                                  aria-pressed={isAudioPlaying}
+                                  onClick={() => toggleAudio(tab.audioSrc || "/see-you-again.mp3")}
+                                >
+                                  <span aria-hidden="true">{isAudioPlaying ? "Ⅱ" : "▶"}</span>
+                                  {isAudioPlaying ? "JEDA LAGU" : "PUTAR LAGU (SEE YOU AGAIN)"}
+                                </button>
+                                <span className="folio-audio-time">
+                                  {isAudioPlaying || audioCurrentTime > 0 ? curTimeStr : "00:00"} / {totalTimeStr}
+                                </span>
+                              </div>
+                              <div className="folio-audio-extra">
+                                <button
+                                  type="button"
+                                  className="folio-skip-btn"
+                                  onClick={() => skipAudio(-10)}
+                                  aria-label="Mundur 10 detik"
+                                >
+                                  −10s
+                                </button>
+                                <button
+                                  type="button"
+                                  className="folio-skip-btn"
+                                  onClick={() => skipAudio(10)}
+                                  aria-label="Maju 10 detik"
+                                >
+                                  +10s
+                                </button>
+                                <button
+                                  type="button"
+                                  className="folio-speed-btn"
+                                  onClick={cycleAudioRate}
+                                  aria-label={`Kecepatan putar ${audioRate} kali`}
+                                >
+                                  {audioRate}x
+                                </button>
+                              </div>
+                              <blockquote className="folio-audio-quote">
+                                <p>{tab.quoteExcerpt}</p>
+                                <footer>— {tab.quoteAttribution}</footer>
+                              </blockquote>
+                            </div>
+                          </div>
+                        );
+                      }
+
+                      if (tab.kind === "letter") {
+                        return (
+                          <div className="sim-panel sim-panel--letter" key={tab.kind}>
+                            <div className="lace-letter-experience">
+                              {/* Word / GDocs style rich text toolbar */}
+                              <div className="lace-letter-toolbar" aria-label="Pengaturan gaya tulisan surat">
+                                <div className="toolbar-group">
+                                  <span className="toolbar-label">FONT</span>
+                                  <div className="toolbar-btn-group">
+                                    <button
+                                      type="button"
+                                      className={`toolbar-btn${letterFont === "parisienne" ? " is-active" : ""}`}
+                                      onClick={() => setLetterFont("parisienne")}
+                                      title="Font Parisienne (Romance Script)"
+                                      style={{ fontFamily: "'Parisienne', cursive", fontSize: "1.05rem" }}
+                                    >
+                                      Parisienne
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className={`toolbar-btn${letterFont === "cinzel" ? " is-active" : ""}`}
+                                      onClick={() => setLetterFont("cinzel")}
+                                      title="Font Cinzel (Classical Roman)"
+                                      style={{ fontFamily: "'Cinzel', serif", fontSize: "0.82rem", letterSpacing: "0.06em" }}
+                                    >
+                                      Cinzel
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className={`toolbar-btn${letterFont === "cormorant" ? " is-active" : ""}`}
+                                      onClick={() => setLetterFont("cormorant")}
+                                      title="Font Cormorant Garamond (Editorial Serif)"
+                                      style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: "0.95rem" }}
+                                    >
+                                      Cormorant
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className={`toolbar-btn${letterFont === "sans" ? " is-active" : ""}`}
+                                      onClick={() => setLetterFont("sans")}
+                                      title="Font DM Sans (Modern Clean)"
+                                      style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "0.82rem" }}
+                                    >
+                                      Modern
+                                    </button>
+                                  </div>
+                                </div>
+
+                                <div className="toolbar-group">
+                                  <span className="toolbar-label">UKURAN</span>
+                                  <div className="toolbar-btn-group">
+                                    {(["sm", "md", "lg", "xl"] as const).map((sz) => (
+                                      <button
+                                        key={sz}
+                                        type="button"
+                                        className={`toolbar-btn toolbar-btn--size${letterSize === sz ? " is-active" : ""}`}
+                                        onClick={() => setLetterSize(sz)}
+                                      >
+                                        {sz.toUpperCase()}
+                                      </button>
+                                    ))}
+                                  </div>
+                                </div>
+
+                                <div className="toolbar-group">
+                                  <span className="toolbar-label">GAYA</span>
+                                  <div className="toolbar-btn-group">
+                                    <button
+                                      type="button"
+                                      className={`toolbar-btn toolbar-btn--icon${letterBold ? " is-active" : ""}`}
+                                      onClick={() => setLetterBold((b) => !b)}
+                                      title="Bold (Tebal)"
+                                    >
+                                      <strong>B</strong>
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className={`toolbar-btn toolbar-btn--icon${letterItalic ? " is-active" : ""}`}
+                                      onClick={() => setLetterItalic((i) => !i)}
+                                      title="Italic (Miring)"
+                                    >
+                                      <em>I</em>
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className={`toolbar-btn toolbar-btn--icon${letterUnderline ? " is-active" : ""}`}
+                                      onClick={() => setLetterUnderline((u) => !u)}
+                                      title="Underline (Garis Bawah)"
+                                    >
+                                      <u>U</u>
+                                    </button>
+                                  </div>
+                                </div>
+
+                                <div className="toolbar-group">
+                                  <span className="toolbar-label">POSISI</span>
+                                  <div className="toolbar-btn-group">
+                                    <button
+                                      type="button"
+                                      className={`toolbar-btn toolbar-btn--icon${letterAlign === "left" ? " is-active" : ""}`}
+                                      onClick={() => setLetterAlign("left")}
+                                      title="Rata Kiri"
+                                    >
+                                      ≡
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className={`toolbar-btn toolbar-btn--icon${letterAlign === "center" ? " is-active" : ""}`}
+                                      onClick={() => setLetterAlign("center")}
+                                      title="Rata Tengah"
+                                    >
+                                      ⁞
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className={`toolbar-btn toolbar-btn--icon${letterAlign === "right" ? " is-active" : ""}`}
+                                      onClick={() => setLetterAlign("right")}
+                                      title="Rata Kanan"
+                                    >
+                                      ≡
+                                    </button>
+                                  </div>
+                                </div>
+
+                                <div className="toolbar-group">
+                                  <span className="toolbar-label">TINTA</span>
+                                  <div className="toolbar-color-group">
+                                    {[
+                                      { color: "#531B21", name: "Atelier Wine" },
+                                      { color: "#2A2523", name: "Charcoal" },
+                                      { color: "#783642", name: "Rosewood" },
+                                    ].map((c) => (
+                                      <button
+                                        key={c.color}
+                                        type="button"
+                                        className={`toolbar-color-dot${letterColor === c.color ? " is-active" : ""}`}
+                                        style={{ backgroundColor: c.color }}
+                                        onClick={() => setLetterColor(c.color)}
+                                        title={`Warna Tinta: ${c.name}`}
+                                        aria-label={c.name}
                                       />
                                     ))}
                                   </div>
-                                  <div className="folio-audio-scrub">
-                                    <input
-                                      type="range"
-                                      className="folio-audio-range"
-                                      min={0}
-                                      max={audioDuration > 0 ? audioDuration : 0}
-                                      step={0.1}
-                                      value={Math.min(audioCurrentTime, audioDuration || 0)}
-                                      onChange={(event) => seekAudio(Number(event.target.value))}
-                                      onMouseDown={handleAudioSeekStart}
-                                      onMouseUp={handleAudioSeekEnd}
-                                      onTouchStart={handleAudioSeekStart}
-                                      onTouchEnd={handleAudioSeekEnd}
-                                      aria-label="Geser posisi lagu"
-                                      style={{
-                                        background: `linear-gradient(to right, var(--brand-burgundy) ${audioDuration > 0 ? (audioCurrentTime / audioDuration) * 100 : 0}%, rgba(83, 27, 33, 0.15) ${audioDuration > 0 ? (audioCurrentTime / audioDuration) * 100 : 0}%)`,
-                                      }}
-                                    />
-                                  </div>
-                                  <div className="folio-audio-controls">
-                                    <button
-                                      type="button"
-                                      className="folio-play-btn"
-                                      aria-label={isAudioPlaying ? "Jeda lagu See You Again" : "Putar lagu See You Again"}
-                                      aria-pressed={isAudioPlaying}
-                                      onClick={() => toggleAudio(tab.audioSrc || "/see-you-again.mp3")}
-                                    >
-                                      <span aria-hidden="true">{isAudioPlaying ? "Ⅱ" : "▶"}</span>
-                                      {isAudioPlaying ? "JEDA LAGU" : "PUTAR LAGU (SEE YOU AGAIN)"}
-                                    </button>
-                                    <span className="folio-audio-time">
-                                      {isAudioPlaying || audioCurrentTime > 0 ? curTimeStr : "00:00"} / {totalTimeStr}
-                                    </span>
-                                  </div>
-                                  <div className="folio-audio-extra">
-                                    <button
-                                      type="button"
-                                      className="folio-skip-btn"
-                                      onClick={() => skipAudio(-10)}
-                                      aria-label="Mundur 10 detik"
-                                    >
-                                      −10s
-                                    </button>
-                                    <button
-                                      type="button"
-                                      className="folio-skip-btn"
-                                      onClick={() => skipAudio(10)}
-                                      aria-label="Maju 10 detik"
-                                    >
-                                      +10s
-                                    </button>
-                                    <button
-                                      type="button"
-                                      className="folio-speed-btn"
-                                      onClick={cycleAudioRate}
-                                      aria-label={`Kecepatan putar ${audioRate} kali`}
-                                    >
-                                      {audioRate}x
-                                    </button>
-                                  </div>
-                                  <blockquote className="folio-audio-quote">
-                                    <p>{tab.quoteExcerpt}</p>
-                                    <footer>— {tab.quoteAttribution}</footer>
-                                  </blockquote>
                                 </div>
                               </div>
-                            );
-                          }
 
-                          if (tab.kind === "letter") {
-                            return (
-                              <div className="sim-panel" key={tab.kind}>
-                                <div className="folio-letter-card">
-                                  <div className="folio-wax-seal" aria-hidden="true">A · C</div>
-                                  <div className="folio-letter-head">{tab.greeting}</div>
-                                  <p className="folio-letter-body">
-                                    <span className="folio-drop-cap">{tab.letterText.charAt(0)}</span>
-                                    {tab.letterText.slice(1)}
-                                  </p>
-                                  <div className="folio-letter-sign">
-                                    {tab.signoff}<br />
-                                    <span>{tab.signature}</span>
-                                  </div>
-                                </div>
-                              </div>
-                            );
-                          }
-
-                          return (
-                            <div className="sim-panel" key={tab.kind}>
-                              <div className={`folio-video-card${isVideoPlaying ? " is-playing" : ""}`}>
-                                <button
-                                  type="button"
-                                  className="folio-video-frame"
-                                  onClick={() => setIsVideoPlaying(playing => !playing)}
-                                  aria-label={isVideoPlaying ? "Jeda simulasi video memoir" : "Putar simulasi video memoir"}
-                                >
-                                  <img
-                                    className="folio-video-poster"
-                                    src={tab.posterUrl}
-                                    alt={tab.caption}
-                                    loading="lazy"
+                              {/* The Lace Board Canvas */}
+                              <div className="lace-board-frame">
+                                <img
+                                  src="/landing/lace-letter-card.webp"
+                                  alt="Lace Board Card"
+                                  className="lace-board-mat"
+                                  loading="lazy"
+                                />
+                                <div className="lace-board-parchment">
+                                  <textarea
+                                    className="lace-letter-textarea"
+                                    value={letterText}
+                                    onChange={(e) => setLetterText(e.target.value)}
+                                    placeholder="Tuliskan pesan cinta atau surat rahasiamu di sini..."
+                                    style={{
+                                      fontFamily: {
+                                        parisienne: "'Parisienne', cursive",
+                                        cinzel: "'Cinzel', serif",
+                                        cormorant: "'Cormorant Garamond', serif",
+                                        sans: "'DM Sans', sans-serif",
+                                      }[letterFont],
+                                      fontSize: {
+                                        sm: "clamp(0.78rem, 1.1vw, 0.95rem)",
+                                        md: "clamp(0.92rem, 1.4vw, 1.18rem)",
+                                        lg: "clamp(1.05rem, 1.8vw, 1.4rem)",
+                                        xl: "clamp(1.22rem, 2.2vw, 1.7rem)",
+                                      }[letterSize],
+                                      fontWeight: letterBold ? 700 : 400,
+                                      fontStyle: letterItalic ? "italic" : "normal",
+                                      textDecoration: letterUnderline ? "underline" : "none",
+                                      textAlign: letterAlign,
+                                      color: letterColor,
+                                      lineHeight: letterFont === "parisienne" ? 1.45 : 1.6,
+                                    }}
                                   />
-                                  <span className="folio-video-vignette" aria-hidden="true" />
-                                  {!isVideoPlaying && (
-                                    <span className="folio-video-play" aria-hidden="true">▶</span>
-                                  )}
-                                  <span className="folio-video-badge">SIMULASI VIDEO MEMOIR · {tab.durationLabel}</span>
-                                  <span className="folio-video-progress" aria-hidden="true">
-                                    <span className="folio-video-progress-fill" />
-                                  </span>
-                                </button>
-                                <p className="folio-video-caption">{tab.caption}</p>
-                                <span className="folio-video-stamp">{tab.archivalStamp}</span>
+                                </div>
                               </div>
+                              <p className="lace-board-hint">
+                                ✏️ Ketik langsung di atas perkamen renda dan gunakan toolbar di atas untuk mengubah gaya suratmu.
+                              </p>
                             </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  </article>
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <div className="sim-panel" key={tab.kind}>
+                          <div className={`folio-video-card${isVideoPlaying ? " is-playing" : ""}`}>
+                            <button
+                              type="button"
+                              className="folio-video-frame"
+                              onClick={() => setIsVideoPlaying((playing) => !playing)}
+                              aria-label={isVideoPlaying ? "Jeda simulasi video memoir" : "Putar simulasi video memoir"}
+                            >
+                              <img
+                                className="folio-video-poster"
+                                src={tab.posterUrl}
+                                alt={tab.caption}
+                                loading="lazy"
+                              />
+                              <span className="folio-video-vignette" aria-hidden="true" />
+                              {!isVideoPlaying && (
+                                <span className="folio-video-play" aria-hidden="true">▶</span>
+                              )}
+                              <span className="folio-video-badge">SIMULASI VIDEO MEMOIR · {tab.durationLabel}</span>
+                              <span className="folio-video-progress" aria-hidden="true">
+                                <span className="folio-video-progress-fill" />
+                              </span>
+                            </button>
+                            <p className="folio-video-caption">{tab.caption}</p>
+                            <span className="folio-video-stamp">{tab.archivalStamp}</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
+              </article>
 
               <div className="lp-vault-copy">
                 <span className="lp-eyebrow">DIGITAL MEMOIR PREVIEW</span>
