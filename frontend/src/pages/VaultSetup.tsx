@@ -362,7 +362,7 @@ export default function VaultSetup() {
   const letterRest = personalMessage.trim().slice(1) || "Tuliskan isi surat...";
 
   return (
-    <main className="vault-setup-page">
+    <main className="vault-setup-page public-v2">
       <div className="vault-setup-container">
         {/* Atelier Header */}
         <header className="vault-setup-header">
@@ -399,6 +399,16 @@ export default function VaultSetup() {
                 ? "Masa berlaku tautan ini sudah habis. Hubungi kurator A Chapter melalui WhatsApp untuk mendapatkan tautan baru."
                 : "Periksa kembali tautan yang dikirimkan oleh atelier A Chapter atau hubungi kurator WhatsApp kami."}
             </p>
+            <div style={{ marginTop: "1.5rem" }}>
+              <a
+                href="https://wa.me/6285235242425"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hero-cta hero-cta-primary"
+              >
+                Hubungi Concierge WhatsApp →
+              </a>
+            </div>
           </section>
         ) : saved || vaultLocked ? (
           <section className="vault-setup-card text-center vault-setup-success-card" role="status">

@@ -73,7 +73,7 @@ export default function SmartQrVault() {
   };
 
   return (
-    <div className="subpage-wrapper smart-vault-page">
+    <div className="subpage-wrapper smart-vault-page public-v2">
       <SiteHeader />
 
       <main className="subpage-main">
@@ -501,7 +501,7 @@ export default function SmartQrVault() {
         </section>
 
         {/* 6. Bottom Call to Action */}
-        <section style={{
+        <section className="vault-closing-cta" style={{
           padding: "5rem 1.5rem",
           background: "linear-gradient(180deg, #f7f3ea 0%, #ece5d8 100%)",
           borderTop: "1px solid #e3dccf",
@@ -510,7 +510,7 @@ export default function SmartQrVault() {
           <div style={{ maxWidth: "38rem", margin: "0 auto" }}>
             <span className="section-eyebrow">START YOUR ARCHIVE</span>
             <h2 style={{ fontFamily: "var(--font-heading, Georgia, serif)", fontSize: "2.4rem", margin: "0.75rem 0 1rem", color: "#1a1a1a" }}>
-              Abadikan Babak Cerita Anda Bersama Kami
+              Abadikan Babak <em>Cerita Anda</em> Bersama Kami
             </h2>
             <p style={{ color: "#666", lineHeight: 1.7, fontSize: "1rem", marginBottom: "2rem" }}>
               Konsultasikan bunga spesial Anda, foto polaroid kenangan, dan rekaman suara untuk diramu oleh artisan laboratorium A Chapter di Surabaya.

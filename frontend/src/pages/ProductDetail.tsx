@@ -97,7 +97,7 @@ export default function ProductDetail() {
 
   if (loading) {
     return (
-      <div className="subpage-wrapper">
+      <div className="subpage-wrapper public-v2">
         <SiteHeader />
         <main className="subpage-main">
           <div className="catalog-loading" style={{ minHeight: "60vh", display: "grid", placeContent: "center" }}>
@@ -112,7 +112,7 @@ export default function ProductDetail() {
 
   if (!product) {
     return (
-      <div className="subpage-wrapper">
+      <div className="subpage-wrapper public-v2">
         <SiteHeader />
         <main className="subpage-main">
           <div className="catalog-loading" style={{ minHeight: "60vh", textAlign: "center", padding: "4rem 2rem" }}>
@@ -215,7 +215,7 @@ export default function ProductDetail() {
   const relatedProducts = catalog.filter(p => p.id !== product.id).slice(0, 4);
 
   return (
-    <div className="subpage-wrapper">
+    <div className="subpage-wrapper public-v2">
       <SiteHeader />
 
       <main className="subpage-main">

@@ -281,7 +281,7 @@ export default function VaultExperience({
 
   if (loading) {
     return (
-      <div className="vault-memoir-loading">
+      <div className="vault-memoir-loading public-v2">
         <div className="vault-wax-seal-hero pulse" aria-hidden="true">
           <span className="wax-seal-circle">A · C</span>
         </div>
@@ -292,22 +292,24 @@ export default function VaultExperience({
 
   if (error || !product) {
     return (
-      <div className="vault-memoir-container" style={{ textAlign: "center", padding: "5rem 1.5rem" }}>
-        <div className="vault-wax-seal-hero" aria-hidden="true">
-          <span className="wax-seal-circle">✦</span>
+      <div className="vault-memoir-wrapper public-v2">
+        <div className="vault-memoir-container" style={{ textAlign: "center" }}>
+          <div className="vault-wax-seal-hero" aria-hidden="true">
+            <span className="wax-seal-circle">✦</span>
+          </div>
+          <h1 className="vault-hero-error-title" style={{ marginTop: "1.25rem" }}>Brankas Tidak Ditemukan</h1>
+          <p className="vault-hero-dedication" style={{ margin: "1rem auto 2rem" }}>
+            Kode QR ini mungkin sudah kedaluwarsa atau belum dikonfigurasi oleh pengirim.
+          </p>
+          <a
+            href={`https://wa.me/${waNumber}?text=${encodeURIComponent("Halo A Chapter Concierge, saya membutuhkan bantuan terkait QR Memory Vault.")}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hero-cta hero-cta-primary"
+          >
+            Hubungi Concierge WhatsApp →
+          </a>
         </div>
-        <h1 className="vault-hero-recipient" style={{ marginTop: "1rem" }}>Brankas Tidak Ditemukan</h1>
-        <p className="vault-hero-dedication" style={{ margin: "1rem auto 2rem" }}>
-          Kode QR ini mungkin sudah kedaluwarsa atau belum dikonfigurasi oleh pengirim.
-        </p>
-        <a
-          href={`https://wa.me/${waNumber}?text=${encodeURIComponent("Halo A Chapter Concierge, saya membutuhkan bantuan terkait QR Memory Vault.")}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="hero-cta hero-cta-primary"
-        >
-          Hubungi Concierge WhatsApp →
-        </a>
       </div>
     );
   }
@@ -319,7 +321,7 @@ export default function VaultExperience({
   const restOfLetter = letterBody.trim().slice(1);
 
   return (
-    <div className={`vault-memoir-wrapper${openingCeremony === "opening" ? " is-ceremony" : ""}`}>
+    <div className={`vault-memoir-wrapper public-v2${openingCeremony === "opening" ? " is-ceremony" : ""}`}>
       {openingCeremony === "opening" && (
         <div className="vault-opening-overlay" role="status" aria-live="polite">
           <div className="vault-opening-stage">

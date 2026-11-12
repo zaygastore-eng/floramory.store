@@ -9,6 +9,7 @@ import {
   fetchCatalogProducts,
   fetchProductDetailById,
   fetchWhatsAppNumber,
+  getHomeContentCatalogProducts,
   type CatalogProduct,
   type Product,
 } from "@/lib/api";
@@ -16,7 +17,7 @@ import { normalizeWhatsApp, formatHarga } from "@/lib/site";
 
 function formatTheTitle(name: string): string {
   const clean = name.trim();
-  if (/^the\s+/i.test(clean)) return clean;
+  if (/^(the|a|an)\s+/i.test(clean)) return clean;
   return `The ${clean}`;
 }
 
@@ -76,6 +77,31 @@ export default function ShopAll() {
     ? products.slice(0, 10).reverse()
     : products;
 
+  // Keep the catalog wall full and editorial even when the live catalog is
+  // sparse. Editorial pieces open a WhatsApp consultation instead of a PDP.
+  const editorialChapters = getHomeContentCatalogProducts("framed");
+  const showcaseProducts = (() => {
+    const items = [...displayedProducts];
+    for (const editorial of editorialChapters) {
+      if (items.length >= 5) break;
+      const exists = items.some(
+        product => product.nama_produk.toLowerCase() === editorial.nama_produk.toLowerCase()
+      );
+      if (!exists) items.push(editorial);
+    }
+    return items;
+  })();
+
+  const openEditorialConsult = (product: CatalogProduct) => {
+    const phone = normalizeWhatsApp(whatsappNumber) || "6285235242425";
+    const message = `Halo A Chapter, saya tertarik untuk memesan karya botani ${product.nama_produk}. Mohon informasi ketersediaan dan proses reservasinya.`;
+    const popup = window.open(
+      `https://wa.me/${phone}?text=${encodeURIComponent(message)}`,
+      "_blank"
+    );
+    if (popup) popup.opener = null;
+  };
+
   const whatsappModalUrl = selectedProduct
     ? `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(
         `Halo A Chapter, saya ingin berkonsultasi mengenai kustomisasi untuk karya ${selectedProduct.nama_produk} (ID: ${selectedProduct.id}).`
@@ -83,7 +109,7 @@ export default function ShopAll() {
     : "";
 
   return (
-    <div className="subpage-wrapper">
+    <div className="subpage-wrapper public-v2">
       <SiteHeader />
 
       <main className="subpage-main">
@@ -108,20 +134,16 @@ export default function ShopAll() {
                 Memuat koleksi botani lengkap
                 <span className="loading-dots"><span /><span /><span /></span>
               </div>
-            ) : displayedProducts.length === 0 ? (
+            ) : showcaseProducts.length === 0 ? (
               <div className="catalog-loading">
                 Belum ada produk di katalog.
               </div>
             ) : (
               <div className="shop-5col-grid">
-                {displayedProducts.map((p, index) => {
+                {showcaseProducts.map((p, index) => {
                   const badge = index % 3 === 0 ? "Edition No. 01" : index % 3 === 1 ? "Best Seller" : "Rare Bloom";
-                  return (
-                    <Link
-                      key={p.id}
-                      href={`/products/${p.id}`}
-                      className="product-card shop-card"
-                    >
+                  const card = (
+                    <>
                       <div className="product-img">
                         <div className="product-img-layer product-img-primary">
                           <ProductImage
@@ -166,6 +188,26 @@ export default function ShopAll() {
                           <span className="product-btn">[ View Folio ]</span>
                         </div>
                       </div>
+                    </>
+                  );
+
+                  return p.isFallback ? (
+                    <button
+                      key={p.id}
+                      type="button"
+                      className="product-card shop-card shop-card-fallback"
+                      onClick={() => openEditorialConsult(p)}
+                      aria-label={`Konsultasikan ${p.nama_produk} via WhatsApp`}
+                    >
+                      {card}
+                    </button>
+                  ) : (
+                    <Link
+                      key={p.id}
+                      href={`/products/${p.id}`}
+                      className="product-card shop-card"
+                    >
+                      {card}
                     </Link>
                   );
                 })}

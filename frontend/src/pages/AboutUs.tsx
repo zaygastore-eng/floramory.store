@@ -35,7 +35,7 @@ export default function AboutUs() {
   }, []);
 
   return (
-    <div className="subpage-wrapper">
+    <div className="subpage-wrapper public-v2">
       <SiteHeader />
 
       <main className="subpage-main">

@@ -64,7 +64,7 @@ export default function Produk() {
 
   if (loading) {
     return (
-      <div className="loading-screen">
+      <div className="loading-screen public-v2">
         <div className="loading-logo" aria-label="A Chapter">
           <BrandLogo className="brand-logo-img loading-logo-img" />
         </div>
@@ -75,15 +75,22 @@ export default function Produk() {
 
   if (error || !product) {
     return (
-      <div className="error-screen">
-        <div className="error-icon">🌾</div>
-        <div className="error-title">Produk tidak ditemukan</div>
-        <p className="error-msg">QR code ini mungkin tidak valid atau produk sudah tidak tersedia. Hubungi kami untuk bantuan.</p>
-        <br />
-        <a href={`https://wa.me/${normalizeWhatsApp(waNumber) || WA_FALLBACK}`} target="_blank" rel="noopener noreferrer"
-          className="error-link">
-          Hubungi A Chapter via WhatsApp →
-        </a>
+      <div className="error-screen public-v2">
+        <div className="error-card">
+          <div className="error-icon" aria-hidden="true">🌿</div>
+          <h1 className="error-title">Produk Tidak Ditemukan</h1>
+          <p className="error-msg">
+            QR code ini mungkin tidak valid atau produk sudah tidak tersedia. Hubungi kami untuk bantuan.
+          </p>
+          <a
+            href={`https://wa.me/${normalizeWhatsApp(waNumber) || WA_FALLBACK}?text=${encodeURIComponent("Halo A Chapter, saya memerlukan bantuan terkait pemindaian produk QR.")}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hero-cta hero-cta-primary"
+          >
+            Hubungi A Chapter via WhatsApp →
+          </a>
+        </div>
       </div>
     );
   }
@@ -157,7 +164,7 @@ export default function Produk() {
   };
 
   return (
-    <div className="produk-page">
+    <div className="produk-page public-v2">
       <header className="site-header">
         <a className="header-logo logo-link" href={pageUrl("/")} aria-label="A Chapter">
           <BrandLogo />
