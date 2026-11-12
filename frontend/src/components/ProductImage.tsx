@@ -28,7 +28,8 @@ export default function ProductImage({
   const [loadedSrc, setLoadedSrc] = useState<string | null>(null);
   const [failedSrc, setFailedSrc] = useState<string | null>(null);
 
-  if (!src.startsWith("http") || failedSrc === src) return <>{fallback}</>;
+  const isDisplayableSrc = src.startsWith("http") || src.startsWith("/");
+  if (!isDisplayableSrc || failedSrc === src) return <>{fallback}</>;
   const imageSrc = productImageUrl(src, size);
   const loaded = loadedSrc === imageSrc;
 

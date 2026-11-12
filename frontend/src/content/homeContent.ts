@@ -262,8 +262,7 @@ export const homeContent = {
         title: "Photograph",
         excerpt:
           "Simpan potret yang mengingatkanmu pada hari dan orang yang paling berarti.",
-        imageUrl:
-          "https://images.unsplash.com/photo-1511988617509-a57c8a288659?auto=format&fit=crop&w=900&q=85",
+        imageUrl: "/landing/memory-photo-1.webp",
         handwrittenCaption: "A day to remember forever · June 2026",
         archivalStamp: "12 high-res photographs secured",
       },
@@ -290,8 +289,7 @@ export const homeContent = {
       {
         kind: "video",
         title: "Video Memoir",
-        posterUrl:
-          "https://images.unsplash.com/photo-1490750967868-88aa4486c946?auto=format&fit=crop&w=900&q=85",
+        posterUrl: "/landing/memory-photo-2.webp",
         caption: "Kenangan bergerak yang tak pernah pudar · Juni 2026",
         durationLabel: "00:18",
         archivalStamp: "HD memoir film secured",

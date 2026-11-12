@@ -28,6 +28,10 @@ import {
 import useToast from "@/hooks/useToast";
 import { useAudioPlayback } from "@/hooks/useAudioPlayback";
 
+// Editorial fallbacks keep the landing showcase full even when the live
+// catalog only has a couple of active pieces.
+const editorialChapters = getHomeContentCatalogProducts("framed");
+
 function ProductCard({
   product,
   onClick,
@@ -473,6 +477,18 @@ export default function Home() {
     </div>
   );
 
+  const showcaseProducts = (() => {
+    const items = [...chapterProducts];
+    for (const editorial of editorialChapters) {
+      if (items.length >= 4) break;
+      const exists = items.some(
+        product => product.nama_produk.toLowerCase() === editorial.nama_produk.toLowerCase()
+      );
+      if (!exists) items.push(editorial);
+    }
+    return items;
+  })();
+
   const submitOrder = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!orderForm.nama.trim() || !orderForm.wa.trim() || !orderForm.produk) {
@@ -551,559 +567,695 @@ export default function Home() {
 
   return (
     <>
-      <SiteHeader />
+      <SiteHeader variant="overlay" />
 
-      <section className="hero hero-teaser" id="hero">
-        <div className="hero-teaser-content">
-          <h1 className="hero-teaser-headline">
-            <span className="hero-line-where">Where Every</span>
-            <span className="hero-line-flower">Flower</span>
-            <span className="hero-line-chapter">Tells Your Chapter</span>
-          </h1>
-          <div className="hero-teaser-cta-wrap">
-            <a href="#pesan" className="hero-teaser-cta">
-              Join the Pre-Order
+      <div className="landing-v2">
+        {/* ── HERO ── */}
+        <section className="lp-hero" id="hero">
+          <div
+            className="lp-hero-bg"
+            style={{ backgroundImage: "url('/landing/hero-flowers.webp')" }}
+            aria-hidden="true"
+          />
+          <div className="lp-hero-veil" aria-hidden="true" />
+          <div className="lp-hero-inner">
+            <span className="lp-hero-kicker">A CHAPTER · PRE-ORDER 2026</span>
+            <h1 className="lp-hero-title">
+              <span className="lp-hero-where">where every</span>
+              <span className="lp-hero-flowers">Flowers</span>
+              <span className="lp-hero-tells">Tells your</span>
+              <span className="lp-hero-chapter">Chapter</span>
+            </h1>
+            <p className="lp-hero-sub">
+              The Pre-Order phase is officially open.
+              <br />
+              Secure your timeless memory piece before <strong>November 20, 2026</strong>.
+            </p>
+            <a href="#kolom-pengisian" className="lp-btn lp-btn--wine">
+              Pre Order Now
             </a>
           </div>
-        </div>
-      </section>
+          <a className="lp-hero-scroll" href="#art-of-preserving" aria-label="Gulir ke bawah">
+            ⌄
+          </a>
+        </section>
 
-      <main className="home-sections">
-      <section className="fm-section chapters-section" id="chapters">
-        <div className="cluster-inner" id="produk">
-          <div className="cluster-heading">
-            <div>
-              <span className="section-eyebrow">THE CURATED EDITIONS · PRESERVED BOTANICAL ARTWARE</span>
-              <h2 className="cluster-title">The Chapters — Framed Keepsakes</h2>
-              <p className="cluster-description">
-                Karya botani asli yang dipreservasi dalam kristal anti-UV, dilengkapi brankas memori digital di setiap bingkai.
+        <main className="lp-main">
+          {/* ── INTRO / THE ART OF PRESERVING MEMORIES ── */}
+          <section className="lp-intro" id="art-of-preserving">
+            <div className="lp-intro-copy">
+              <span className="lp-eyebrow">THE ART OF PRESERVING MEMORIES</span>
+              <h2 className="lp-intro-title">Some memories are too precious to let wilt.</h2>
+              <p>
+                Beberapa memori terlalu berharga untuk dibiarkan layu seiring waktu. Di A Chapter,
+                kami memadukan keindahan kelopak bunga asli dengan teknologi Smart-QR Code di dalam
+                setiap karya.
               </p>
+              <p>
+                Setiap kali kamu memindai kodenya, video, foto, atau lagu dari babak terbaik hidupmu
+                akan hidup kembali di genggamanmu. Karena setiap bunga berhak menceritakan babak
+                hidupmu!
+              </p>
+              <a href="#chapters" className="lp-btn lp-btn--outline">
+                Explore the Chapters
+              </a>
             </div>
-            <div className="cluster-controls">
-              <div className="slider-nav-btns" aria-label="Navigasi geser produk">
-                <button
-                  type="button"
-                  className="slider-nav-btn prev"
-                  onClick={() => scrollSlider("left")}
-                  aria-label="Geser produk ke kiri"
-                  title="Geser ke kiri"
-                >
-                  ←
-                </button>
-                <button
-                  type="button"
-                  className="slider-nav-btn next"
-                  onClick={() => scrollSlider("right")}
-                  aria-label="Geser produk ke kanan"
-                  title="Geser ke kanan"
-                >
-                  →
-                </button>
+            <div className="lp-intro-art" aria-hidden="true">
+              <img src="/landing/intro-collage.webp" alt="" loading="lazy" />
+            </div>
+          </section>
+
+          {/* ── PRODUK ── */}
+          <section className="lp-products" id="chapters">
+            <div className="lp-band">
+              <span className="lp-band-line" aria-hidden="true" />
+              <h2 className="lp-band-title">Produk</h2>
+              <span className="lp-band-line" aria-hidden="true" />
+            </div>
+            <div className="lp-products-body">
+              <div className="lp-products-head">
+                <span className="lp-eyebrow">THE CURATED EDITIONS · PRESERVED BOTANICAL ARTWARE</span>
+                <h3 className="lp-products-title">The Chapters — Framed Keepsakes</h3>
+                <p>
+                  Setiap karya dirangkai khusus berdasarkan ceritamu. Lengkapi detail di bawah ini
+                  untuk mengamankan slot Pre-Order eksklusifmu sebelum pintu galeri ditutup.
+                </p>
               </div>
-              <Link href="/shop" className="catalog-explore-all-link">
-                Lihat Detail Katalog →
+              {renderProductGrid(showcaseProducts)}
+              <div className="lp-products-actions">
+                <div className="slider-nav-btns" aria-label="Navigasi geser produk">
+                  <button
+                    type="button"
+                    className="slider-nav-btn prev"
+                    onClick={() => scrollSlider("left")}
+                    aria-label="Geser produk ke kiri"
+                    title="Geser ke kiri"
+                  >
+                    ←
+                  </button>
+                  <button
+                    type="button"
+                    className="slider-nav-btn next"
+                    onClick={() => scrollSlider("right")}
+                    aria-label="Geser produk ke kanan"
+                    title="Geser ke kanan"
+                  >
+                    →
+                  </button>
+                </div>
+                <Link href="/shop" className="lp-btn lp-btn--outline">
+                  Lihat Detail Katalog →
+                </Link>
+              </div>
+            </div>
+          </section>
+
+          {/* ── KOLOM PENGISIAN ── */}
+          <section className="lp-kolom" id="pesan">
+            <span id="kolom-pengisian" className="lp-anchor" aria-hidden="true" />
+            <img
+              className="lp-kolom-lace"
+              src="/landing/kolom-lace.webp"
+              alt=""
+              aria-hidden="true"
+              loading="lazy"
+            />
+            <div className="lp-kolom-inner">
+              <h2 className="lp-script lp-kolom-title">Kolom Pengisian</h2>
+              <p className="lp-kolom-lead">
+                Setiap karya dirangkai khusus berdasarkan ceritamu. Lengkapi detail di bawah ini
+                untuk mengamankan slot Pre-Order eksklusifmu sebelum pintu galeri ditutup.
+              </p>
+
+              <div className="lp-kolom-card">
+                {orderComplete ? (
+                  <div className="commission-confirmation lp-confirmation" role="status" aria-live="polite">
+                    <div className="certificate-seal" aria-hidden="true">A · C</div>
+                    <span className="commission-eyebrow">A CHAPTER ATELIER · OFFICIAL ARCHIVE</span>
+                    <h2 className="commission-title">Your Chapter Begins Here.</h2>
+                    <p className="commission-confirmation-copy">
+                      Lembar permintaan Anda telah tercatat. Concierge kami akan membantu memeriksa
+                      ketersediaan dan tahap pengunggahan Memory Vault.
+                    </p>
+                    <p className="commission-reference">
+                      REFERENCE NO. <strong>#{submittedOrderNumber || submittedOrderId}</strong>
+                    </p>
+                    {lastOrderWaUrl && (
+                      <a
+                        href={lastOrderWaUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="lp-btn lp-btn--wine"
+                      >
+                        Buka WhatsApp Concierge
+                      </a>
+                    )}
+                    <button
+                      type="button"
+                      className="order-reset-link commission-reset"
+                      onClick={() => {
+                        setOrderForm({ nama: "", wa: "", pesan: "", produk: "", namaPenerima: "", website: "" });
+                        setPrefilledProductName("");
+                        setSubmittedOrderId("");
+                        setSubmittedOrderNumber("");
+                        setLastOrderWaUrl(null);
+                        setOrderComplete(false);
+                        formStartRef.current = Date.now();
+                      }}
+                    >
+                      Buat permintaan baru
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <header className="lp-form-head">
+                      <span className="commission-eyebrow">BESPOKE BOTANICAL COMMISSION · ATELIER RESERVATION</span>
+                      <h3 className="lp-form-title">Reserve your chapter</h3>
+                      <p className="lp-form-sub">
+                        Konsultasikan karya botani abadi dan konfigurasi brankas memori Anda bersama
+                        kurator atelier kami via WhatsApp resmi.
+                      </p>
+                    </header>
+
+                    <form className="commission-form lp-form" onSubmit={submitOrder}>
+                      <div className="commission-form-grid lp-form-grid">
+                        <div className="form-group">
+                          <label className="form-label" htmlFor="order-nama">Nama Pemesan</label>
+                          <input
+                            id="order-nama"
+                            className="form-input"
+                            type="text"
+                            placeholder="Nama Lengkap Anda"
+                            maxLength={120}
+                            autoComplete="name"
+                            required
+                            value={orderForm.nama}
+                            onChange={event => setOrderForm(form => ({ ...form, nama: event.target.value }))}
+                          />
+                        </div>
+                        <div className="form-group">
+                          <label className="form-label" htmlFor="order-wa">Nomor WhatsApp Pemesan</label>
+                          <input
+                            id="order-wa"
+                            className="form-input"
+                            type="tel"
+                            inputMode="tel"
+                            placeholder="08xx-xxxx-xxxx"
+                            maxLength={20}
+                            autoComplete="tel"
+                            aria-describedby="order-wa-hint"
+                            required
+                            value={orderForm.wa}
+                            onChange={event => setOrderForm(form => ({ ...form, wa: event.target.value }))}
+                          />
+                          <span className="form-field-hint" id="order-wa-hint">
+                            Gunakan nomor aktif Indonesia, contoh 08xx atau +62.
+                          </span>
+                        </div>
+                        <div className="form-group commission-col-span-2">
+                          <label className="form-label" htmlFor="order-produk">Pilihan Koleksi / Karya</label>
+                          <select
+                            id="order-produk"
+                            className="form-select"
+                            required
+                            value={orderForm.produk}
+                            onChange={event => {
+                              setOrderForm(form => ({ ...form, produk: event.target.value }));
+                              setPrefilledProductName("");
+                            }}
+                          >
+                            <option value="">— Pilih koleksi karya —</option>
+                            {commissionProductGroups.map(group => (
+                              <optgroup label={group.label} key={group.label}>
+                                {group.products.map(product => (
+                                  <option key={product.id} value={product.id}>
+                                    {product.nama_produk} — {formatHarga(product.harga)}
+                                  </option>
+                                ))}
+                                {group.examples
+                                  .filter(example => !group.products.some(product => (
+                                    product.nama_produk.toLocaleLowerCase() === example.toLocaleLowerCase()
+                                  )))
+                                  .map(example => (
+                                    <option key={example} disabled value={`unavailable-${example}`}>
+                                      {example} — belum tersedia
+                                    </option>
+                                  ))}
+                              </optgroup>
+                            ))}
+                          </select>
+                          {prefilledProductName && (
+                            <span className="form-prefill-indicator" role="status">
+                              Terpilih dari produk: {prefilledProductName}
+                            </span>
+                          )}
+                        </div>
+                        <div className="form-group commission-col-span-2">
+                          <label className="form-label" htmlFor="order-moment">
+                            Nama Penerima Kado &amp; Momen (Opsional)
+                          </label>
+                          <input
+                            id="order-moment"
+                            className="form-input"
+                            type="text"
+                            placeholder="Contoh: Untuk Sarah · Momen Pernikahan"
+                            maxLength={180}
+                            value={orderForm.namaPenerima}
+                            onChange={event => setOrderForm(form => ({ ...form, namaPenerima: event.target.value }))}
+                          />
+                        </div>
+                        <div className="form-group commission-col-span-2">
+                          <label className="form-label" htmlFor="order-pesan">Pesan Khusus / Catatan Singkat</label>
+                          <textarea
+                            id="order-pesan"
+                            className="form-textarea"
+                            rows={3}
+                            maxLength={2000}
+                            placeholder="Preferensi warna bunga, tanggal pengiriman yang diharapkan, atau catatan khusus lainnya..."
+                            value={orderForm.pesan}
+                            onChange={event => setOrderForm(form => ({ ...form, pesan: event.target.value }))}
+                          />
+                        </div>
+                      </div>
+                      <div className="form-honeypot" aria-hidden="true">
+                        <input
+                          id="order-website"
+                          className="form-input"
+                          type="text"
+                          tabIndex={-1}
+                          autoComplete="off"
+                          value={orderForm.website}
+                          onChange={event => setOrderForm(form => ({ ...form, website: event.target.value }))}
+                        />
+                      </div>
+                      <button type="submit" className="lp-btn lp-btn--wine lp-submit" disabled={orderSubmitting}>
+                        {orderSubmitting ? (
+                          <>
+                            <span className="commission-spinner" aria-hidden="true" />
+                            Mempersiapkan Lembar Arsip...
+                          </>
+                        ) : (
+                          "Commission This Chapter →"
+                        )}
+                      </button>
+                      <p className="commission-form-note">
+                        Permintaan Anda tersimpan dengan status menunggu konsultasi DP. WhatsApp akan
+                        terbuka setelah lembar arsip berhasil dicatat.
+                      </p>
+                    </form>
+                  </>
+                )}
+              </div>
+            </div>
+          </section>
+
+          {/* ── LETTER SCENE ── */}
+          <section className="lp-scene lp-scene--letter" id="letter">
+            <img
+              className="lp-scene-img"
+              src="/landing/letter-scene.webp"
+              alt="Kolase surat personal di taman bunga"
+              loading="lazy"
+            />
+            <div className="lp-scene-note lp-scene-note--letter">
+              <span className="lp-eyebrow">A LETTER, PRESERVED</span>
+              <p>
+                Surat personal yang kamu tulis akan tersimpan di dalam Memory Vault, siap dibaca
+                kembali kapan pun penerima merindukannya.
+              </p>
+              <Link href="/smart-qr-vault" className="lp-btn lp-btn--wine">
+                Kenali Memory Vault →
               </Link>
             </div>
-          </div>
-          {renderProductGrid(chapterProducts)}
-        </div>
-      </section>
+          </section>
 
-      <section className="fm-section vault-section" id="vault">
-        <div className="vault-inner" id="memory-vault">
-          <header className="vault-section-header">
-            <span className="vault-eyebrow">THE ARCHIVAL MEMORY VAULT</span>
-            <h2 className="vault-title">{homeContent.smartVault.sectionTitle}</h2>
-            <p className="vault-desc">
-              {homeContent.smartVault.sectionSubtitle} Di balik setiap bingkai, kenangan
-              personal tersimpan aman dan dapat dibuka kembali melalui kamera ponsel.
-            </p>
-          </header>
-
-          <article className="vault-simulator-wrap" aria-label="Interactive memory vault preview">
-            <div className="vault-simulator-header">
-              <span className="folio-label-left">FOLIO ARCHIVE NO. 2026-A · SURABAYA ATELIER</span>
-              <span className="folio-label-right">
-                PERMANENT CLOUD RECORD · SECURED
-                <span className="folio-status-dot" aria-hidden="true" />
-              </span>
+          {/* ── MESSAGE SCENE ── */}
+          <section className="lp-scene lp-scene--message" id="message">
+            <img
+              className="lp-scene-img"
+              src="/landing/message-scene.webp"
+              alt="Kartu pesan personal dengan amplop pink"
+              loading="lazy"
+            />
+            <div className="lp-scene-note lp-scene-note--message">
+              <span className="lp-eyebrow">A MESSAGE, SEALED</span>
+              <p>
+                Pesan, doa, dan kutipan lirik favoritmu akan tersegel rapi di dalam brankas — hanya
+                untuk mata yang tepat.
+              </p>
+              <a href="#pesan" className="lp-btn lp-btn--outline">
+                Tulis Pesanmu →
+              </a>
             </div>
+          </section>
 
-            <div className="vault-sim-nav" role="tablist" aria-label="Memory Vault preview">
-              {homeContent.smartVault.mediaTabs.map((tab, index) => {
-                const tabId = `vault-tab-${["foto", "audio", "surat", "video"][index]}`;
-                const isSelected = vaultSimTab === tab.kind;
-                return (
-                  <button
-                    key={tab.kind}
-                    type="button"
-                    role="tab"
-                    id={tabId}
-                    aria-controls="vault-panel"
-                    aria-selected={isSelected}
-                    tabIndex={isSelected ? 0 : -1}
-                    className={`vault-sim-btn${isSelected ? " active" : ""}`}
-                    onClick={() => {
-                      setVaultSimTab(tab.kind);
-                      if (tab.kind !== "voice-record") pauseAudio();
-                      if (tab.kind !== "video") setIsVideoPlaying(false);
-                    }}
-                    onKeyDown={handleVaultTabKeyDown}
-                  >
-                    {["I.", "II.", "III.", "IV."][index]} {tab.title.toUpperCase()}
-                  </button>
-                );
-              })}
-            </div>
+          {/* ── CAPTURED MOMENTS / MEMORY VAULT ── */}
+          <section className="lp-vault" id="vault">
+            <div className="lp-vault-bg" aria-hidden="true" />
+            <div className="lp-vault-inner">
+              <header className="lp-vault-head">
+                <span className="lp-eyebrow">THE ARCHIVAL MEMORY VAULT</span>
+                <h2 className="lp-script lp-vault-title">Captured Moments</h2>
+                <p>
+                  {homeContent.smartVault.sectionSubtitle} Di balik setiap bingkai, kenangan personal
+                  tersimpan aman dan dapat dibuka kembali melalui kamera ponsel.
+                </p>
+              </header>
 
-            <div className="vault-folio-body">
-              <div
-                className="vault-sim-body"
-                id="vault-panel"
-                role="tabpanel"
-                aria-labelledby={`vault-tab-${{
-                  photograph: "foto",
-                  "voice-record": "audio",
-                  letter: "surat",
-                  video: "video",
-                }[vaultSimTab]}`}
-                tabIndex={0}
-              >
-                {homeContent.smartVault.mediaTabs.map((tab) => {
-                  if (tab.kind !== vaultSimTab) return null;
+              <div className="lp-corkboard-wrap">
+                <div className="lp-corkboard">
+                  <img
+                    className="lp-corkboard-surface"
+                    src="/landing/corkboard.webp"
+                    alt=""
+                    aria-hidden="true"
+                    loading="lazy"
+                  />
+                  <img className="lp-cork-clip" src="/landing/wood-clip.webp" alt="" aria-hidden="true" loading="lazy" />
+                  <img className="lp-cork-polaroid lp-p1" src="/landing/polaroid-1.webp" alt="" aria-hidden="true" loading="lazy" />
+                  <img className="lp-cork-polaroid lp-p2" src="/landing/polaroid-2.webp" alt="" aria-hidden="true" loading="lazy" />
+                  <img className="lp-cork-polaroid lp-p3" src="/landing/polaroid-3.webp" alt="" aria-hidden="true" loading="lazy" />
+                  <img className="lp-cork-polaroid lp-p4" src="/landing/polaroid-4.webp" alt="" aria-hidden="true" loading="lazy" />
+                  <img className="lp-cork-crystal lp-c1" src="/landing/crystal-pink.webp" alt="" aria-hidden="true" loading="lazy" />
+                  <img className="lp-cork-crystal lp-c2" src="/landing/crystal-purple.webp" alt="" aria-hidden="true" loading="lazy" />
+                  <img className="lp-cork-crystal lp-c3" src="/landing/crystal-green.webp" alt="" aria-hidden="true" loading="lazy" />
 
-                  if (tab.kind === "photograph") {
-                    return (
-                      <div className="sim-panel" key={tab.kind}>
-                        <div className="folio-polaroid">
-                          <div className="folio-polaroid-frame">
-                            <ProductImage
-                              className="folio-polaroid-img"
-                              src={tab.imageUrl}
-                              size="large"
-                              alt={tab.excerpt}
-                              width={900}
-                              height={675}
-                              fallback={<div className="folio-polaroid-placeholder">A · C</div>}
-                            />
-                          </div>
-                          <p className="folio-polaroid-script">{tab.handwrittenCaption}</p>
-                          <span className="folio-polaroid-stamp">{tab.archivalStamp}</span>
-                        </div>
-                      </div>
-                    );
-                  }
+                  <article className="vault-simulator-wrap lp-vault-sim" aria-label="Interactive memory vault preview">
+                    <div className="vault-simulator-header">
+                      <span className="folio-label-left">FOLIO ARCHIVE NO. 2026-A · SURABAYA ATELIER</span>
+                      <span className="folio-label-right">
+                        PERMANENT CLOUD RECORD · SECURED
+                        <span className="folio-status-dot" aria-hidden="true" />
+                      </span>
+                    </div>
 
-                  if (tab.kind === "voice-record") {
-                    const formatTime = (sec: number) => {
-                      if (!Number.isFinite(sec) || sec < 0) return "00:00";
-                      const m = Math.floor(sec / 60);
-                      const s = Math.floor(sec % 60);
-                      return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
-                    };
-                    const curTimeStr = formatTime(audioCurrentTime);
-                    const totalTimeStr = formatTime(audioDuration);
-
-                    return (
-                      <div className="sim-panel" key={tab.kind}>
-                        <div className="folio-audio-card">
-                          <div className="folio-audio-kicker">
-                            {tab.songTitle || "SEE YOU AGAIN — ACOUSTIC KEEPSAKE MEMOIR"}
-                          </div>
-                          <div
-                            className={`folio-waveform${isAudioPlaying ? " is-playing" : ""}`}
-                            aria-hidden="true"
-                            onClick={() => toggleAudio(tab.audioSrc || "/see-you-again.mp3")}
-                            style={{ cursor: "pointer" }}
-                            title="Klik untuk memutar lagu"
+                    <div className="vault-sim-nav" role="tablist" aria-label="Memory Vault preview">
+                      {homeContent.smartVault.mediaTabs.map((tab, index) => {
+                        const tabId = `vault-tab-${["foto", "audio", "surat", "video"][index]}`;
+                        const isSelected = vaultSimTab === tab.kind;
+                        return (
+                          <button
+                            key={tab.kind}
+                            type="button"
+                            role="tab"
+                            id={tabId}
+                            aria-controls="vault-panel"
+                            aria-selected={isSelected}
+                            tabIndex={isSelected ? 0 : -1}
+                            className={`vault-sim-btn${isSelected ? " active" : ""}`}
+                            onClick={() => {
+                              setVaultSimTab(tab.kind);
+                              if (tab.kind !== "voice-record") pauseAudio();
+                              if (tab.kind !== "video") setIsVideoPlaying(false);
+                            }}
+                            onKeyDown={handleVaultTabKeyDown}
                           >
-                            {[24, 38, 58, 34, 72, 48, 88, 55, 96, 42, 68, 34, 82, 50, 100, 58, 75, 38, 64, 46, 86, 54, 72, 32, 60, 42, 92, 48, 68, 36, 78, 52].map((height, index) => (
-                              <span
-                                key={index}
-                                style={{ height: `${height}%`, animationDelay: `${index * -27}ms` }}
-                              />
-                            ))}
-                          </div>
-                          <div className="folio-audio-scrub">
-                            <input
-                              type="range"
-                              className="folio-audio-range"
-                              min={0}
-                              max={audioDuration > 0 ? audioDuration : 0}
-                              step={0.1}
-                              value={Math.min(audioCurrentTime, audioDuration || 0)}
-                              onChange={(event) => seekAudio(Number(event.target.value))}
-                              onMouseDown={handleAudioSeekStart}
-                              onMouseUp={handleAudioSeekEnd}
-                              onTouchStart={handleAudioSeekStart}
-                              onTouchEnd={handleAudioSeekEnd}
-                              aria-label="Geser posisi lagu"
-                              style={{
-                                background: `linear-gradient(to right, var(--brand-burgundy) ${audioDuration > 0 ? (audioCurrentTime / audioDuration) * 100 : 0}%, rgba(83, 27, 33, 0.15) ${audioDuration > 0 ? (audioCurrentTime / audioDuration) * 100 : 0}%)`,
-                              }}
-                            />
-                          </div>
-                          <div className="folio-audio-controls">
-                            <button
-                              type="button"
-                              className="folio-play-btn"
-                              aria-label={isAudioPlaying ? "Jeda lagu See You Again" : "Putar lagu See You Again"}
-                              aria-pressed={isAudioPlaying}
-                              onClick={() => toggleAudio(tab.audioSrc || "/see-you-again.mp3")}
-                            >
-                              <span aria-hidden="true">{isAudioPlaying ? "Ⅱ" : "▶"}</span>
-                              {isAudioPlaying ? "JEDA LAGU" : "PUTAR LAGU (SEE YOU AGAIN)"}
-                            </button>
-                            <span className="folio-audio-time">
-                              {isAudioPlaying || audioCurrentTime > 0 ? curTimeStr : "00:00"} / {totalTimeStr}
-                            </span>
-                          </div>
-                          <div className="folio-audio-extra">
-                            <button
-                              type="button"
-                              className="folio-skip-btn"
-                              onClick={() => skipAudio(-10)}
-                              aria-label="Mundur 10 detik"
-                            >
-                              −10s
-                            </button>
-                            <button
-                              type="button"
-                              className="folio-skip-btn"
-                              onClick={() => skipAudio(10)}
-                              aria-label="Maju 10 detik"
-                            >
-                              +10s
-                            </button>
-                            <button
-                              type="button"
-                              className="folio-speed-btn"
-                              onClick={cycleAudioRate}
-                              aria-label={`Kecepatan putar ${audioRate} kali`}
-                            >
-                              {audioRate}x
-                            </button>
-                          </div>
-                          <blockquote className="folio-audio-quote">
-                            <p>{tab.quoteExcerpt}</p>
-                            <footer>— {tab.quoteAttribution}</footer>
-                          </blockquote>
-                        </div>
-                      </div>
-                    );
-                  }
+                            {["I.", "II.", "III.", "IV."][index]} {tab.title.toUpperCase()}
+                          </button>
+                        );
+                      })}
+                    </div>
 
-                  if (tab.kind === "letter") {
-                    return (
-                      <div className="sim-panel" key={tab.kind}>
-                        <div className="folio-letter-card">
-                          <div className="folio-wax-seal" aria-hidden="true">A · C</div>
-                          <div className="folio-letter-head">{tab.greeting}</div>
-                          <p className="folio-letter-body">
-                            <span className="folio-drop-cap">{tab.letterText.charAt(0)}</span>
-                            {tab.letterText.slice(1)}
-                          </p>
-                          <div className="folio-letter-sign">
-                            {tab.signoff}<br />
-                            <span>{tab.signature}</span>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  }
+                    <div className="vault-folio-body">
+                      <div
+                        className="vault-sim-body"
+                        id="vault-panel"
+                        role="tabpanel"
+                        aria-labelledby={`vault-tab-${{
+                          photograph: "foto",
+                          "voice-record": "audio",
+                          letter: "surat",
+                          video: "video",
+                        }[vaultSimTab]}`}
+                        tabIndex={0}
+                      >
+                        {homeContent.smartVault.mediaTabs.map((tab) => {
+                          if (tab.kind !== vaultSimTab) return null;
 
+                          if (tab.kind === "photograph") {
+                            return (
+                              <div className="sim-panel" key={tab.kind}>
+                                <div className="folio-polaroid">
+                                  <div className="folio-polaroid-frame">
+                                    <ProductImage
+                                      className="folio-polaroid-img"
+                                      src={tab.imageUrl}
+                                      size="large"
+                                      alt={tab.excerpt}
+                                      width={900}
+                                      height={675}
+                                      fallback={<div className="folio-polaroid-placeholder">A · C</div>}
+                                    />
+                                  </div>
+                                  <p className="folio-polaroid-script">{tab.handwrittenCaption}</p>
+                                  <span className="folio-polaroid-stamp">{tab.archivalStamp}</span>
+                                </div>
+                              </div>
+                            );
+                          }
+
+                          if (tab.kind === "voice-record") {
+                            const formatTime = (sec: number) => {
+                              if (!Number.isFinite(sec) || sec < 0) return "00:00";
+                              const m = Math.floor(sec / 60);
+                              const s = Math.floor(sec % 60);
+                              return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
+                            };
+                            const curTimeStr = formatTime(audioCurrentTime);
+                            const totalTimeStr = formatTime(audioDuration);
+
+                            return (
+                              <div className="sim-panel" key={tab.kind}>
+                                <div className="folio-audio-card">
+                                  <div className="folio-audio-kicker">
+                                    {tab.songTitle || "SEE YOU AGAIN — ACOUSTIC KEEPSAKE MEMOIR"}
+                                  </div>
+                                  <div
+                                    className={`folio-waveform${isAudioPlaying ? " is-playing" : ""}`}
+                                    aria-hidden="true"
+                                    onClick={() => toggleAudio(tab.audioSrc || "/see-you-again.mp3")}
+                                    style={{ cursor: "pointer" }}
+                                    title="Klik untuk memutar lagu"
+                                  >
+                                    {[24, 38, 58, 34, 72, 48, 88, 55, 96, 42, 68, 34, 82, 50, 100, 58, 75, 38, 64, 46, 86, 54, 72, 32, 60, 42, 92, 48, 68, 36, 78, 52].map((height, index) => (
+                                      <span
+                                        key={index}
+                                        style={{ height: `${height}%`, animationDelay: `${index * -27}ms` }}
+                                      />
+                                    ))}
+                                  </div>
+                                  <div className="folio-audio-scrub">
+                                    <input
+                                      type="range"
+                                      className="folio-audio-range"
+                                      min={0}
+                                      max={audioDuration > 0 ? audioDuration : 0}
+                                      step={0.1}
+                                      value={Math.min(audioCurrentTime, audioDuration || 0)}
+                                      onChange={(event) => seekAudio(Number(event.target.value))}
+                                      onMouseDown={handleAudioSeekStart}
+                                      onMouseUp={handleAudioSeekEnd}
+                                      onTouchStart={handleAudioSeekStart}
+                                      onTouchEnd={handleAudioSeekEnd}
+                                      aria-label="Geser posisi lagu"
+                                      style={{
+                                        background: `linear-gradient(to right, var(--brand-burgundy) ${audioDuration > 0 ? (audioCurrentTime / audioDuration) * 100 : 0}%, rgba(83, 27, 33, 0.15) ${audioDuration > 0 ? (audioCurrentTime / audioDuration) * 100 : 0}%)`,
+                                      }}
+                                    />
+                                  </div>
+                                  <div className="folio-audio-controls">
+                                    <button
+                                      type="button"
+                                      className="folio-play-btn"
+                                      aria-label={isAudioPlaying ? "Jeda lagu See You Again" : "Putar lagu See You Again"}
+                                      aria-pressed={isAudioPlaying}
+                                      onClick={() => toggleAudio(tab.audioSrc || "/see-you-again.mp3")}
+                                    >
+                                      <span aria-hidden="true">{isAudioPlaying ? "Ⅱ" : "▶"}</span>
+                                      {isAudioPlaying ? "JEDA LAGU" : "PUTAR LAGU (SEE YOU AGAIN)"}
+                                    </button>
+                                    <span className="folio-audio-time">
+                                      {isAudioPlaying || audioCurrentTime > 0 ? curTimeStr : "00:00"} / {totalTimeStr}
+                                    </span>
+                                  </div>
+                                  <div className="folio-audio-extra">
+                                    <button
+                                      type="button"
+                                      className="folio-skip-btn"
+                                      onClick={() => skipAudio(-10)}
+                                      aria-label="Mundur 10 detik"
+                                    >
+                                      −10s
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className="folio-skip-btn"
+                                      onClick={() => skipAudio(10)}
+                                      aria-label="Maju 10 detik"
+                                    >
+                                      +10s
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className="folio-speed-btn"
+                                      onClick={cycleAudioRate}
+                                      aria-label={`Kecepatan putar ${audioRate} kali`}
+                                    >
+                                      {audioRate}x
+                                    </button>
+                                  </div>
+                                  <blockquote className="folio-audio-quote">
+                                    <p>{tab.quoteExcerpt}</p>
+                                    <footer>— {tab.quoteAttribution}</footer>
+                                  </blockquote>
+                                </div>
+                              </div>
+                            );
+                          }
+
+                          if (tab.kind === "letter") {
+                            return (
+                              <div className="sim-panel" key={tab.kind}>
+                                <div className="folio-letter-card">
+                                  <div className="folio-wax-seal" aria-hidden="true">A · C</div>
+                                  <div className="folio-letter-head">{tab.greeting}</div>
+                                  <p className="folio-letter-body">
+                                    <span className="folio-drop-cap">{tab.letterText.charAt(0)}</span>
+                                    {tab.letterText.slice(1)}
+                                  </p>
+                                  <div className="folio-letter-sign">
+                                    {tab.signoff}<br />
+                                    <span>{tab.signature}</span>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          }
+
+                          return (
+                            <div className="sim-panel" key={tab.kind}>
+                              <div className={`folio-video-card${isVideoPlaying ? " is-playing" : ""}`}>
+                                <button
+                                  type="button"
+                                  className="folio-video-frame"
+                                  onClick={() => setIsVideoPlaying(playing => !playing)}
+                                  aria-label={isVideoPlaying ? "Jeda simulasi video memoir" : "Putar simulasi video memoir"}
+                                >
+                                  <img
+                                    className="folio-video-poster"
+                                    src={tab.posterUrl}
+                                    alt={tab.caption}
+                                    loading="lazy"
+                                  />
+                                  <span className="folio-video-vignette" aria-hidden="true" />
+                                  {!isVideoPlaying && (
+                                    <span className="folio-video-play" aria-hidden="true">▶</span>
+                                  )}
+                                  <span className="folio-video-badge">SIMULASI VIDEO MEMOIR · {tab.durationLabel}</span>
+                                  <span className="folio-video-progress" aria-hidden="true">
+                                    <span className="folio-video-progress-fill" />
+                                  </span>
+                                </button>
+                                <p className="folio-video-caption">{tab.caption}</p>
+                                <span className="folio-video-stamp">{tab.archivalStamp}</span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </article>
+                </div>
+              </div>
+
+              <div className="lp-vault-copy">
+                <span className="lp-eyebrow">DIGITAL MEMOIR PREVIEW</span>
+                <h3 className="lp-vault-copy-title">A Glimpse Inside Your Secret Vault</h3>
+                <p>
+                  Ketika penerima memindai micro-chip di dasar bingkai kristal ini, layar gawai mereka
+                  langsung membuka lembar arsip eksklusif berisi foto beresolusi tinggi, rekaman suara
+                  asli, dan surat cinta personal tanpa perlu menginstal aplikasi.
+                </p>
+                <div className="lp-vault-actions">
+                  <a className="lp-btn lp-btn--wine" href="#pesan">
+                    Commission Your Vault →
+                  </a>
+                  <Link className="lp-btn lp-btn--outline" href="/smart-qr-vault">
+                    Cara Kerja Lengkap →
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* ── FAQ ── */}
+          <section className="lp-faq" id="faq" aria-label="Pertanyaan Umum Atelier">
+            <div className="lp-faq-inner">
+              <div className="lp-faq-head">
+                <span className="lp-eyebrow">FREQUENTLY ASKED QUESTIONS</span>
+                <h2 className="lp-script">A letter for every question</h2>
+                <p>
+                  Setiap detail kecil kami jaga seperti surat berharga. Temukan jawaban atas
+                  pertanyaan yang paling sering kami terima.
+                </p>
+              </div>
+
+              <div className="lp-faq-letters" role="region" aria-label="FAQ Accordion">
+                {faqItems.map((item, index) => {
+                  const isOpen = activeFaq === index;
                   return (
-                    <div className="sim-panel" key={tab.kind}>
-                      <div className={`folio-video-card${isVideoPlaying ? " is-playing" : ""}`}>
-                        <button
-                          type="button"
-                          className="folio-video-frame"
-                          onClick={() => setIsVideoPlaying(playing => !playing)}
-                          aria-label={isVideoPlaying ? "Jeda simulasi video memoir" : "Putar simulasi video memoir"}
-                        >
-                          <img
-                            className="folio-video-poster"
-                            src={tab.posterUrl}
-                            alt={tab.caption}
-                            loading="lazy"
-                          />
-                          <span className="folio-video-vignette" aria-hidden="true" />
-                          {!isVideoPlaying && (
-                            <span className="folio-video-play" aria-hidden="true">▶</span>
-                          )}
-                          <span className="folio-video-badge">SIMULASI VIDEO MEMOIR · {tab.durationLabel}</span>
-                          <span className="folio-video-progress" aria-hidden="true">
-                            <span className="folio-video-progress-fill" />
-                          </span>
-                        </button>
-                        <p className="folio-video-caption">{tab.caption}</p>
-                        <span className="folio-video-stamp">{tab.archivalStamp}</span>
+                    <div className={`faq-item lp-faq-item${isOpen ? " open" : ""}`} key={index}>
+                      <button
+                        type="button"
+                        className="faq-question-btn"
+                        aria-expanded={isOpen}
+                        aria-controls={`faq-answer-${index}`}
+                        id={`faq-btn-${index}`}
+                        onClick={() => toggleFaq(index)}
+                      >
+                        <span className="lp-faq-seal" aria-hidden="true" />
+                        <span className="faq-question-text">{item.q}</span>
+                        <span className="faq-toggle-icon" aria-hidden="true">+</span>
+                      </button>
+                      <div
+                        id={`faq-answer-${index}`}
+                        role="region"
+                        aria-labelledby={`faq-btn-${index}`}
+                        className="faq-answer-panel"
+                        style={{ maxHeight: isOpen ? "260px" : "0" }}
+                      >
+                        <p className="faq-answer-text">{item.a}</p>
                       </div>
                     </div>
                   );
                 })}
               </div>
 
-              <div className="vault-copy">
-                <span className="vault-copy-eyebrow">DIGITAL MEMOIR PREVIEW</span>
-                <h3 className="vault-copy-title">A Glimpse Inside Your Secret Vault</h3>
-                <p className="vault-copy-description">
-                  Ketika penerima memindai micro-chip di dasar bingkai kristal ini, layar gawai
-                  mereka langsung membuka lembar arsip eksklusif berisi foto beresolusi tinggi,
-                  rekaman suara asli, dan surat cinta personal tanpa perlu menginstal aplikasi.
-                </p>
-                <a className="hero-cta-primary vault-commission-cta" href="#pesan">
-                  COMMISSION YOUR VAULT →
-                </a>
-                <Link
-                  className="vault-learn-more-link"
-                  href="/smart-qr-vault"
-                  style={{
-                    display: "inline-block",
-                    marginTop: "1.1rem",
-                    color: "var(--wine, #8B3A4A)",
-                    fontSize: "0.92rem",
-                    letterSpacing: "0.04em",
-                    textDecoration: "underline",
-                    textUnderlineOffset: "4px",
-                  }}
-                >
-                  Pelajari Keamanan &amp; Cara Kerja Lengkap Brankas Digital →
-                </Link>
-              </div>
+              <img className="lp-faq-envelope" src="/landing/envelope-pink.webp" alt="" aria-hidden="true" loading="lazy" />
+              <img className="lp-faq-applique" src="/landing/flower-applique.webp" alt="" aria-hidden="true" loading="lazy" />
             </div>
-          </article>
-        </div>
-      </section>
+          </section>
 
-      <section className="fm-section order-section" id="pesan">
-        <div className="order-inner">
-          <div className="commission-sheet-card">
-            {orderComplete ? (
-              <div className="commission-confirmation" role="status" aria-live="polite">
-                <div className="certificate-seal" aria-hidden="true">A · C</div>
-                <span className="commission-eyebrow">A CHAPTER ATELIER · OFFICIAL ARCHIVE</span>
-                <h2 className="commission-title">Your Chapter Begins Here.</h2>
-                <p className="commission-confirmation-copy">
-                  Lembar permintaan Anda telah tercatat. Concierge kami akan membantu
-                  memeriksa ketersediaan dan tahap pengunggahan Memory Vault.
-                </p>
-                <p className="commission-reference">
-                  REFERENCE NO. <strong>#{submittedOrderNumber || submittedOrderId}</strong>
-                </p>
-                {lastOrderWaUrl && (
-                  <a
-                    href={lastOrderWaUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="hero-cta-primary btn-commission-submit"
-                  >
-                    Buka WhatsApp Concierge
-                  </a>
-                )}
-                <button
-                  type="button"
-                  className="order-reset-link commission-reset"
-                  onClick={() => {
-                    setOrderForm({ nama: "", wa: "", pesan: "", produk: "", namaPenerima: "", website: "" });
-                    setPrefilledProductName("");
-                    setSubmittedOrderId("");
-                    setSubmittedOrderNumber("");
-                    setLastOrderWaUrl(null);
-                    setOrderComplete(false);
-                    formStartRef.current = Date.now();
-                  }}
-                >
-                  Buat permintaan baru
-                </button>
-              </div>
-            ) : (
-              <>
-                <header className="commission-sheet-header">
-                  <span className="commission-eyebrow">BESPOKE BOTANICAL COMMISSION · ATELIER RESERVATION</span>
-                  <h2 className="commission-title">The Bespoke Commission — Begin Your Chapter</h2>
-                  <p className="commission-subtitle">
-                    Konsultasikan karya botani abadi dan konfigurasi brankas memori Anda
-                    bersama kurator atelier kami via WhatsApp resmi.
-                  </p>
-                </header>
+          {/* ── CLOSING ── */}
+          <section className="lp-closing" id="closing">
+            <img className="lp-closing-bg" src="/landing/closing-scene.webp" alt="" aria-hidden="true" loading="lazy" />
+            <div className="lp-closing-veil" aria-hidden="true" />
+            <div className="lp-closing-card">
+              <span className="lp-eyebrow">YOUR STORY DESERVES A CHAPTER</span>
+              <h2 className="lp-script">Begin your chapter</h2>
+              <p>
+                Satu karya botani, satu brankas kenangan, dan satu babak hidup yang tidak akan
+                pernah layu.
+              </p>
+              <a href="#pesan" className="lp-btn lp-btn--wine">
+                Commission Your Chapter
+              </a>
+            </div>
+          </section>
+        </main>
 
-                <form className="commission-form" onSubmit={submitOrder}>
-                  <div className="commission-form-grid">
-                    <div className="form-group">
-                      <label className="form-label" htmlFor="order-nama">Nama Pemesan</label>
-                      <input
-                        id="order-nama"
-                        className="form-input"
-                        type="text"
-                        placeholder="Nama Lengkap Anda"
-                        maxLength={120}
-                        autoComplete="name"
-                        required
-                        value={orderForm.nama}
-                        onChange={event => setOrderForm(form => ({ ...form, nama: event.target.value }))}
-                      />
-                    </div>
-                    <div className="form-group">
-                      <label className="form-label" htmlFor="order-wa">Nomor WhatsApp Pemesan</label>
-                      <input
-                        id="order-wa"
-                        className="form-input"
-                        type="tel"
-                        inputMode="tel"
-                        placeholder="08xx-xxxx-xxxx"
-                        maxLength={20}
-                        autoComplete="tel"
-                        aria-describedby="order-wa-hint"
-                        required
-                        value={orderForm.wa}
-                        onChange={event => setOrderForm(form => ({ ...form, wa: event.target.value }))}
-                      />
-                      <span className="form-field-hint" id="order-wa-hint">
-                        Gunakan nomor aktif Indonesia, contoh 08xx atau +62.
-                      </span>
-                    </div>
-                    <div className="form-group commission-col-span-2">
-                      <label className="form-label" htmlFor="order-produk">Pilihan Koleksi / Karya</label>
-                      <select
-                        id="order-produk"
-                        className="form-select"
-                        required
-                        value={orderForm.produk}
-                        onChange={event => {
-                          setOrderForm(form => ({ ...form, produk: event.target.value }));
-                          setPrefilledProductName("");
-                        }}
-                      >
-                        <option value="">— Pilih koleksi karya —</option>
-                        {commissionProductGroups.map(group => (
-                          <optgroup label={group.label} key={group.label}>
-                            {group.products.map(product => (
-                              <option key={product.id} value={product.id}>
-                                {product.nama_produk} — {formatHarga(product.harga)}
-                              </option>
-                            ))}
-                            {group.examples
-                              .filter(example => !group.products.some(product => (
-                                product.nama_produk.toLocaleLowerCase() === example.toLocaleLowerCase()
-                              )))
-                              .map(example => (
-                                <option key={example} disabled value={`unavailable-${example}`}>
-                                  {example} — belum tersedia
-                                </option>
-                              ))}
-                          </optgroup>
-                        ))}
-                      </select>
-                      {prefilledProductName && (
-                        <span className="form-prefill-indicator" role="status">
-                          Terpilih dari produk: {prefilledProductName}
-                        </span>
-                      )}
-                    </div>
-                    <div className="form-group commission-col-span-2">
-                      <label className="form-label" htmlFor="order-moment">
-                        Nama Penerima Kado &amp; Momen (Opsional)
-                      </label>
-                      <input
-                        id="order-moment"
-                        className="form-input"
-                        type="text"
-                        placeholder="Contoh: Untuk Sarah · Momen Pernikahan"
-                        maxLength={180}
-                        value={orderForm.namaPenerima}
-                        onChange={event => setOrderForm(form => ({ ...form, namaPenerima: event.target.value }))}
-                      />
-                    </div>
-                    <div className="form-group commission-col-span-2">
-                      <label className="form-label" htmlFor="order-pesan">Pesan Khusus / Catatan Singkat</label>
-                      <textarea
-                        id="order-pesan"
-                        className="form-textarea"
-                        rows={3}
-                        maxLength={2000}
-                        placeholder="Preferensi warna bunga, tanggal pengiriman yang diharapkan, atau catatan khusus lainnya..."
-                        value={orderForm.pesan}
-                        onChange={event => setOrderForm(form => ({ ...form, pesan: event.target.value }))}
-                      />
-                    </div>
-                  </div>
-                  <div className="form-honeypot" aria-hidden="true">
-                    <input
-                      id="order-website"
-                      className="form-input"
-                      type="text"
-                      tabIndex={-1}
-                      autoComplete="off"
-                      value={orderForm.website}
-                      onChange={event => setOrderForm(form => ({ ...form, website: event.target.value }))}
-                    />
-                  </div>
-                  <button type="submit" className="hero-cta-primary btn-commission-submit" disabled={orderSubmitting}>
-                    {orderSubmitting ? (
-                      <>
-                        <span className="commission-spinner" aria-hidden="true" />
-                        Mempersiapkan Lembar Arsip...
-                      </>
-                    ) : (
-                      "COMMISSION THIS CHAPTER →"
-                    )}
-                  </button>
-                  <p className="commission-form-note">
-                    Permintaan Anda tersimpan dengan status menunggu konsultasi DP.
-                    WhatsApp akan terbuka setelah lembar arsip berhasil dicatat.
-                  </p>
-                </form>
-              </>
-            )}
-          </div>
-        </div>
-      </section>
-
-      <section className="fm-section faq-section" id="faq" aria-label="Pertanyaan Umum Atelier">
-        <div className="faq-inner">
-          <div className="faq-header">
-            <span className="section-eyebrow order-center">FREQUENTLY ASKED QUESTIONS</span>
-            <h2 className="section-title order-center">
-              The Inquiries —<br />
-              <em>Guidance &amp; Care Protocol</em>
-            </h2>
-          </div>
-
-          <div className="faq-accordion" role="region" aria-label="FAQ Accordion">
-            {faqItems.map((item, index) => {
-              const isOpen = activeFaq === index;
-              return (
-                <div className={`faq-item${isOpen ? " open" : ""}`} key={index}>
-                  <button
-                    type="button"
-                    className="faq-question-btn"
-                    aria-expanded={isOpen}
-                    aria-controls={`faq-answer-${index}`}
-                    id={`faq-btn-${index}`}
-                    onClick={() => toggleFaq(index)}
-                  >
-                    <span className="faq-question-text">{item.q}</span>
-                    <span className="faq-toggle-icon" aria-hidden="true">+</span>
-                  </button>
-                  <div
-                    id={`faq-answer-${index}`}
-                    role="region"
-                    aria-labelledby={`faq-btn-${index}`}
-                    className="faq-answer-panel"
-                    style={{ maxHeight: isOpen ? "220px" : "0" }}
-                  >
-                    <p className="faq-answer-text">{item.a}</p>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </section>
-      </main>
-
-      <SiteFooter />
+        <SiteFooter />
+      </div>
 
       {selectedProduct && (
         <ProductModal

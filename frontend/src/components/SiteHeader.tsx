@@ -7,9 +7,18 @@ const navLinks = [
   { href: "/smart-qr-vault", label: "Smart QR Vault" },
 ];
 
-export default function SiteHeader() {
+export default function SiteHeader({ variant = "default" }: { variant?: "default" | "overlay" }) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
   const [location] = useLocation();
+
+  useEffect(() => {
+    if (variant !== "overlay") return;
+    const onScroll = () => setScrolled(window.scrollY > 48);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, [variant]);
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -35,9 +44,12 @@ export default function SiteHeader() {
 
   return (
     <>
-      <nav className="fm-nav" aria-label="Navigasi utama">
+      <nav
+        className={`fm-nav${variant === "overlay" ? ` fm-nav--overlay${scrolled ? " is-scrolled" : ""}` : ""}`}
+        aria-label="Navigasi utama"
+      >
         <a href="/" className="nav-logo logo-link" aria-label="A Chapter beranda">
-          <BrandLogo />
+          <BrandLogo variant={variant === "overlay" && !scrolled ? "light" : "burgundy"} />
         </a>
 
         <ul className="nav-links">
