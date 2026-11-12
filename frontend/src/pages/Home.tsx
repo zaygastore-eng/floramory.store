@@ -580,10 +580,12 @@ export default function Home() {
           <div className="lp-hero-veil" aria-hidden="true" />
           <div className="lp-hero-inner">
             <span className="lp-hero-kicker">A CHAPTER · PRE-ORDER 2026</span>
-            <h1 className="lp-hero-title">
-              <span className="lp-hero-where">where every</span>
-              <span className="lp-hero-flowers">Flowers</span>
-              <span className="lp-hero-tells">Tells your</span>
+            <h1 className="lp-hero-title" aria-label="Where Every Flowers Tells Your Chapter">
+              <span className="lp-hero-flowers-wrap">
+                <span className="lp-hero-where">WHERE EVERY</span>
+                <span className="lp-hero-flowers">Flowers</span>
+              </span>
+              <span className="lp-hero-tells">TELLS YOUR</span>
               <span className="lp-hero-chapter">Chapter</span>
             </h1>
             <p className="lp-hero-sub">

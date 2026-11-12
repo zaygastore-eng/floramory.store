@@ -233,38 +233,64 @@
 
 .landing-v2 .lp-hero-title {
   display: flex;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: center;
-  gap: 0.02em;
+  gap: clamp(0.4rem, 1.2vw, 1.4rem);
   width: 100%;
+  max-width: 1180px;
   margin: clamp(0.9rem, 2.2vh, 1.6rem) auto clamp(1.1rem, 2.5vh, 1.6rem);
-  line-height: 0.9;
-  text-shadow: 0 0 30px rgba(255, 240, 220, 0.34), 0 4px 20px rgba(0, 0, 0, 0.55);
+  line-height: 1;
 }
 
-.landing-v2 .lp-hero-where,
-.landing-v2 .lp-hero-tells {
-  flex: 0 0 auto;
-  font-family: var(--lp-display);
-  font-size: clamp(0.62rem, 1.55vw, 1.18rem);
+.landing-v2 .lp-hero-flowers-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.landing-v2 .lp-hero-where {
+  position: absolute;
+  top: -0.72em;
+  right: 0.15em;
+  font-family: "Cinzel", serif;
+  font-size: clamp(0.68rem, 1.7vw, 1.35rem);
   font-weight: 500;
-  letter-spacing: 0.14em;
-  line-height: 1.1;
+  letter-spacing: 0.18em;
+  line-height: 1;
   text-transform: uppercase;
-  color: #f7ead9;
-  transform: translateY(-0.85em);
+  color: #fcf4e8;
+  white-space: nowrap;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.7);
+}
+
+.landing-v2 .lp-hero-tells {
+  font-family: "Cinzel", serif;
+  font-size: clamp(0.68rem, 1.7vw, 1.35rem);
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  line-height: 1;
+  text-transform: uppercase;
+  color: #fcf4e8;
+  white-space: nowrap;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.7);
+  align-self: center;
+  margin: 0 clamp(0.2rem, 0.8vw, 0.8rem);
 }
 
 .landing-v2 .lp-hero-flowers,
 .landing-v2 .lp-hero-chapter {
-  flex: 0 0 auto;
-  font-family: var(--lp-script);
-  font-size: clamp(2.9rem, 7.6vw, 7.2rem);
+  font-family: "Parisienne", cursive;
+  font-size: clamp(3.4rem, 8.8vw, 7.8rem);
   font-weight: 400;
-  line-height: 0.72;
-  color: #fdf5e9;
+  line-height: 0.85;
+  color: #ffffff;
   white-space: nowrap;
+  text-shadow:
+    0 0 10px rgba(255, 240, 205, 0.95),
+    0 0 24px rgba(255, 212, 135, 0.85),
+    0 0 54px rgba(230, 162, 70, 0.65),
+    0 4px 20px rgba(20, 8, 10, 0.5);
 }
 
 .landing-v2 .lp-hero-sub {
@@ -396,11 +422,11 @@
 
 .landing-v2 .lp-products-body {
   padding: clamp(2.5rem, 5vw, 4.5rem) clamp(1rem, 5vw, 5rem);
-  background-color: #4a1019;
+  background-color: #b4c6ee;
   background-image:
-    radial-gradient(ellipse at 50% 0%, rgba(139, 58, 74, 0.55), transparent 62%),
-    linear-gradient(180deg, #5c1620 0%, #3f0d15 100%);
-  color: #f8ede0;
+    radial-gradient(ellipse at 50% 15%, rgba(255, 255, 255, 0.55), transparent 65%),
+    linear-gradient(180deg, #bcc8f5 0%, #a2b7ed 100%);
+  color: var(--lp-wine, #531B21);
 }
 
 .landing-v2 .lp-products-head {
@@ -423,7 +449,7 @@
   padding: 0;
   border: 0;
   background: transparent;
-  color: #fbf1e4;
+  color: var(--lp-wine, #531B21);
   text-align: center;
   cursor: pointer;
 }
@@ -433,8 +459,8 @@
   aspect-ratio: 7 / 10;
   border-radius: 6px;
   overflow: visible;
-  background: #b4c6ee;
-  box-shadow: 0 18px 34px rgba(20, 8, 10, 0.35);
+  background: #bcc8f5;
+  box-shadow: 0 18px 34px rgba(40, 50, 90, 0.22);
 }
 
 .landing-v2 .lp-products .product-img-layer {
@@ -442,7 +468,7 @@
   inset: 0;
   overflow: hidden;
   border-radius: 6px;
-  background: #b4c6ee;
+  background: #bcc8f5;
 }
 
 .landing-v2 .lp-products .product-thumb {
@@ -477,8 +503,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #b4c6ee;
-  background-image: radial-gradient(circle at 50% 48%, #c9d8fb 0%, #b0c2ee 100%);
+  background: #c5d3f8;
+  background-image: radial-gradient(circle at 50% 48%, #dae5fd 0%, #b8c8f2 100%);
 }
 
 .landing-v2 .lp-products .product-monogram-inner {
@@ -498,9 +524,9 @@
 .landing-v2 .lp-products .product-name {
   font-family: var(--lp-display);
   font-size: 1.15rem;
-  font-weight: 500;
+  font-weight: 600;
   letter-spacing: 0.02em;
-  color: #fbf1e4;
+  color: var(--lp-wine, #531B21);
 }
 
 .landing-v2 .lp-products .product-footer {
@@ -512,14 +538,15 @@
 }
 
 .landing-v2 .lp-products .product-price {
-  color: #e8c9a8;
+  color: #68202b;
   font-family: var(--lp-body);
-  font-size: 0.78rem;
-  letter-spacing: 0.08em;
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
 }
 
 .landing-v2 .lp-products .product-btn {
-  color: #f3d9c8;
+  color: #7a2835;
   font-family: var(--lp-body);
   font-size: 0.68rem;
   letter-spacing: 0.12em;
@@ -547,15 +574,28 @@
   height: 44px;
   align-items: center;
   justify-content: center;
-  border: 1px solid rgba(251, 241, 228, 0.4);
+  border: 1px solid rgba(83, 27, 33, 0.35);
   border-radius: 50%;
-  background: transparent;
-  color: #fbf1e4;
+  background: rgba(255, 255, 255, 0.4);
+  color: var(--lp-wine, #531B21);
   cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.landing-v2 .lp-products-actions .slider-nav-btn:hover {
+  background: var(--lp-wine, #531B21);
+  color: #ffffff;
 }
 
 .landing-v2 .lp-products-actions .lp-btn {
-  color: #fbf1e4;
+  border-color: var(--lp-wine, #531B21);
+  color: var(--lp-wine, #531B21);
+  background: rgba(255, 255, 255, 0.35);
+}
+
+.landing-v2 .lp-products-actions .lp-btn:hover {
+  background: var(--lp-wine, #531B21);
+  color: #ffffff;
 }
 
 /* ── KOLOM PENGISIAN ── */
@@ -1247,11 +1287,6 @@
 
 /* ── RESPONSIVE ── */
 @media (max-width: 1024px) {
-  .landing-v2 .lp-hero-where,
-  .landing-v2 .lp-hero-tells {
-    transform: none;
-  }
-
   .landing-v2 .lp-intro {
     grid-template-columns: 1fr;
   }
@@ -1282,19 +1317,31 @@
 @media (max-width: 760px) {
   .landing-v2 .lp-hero-title {
     flex-direction: column;
-    gap: 0.05rem;
+    gap: 0.6rem;
+  }
+
+  .landing-v2 .lp-hero-flowers-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .landing-v2 .lp-hero-where {
+    position: static;
+    transform: none;
+    margin-bottom: -0.2rem;
   }
 
   .landing-v2 .lp-hero-flowers,
   .landing-v2 .lp-hero-chapter {
-    font-size: clamp(4rem, 18vw, 6.5rem);
-    line-height: 0.78;
+    font-size: clamp(3.2rem, 16vw, 5.5rem);
+    line-height: 0.88;
   }
 
   .landing-v2 .lp-hero-where,
   .landing-v2 .lp-hero-tells {
-    font-size: 0.82rem;
-    letter-spacing: 0.2em;
+    font-size: 0.78rem;
+    letter-spacing: 0.16em;
   }
 
   .landing-v2 .lp-hero-inner {
