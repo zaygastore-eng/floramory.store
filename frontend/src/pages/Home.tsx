@@ -693,217 +693,6 @@ export default function Home() {
             </div>
           </section>
 
-          {/* ── KOLOM PENGISIAN ── */}
-          <section className="lp-kolom" id="pesan">
-            <span id="kolom-pengisian" className="lp-anchor" aria-hidden="true" />
-            <img
-              className="lp-kolom-lace"
-              src="/landing/kolom-lace.webp"
-              alt=""
-              aria-hidden="true"
-              loading="lazy"
-            />
-            <div className="lp-kolom-inner">
-              <h2 className="lp-script lp-kolom-title">Kolom Pengisian</h2>
-              <p className="lp-kolom-lead">
-                Setiap karya dirangkai khusus berdasarkan ceritamu. Lengkapi detail di bawah ini
-                untuk mengamankan slot Pre-Order eksklusifmu sebelum pintu galeri ditutup.
-              </p>
-
-              <div className="lp-kolom-card">
-                {orderComplete ? (
-                  <div className="commission-confirmation lp-confirmation" role="status" aria-live="polite">
-                    <div className="certificate-seal" aria-hidden="true">A · C</div>
-                    <span className="commission-eyebrow">A CHAPTER ATELIER · OFFICIAL ARCHIVE</span>
-                    <h2 className="commission-title">Your Chapter Begins Here.</h2>
-                    <p className="commission-confirmation-copy">
-                      Lembar permintaan Anda telah tercatat. Concierge kami akan membantu memeriksa
-                      ketersediaan dan tahap pengunggahan Memory Vault.
-                    </p>
-                    <p className="commission-reference">
-                      REFERENCE NO. <strong>#{submittedOrderNumber || submittedOrderId}</strong>
-                    </p>
-                    {lastOrderWaUrl && (
-                      <a
-                        href={lastOrderWaUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="lp-btn lp-btn--wine"
-                      >
-                        Buka WhatsApp Concierge
-                      </a>
-                    )}
-                    <button
-                      type="button"
-                      className="order-reset-link commission-reset"
-                      onClick={() => {
-                        setOrderForm({ nama: "", wa: "", pesan: "", produk: "", namaPenerima: "", website: "" });
-                        setPrefilledProductName("");
-                        setSubmittedOrderId("");
-                        setSubmittedOrderNumber("");
-                        setLastOrderWaUrl(null);
-                        setOrderComplete(false);
-                        formStartRef.current = Date.now();
-                      }}
-                    >
-                      Buat permintaan baru
-                    </button>
-                  </div>
-                ) : (
-                  <>
-                    <header className="lp-form-head">
-                      <span className="commission-eyebrow">BESPOKE BOTANICAL COMMISSION · ATELIER RESERVATION</span>
-                      <h3 className="lp-form-title">Reserve your chapter</h3>
-                      <p className="lp-form-sub">
-                        Konsultasikan karya botani abadi dan konfigurasi brankas memori Anda bersama
-                        kurator atelier kami via WhatsApp resmi.
-                      </p>
-                    </header>
-
-                    <form className="commission-form lp-form" onSubmit={submitOrder}>
-                      <div className="commission-form-grid lp-form-grid">
-                        <div className="form-group">
-                          <label className="form-label" htmlFor="order-nama">Nama Pemesan</label>
-                          <input
-                            id="order-nama"
-                            className="form-input"
-                            type="text"
-                            placeholder="Nama Lengkap Anda"
-                            maxLength={120}
-                            autoComplete="name"
-                            required
-                            value={orderForm.nama}
-                            onChange={event => setOrderForm(form => ({ ...form, nama: event.target.value }))}
-                          />
-                        </div>
-                        <div className="form-group">
-                          <label className="form-label" htmlFor="order-wa">Nomor WhatsApp Pemesan</label>
-                          <input
-                            id="order-wa"
-                            className="form-input"
-                            type="tel"
-                            inputMode="tel"
-                            placeholder="08xx-xxxx-xxxx"
-                            maxLength={20}
-                            autoComplete="tel"
-                            aria-describedby="order-wa-hint"
-                            required
-                            value={orderForm.wa}
-                            onChange={event => setOrderForm(form => ({ ...form, wa: event.target.value }))}
-                          />
-                          <span className="form-field-hint" id="order-wa-hint">
-                            Gunakan nomor aktif Indonesia, contoh 08xx atau +62.
-                          </span>
-                        </div>
-                        <div className="form-group commission-col-span-2">
-                          <label className="form-label" htmlFor="order-produk">Pilihan Koleksi / Karya</label>
-                          <select
-                            id="order-produk"
-                            className="form-select"
-                            required
-                            value={orderForm.produk}
-                            onChange={event => {
-                              setOrderForm(form => ({ ...form, produk: event.target.value }));
-                              setPrefilledProductName("");
-                            }}
-                          >
-                            <option value="">— Pilih koleksi karya —</option>
-                            {commissionProductGroups.map(group => (
-                              <optgroup label={group.label} key={group.label}>
-                                {group.products.map(product => (
-                                  <option key={product.id} value={product.id}>
-                                    {product.nama_produk} — {formatHarga(product.harga)}
-                                  </option>
-                                ))}
-                                {group.examples
-                                  .filter(example => !group.products.some(product => (
-                                    product.nama_produk.toLocaleLowerCase() === example.toLocaleLowerCase()
-                                  )))
-                                  .map(example => (
-                                    <option key={example} disabled value={`unavailable-${example}`}>
-                                      {example} — belum tersedia
-                                    </option>
-                                  ))}
-                              </optgroup>
-                            ))}
-                          </select>
-                          {prefilledProductName && (
-                            <span className="form-prefill-indicator" role="status">
-                              Terpilih dari produk: {prefilledProductName}
-                            </span>
-                          )}
-                        </div>
-                        <div className="form-group commission-col-span-2">
-                          <label className="form-label" htmlFor="order-moment">
-                            Nama Penerima Kado &amp; Momen (Opsional)
-                          </label>
-                          <input
-                            id="order-moment"
-                            className="form-input"
-                            type="text"
-                            placeholder="Contoh: Untuk Sarah · Momen Pernikahan"
-                            maxLength={180}
-                            value={orderForm.namaPenerima}
-                            onChange={event => setOrderForm(form => ({ ...form, namaPenerima: event.target.value }))}
-                          />
-                        </div>
-                        <div className="form-group commission-col-span-2">
-                          <label className="form-label" htmlFor="order-pesan">Pesan Khusus / Catatan Singkat</label>
-                          <textarea
-                            id="order-pesan"
-                            className="form-textarea"
-                            rows={3}
-                            maxLength={2000}
-                            placeholder="Preferensi warna bunga, tanggal pengiriman yang diharapkan, atau catatan khusus lainnya..."
-                            value={orderForm.pesan}
-                            onChange={event => setOrderForm(form => ({ ...form, pesan: event.target.value }))}
-                          />
-                        </div>
-                      </div>
-                      <div className="form-honeypot" aria-hidden="true">
-                        <input
-                          id="order-website"
-                          className="form-input"
-                          type="text"
-                          tabIndex={-1}
-                          autoComplete="off"
-                          value={orderForm.website}
-                          onChange={event => setOrderForm(form => ({ ...form, website: event.target.value }))}
-                        />
-                      </div>
-                      <button type="submit" className="lp-btn lp-btn--wine lp-submit" disabled={orderSubmitting}>
-                        {orderSubmitting ? (
-                          <>
-                            <span className="commission-spinner" aria-hidden="true" />
-                            Mempersiapkan Lembar Arsip...
-                          </>
-                        ) : (
-                          <>
-                            <svg
-                              className="lp-submit-wa-icon"
-                              viewBox="0 0 24 24"
-                              width="18"
-                              height="18"
-                              fill="currentColor"
-                              aria-hidden="true"
-                            >
-                              <path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.82 9.82 0 0 0 12.04 2m.01 1.67c2.2 0 4.26.86 5.82 2.42a8.23 8.23 0 0 1 2.41 5.83c0 4.54-3.7 8.24-8.24 8.24-1.48 0-2.93-.4-4.2-1.15l-.3-.18-3.12.82.83-3.04-.2-.31a8.19 8.19 0 0 1-1.26-4.38c0-4.54 3.7-8.24 8.24-8.24m4.52 11.66c-.25-.13-1.47-.72-1.7-.81-.23-.08-.4-.13-.56.13-.17.25-.65.81-.79.98-.15.17-.3.19-.55.06-.25-.13-1.06-.39-2.02-1.24-.75-.67-1.25-1.5-1.4-1.75-.15-.25-.02-.39.11-.51.11-.11.25-.29.38-.44.13-.15.17-.25.25-.42.08-.17.04-.32-.02-.44-.06-.13-.56-1.36-.77-1.86-.2-.49-.41-.42-.56-.43h-.48c-.17 0-.44.06-.67.32-.23.25-.88.86-.88 2.1 0 1.24.9 2.44 1.03 2.61.13.17 1.77 2.7 4.29 3.79.6.26 1.07.41 1.44.53.6.19 1.15.16 1.58.1.48-.07 1.47-.6 1.68-1.18.21-.58.21-1.07.15-1.18-.06-.1-.23-.17-.48-.29" />
-                            </svg>
-                            Kirim Formulir &amp; Lanjut ke WhatsApp →
-                          </>
-                        )}
-                      </button>
-                      <p className="commission-form-note">
-                        Permintaan Anda tersimpan dengan status menunggu konsultasi DP. WhatsApp akan
-                        terbuka setelah lembar arsip berhasil dicatat.
-                      </p>
-                    </form>
-                  </>
-                )}
-              </div>
-            </div>
-          </section>
-
           {/* ── CAPTURED MOMENTS / MEMORY VAULT ── */}
           <section className="lp-vault" id="vault">
             <div className="lp-vault-bg" aria-hidden="true" />
@@ -1413,6 +1202,217 @@ export default function Home() {
                     Cara Kerja Lengkap →
                   </Link>
                 </div>
+              </div>
+            </div>
+          </section>
+
+          {/* ── KOLOM PENGISIAN ── */}
+          <section className="lp-kolom" id="pesan">
+            <span id="kolom-pengisian" className="lp-anchor" aria-hidden="true" />
+            <img
+              className="lp-kolom-lace"
+              src="/landing/kolom-lace.webp"
+              alt=""
+              aria-hidden="true"
+              loading="lazy"
+            />
+            <div className="lp-kolom-inner">
+              <h2 className="lp-script lp-kolom-title">Kolom Pengisian</h2>
+              <p className="lp-kolom-lead">
+                Setiap karya dirangkai khusus berdasarkan ceritamu. Lengkapi detail di bawah ini
+                untuk mengamankan slot Pre-Order eksklusifmu sebelum pintu galeri ditutup.
+              </p>
+
+              <div className="lp-kolom-card">
+                {orderComplete ? (
+                  <div className="commission-confirmation lp-confirmation" role="status" aria-live="polite">
+                    <div className="certificate-seal" aria-hidden="true">A · C</div>
+                    <span className="commission-eyebrow">A CHAPTER ATELIER · OFFICIAL ARCHIVE</span>
+                    <h2 className="commission-title">Your Chapter Begins Here.</h2>
+                    <p className="commission-confirmation-copy">
+                      Lembar permintaan Anda telah tercatat. Concierge kami akan membantu memeriksa
+                      ketersediaan dan tahap pengunggahan Memory Vault.
+                    </p>
+                    <p className="commission-reference">
+                      REFERENCE NO. <strong>#{submittedOrderNumber || submittedOrderId}</strong>
+                    </p>
+                    {lastOrderWaUrl && (
+                      <a
+                        href={lastOrderWaUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="lp-btn lp-btn--wine"
+                      >
+                        Buka WhatsApp Concierge
+                      </a>
+                    )}
+                    <button
+                      type="button"
+                      className="order-reset-link commission-reset"
+                      onClick={() => {
+                        setOrderForm({ nama: "", wa: "", pesan: "", produk: "", namaPenerima: "", website: "" });
+                        setPrefilledProductName("");
+                        setSubmittedOrderId("");
+                        setSubmittedOrderNumber("");
+                        setLastOrderWaUrl(null);
+                        setOrderComplete(false);
+                        formStartRef.current = Date.now();
+                      }}
+                    >
+                      Buat permintaan baru
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <header className="lp-form-head">
+                      <span className="commission-eyebrow">BESPOKE BOTANICAL COMMISSION · ATELIER RESERVATION</span>
+                      <h3 className="lp-form-title">Reserve your chapter</h3>
+                      <p className="lp-form-sub">
+                        Konsultasikan karya botani abadi dan konfigurasi brankas memori Anda bersama
+                        kurator atelier kami via WhatsApp resmi.
+                      </p>
+                    </header>
+
+                    <form className="commission-form lp-form" onSubmit={submitOrder}>
+                      <div className="commission-form-grid lp-form-grid">
+                        <div className="form-group">
+                          <label className="form-label" htmlFor="order-nama">Nama Pemesan</label>
+                          <input
+                            id="order-nama"
+                            className="form-input"
+                            type="text"
+                            placeholder="Nama Lengkap Anda"
+                            maxLength={120}
+                            autoComplete="name"
+                            required
+                            value={orderForm.nama}
+                            onChange={event => setOrderForm(form => ({ ...form, nama: event.target.value }))}
+                          />
+                        </div>
+                        <div className="form-group">
+                          <label className="form-label" htmlFor="order-wa">Nomor WhatsApp Pemesan</label>
+                          <input
+                            id="order-wa"
+                            className="form-input"
+                            type="tel"
+                            inputMode="tel"
+                            placeholder="08xx-xxxx-xxxx"
+                            maxLength={20}
+                            autoComplete="tel"
+                            aria-describedby="order-wa-hint"
+                            required
+                            value={orderForm.wa}
+                            onChange={event => setOrderForm(form => ({ ...form, wa: event.target.value }))}
+                          />
+                          <span className="form-field-hint" id="order-wa-hint">
+                            Gunakan nomor aktif Indonesia, contoh 08xx atau +62.
+                          </span>
+                        </div>
+                        <div className="form-group commission-col-span-2">
+                          <label className="form-label" htmlFor="order-produk">Pilihan Koleksi / Karya</label>
+                          <select
+                            id="order-produk"
+                            className="form-select"
+                            required
+                            value={orderForm.produk}
+                            onChange={event => {
+                              setOrderForm(form => ({ ...form, produk: event.target.value }));
+                              setPrefilledProductName("");
+                            }}
+                          >
+                            <option value="">— Pilih koleksi karya —</option>
+                            {commissionProductGroups.map(group => (
+                              <optgroup label={group.label} key={group.label}>
+                                {group.products.map(product => (
+                                  <option key={product.id} value={product.id}>
+                                    {product.nama_produk} — {formatHarga(product.harga)}
+                                  </option>
+                                ))}
+                                {group.examples
+                                  .filter(example => !group.products.some(product => (
+                                    product.nama_produk.toLocaleLowerCase() === example.toLocaleLowerCase()
+                                  )))
+                                  .map(example => (
+                                    <option key={example} disabled value={`unavailable-${example}`}>
+                                      {example} — belum tersedia
+                                    </option>
+                                  ))}
+                              </optgroup>
+                            ))}
+                          </select>
+                          {prefilledProductName && (
+                            <span className="form-prefill-indicator" role="status">
+                              Terpilih dari produk: {prefilledProductName}
+                            </span>
+                          )}
+                        </div>
+                        <div className="form-group commission-col-span-2">
+                          <label className="form-label" htmlFor="order-moment">
+                            Nama Penerima Kado &amp; Momen (Opsional)
+                          </label>
+                          <input
+                            id="order-moment"
+                            className="form-input"
+                            type="text"
+                            placeholder="Contoh: Untuk Sarah · Momen Pernikahan"
+                            maxLength={180}
+                            value={orderForm.namaPenerima}
+                            onChange={event => setOrderForm(form => ({ ...form, namaPenerima: event.target.value }))}
+                          />
+                        </div>
+                        <div className="form-group commission-col-span-2">
+                          <label className="form-label" htmlFor="order-pesan">Pesan Khusus / Catatan Singkat</label>
+                          <textarea
+                            id="order-pesan"
+                            className="form-textarea"
+                            rows={3}
+                            maxLength={2000}
+                            placeholder="Preferensi warna bunga, tanggal pengiriman yang diharapkan, atau catatan khusus lainnya..."
+                            value={orderForm.pesan}
+                            onChange={event => setOrderForm(form => ({ ...form, pesan: event.target.value }))}
+                          />
+                        </div>
+                      </div>
+                      <div className="form-honeypot" aria-hidden="true">
+                        <input
+                          id="order-website"
+                          className="form-input"
+                          type="text"
+                          tabIndex={-1}
+                          autoComplete="off"
+                          value={orderForm.website}
+                          onChange={event => setOrderForm(form => ({ ...form, website: event.target.value }))}
+                        />
+                      </div>
+                      <button type="submit" className="lp-btn lp-btn--wine lp-submit" disabled={orderSubmitting}>
+                        {orderSubmitting ? (
+                          <>
+                            <span className="commission-spinner" aria-hidden="true" />
+                            Mempersiapkan Lembar Arsip...
+                          </>
+                        ) : (
+                          <>
+                            <svg
+                              className="lp-submit-wa-icon"
+                              viewBox="0 0 24 24"
+                              width="18"
+                              height="18"
+                              fill="currentColor"
+                              aria-hidden="true"
+                            >
+                              <path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.82 9.82 0 0 0 12.04 2m.01 1.67c2.2 0 4.26.86 5.82 2.42a8.23 8.23 0 0 1 2.41 5.83c0 4.54-3.7 8.24-8.24 8.24-1.48 0-2.93-.4-4.2-1.15l-.3-.18-3.12.82.83-3.04-.2-.31a8.19 8.19 0 0 1-1.26-4.38c0-4.54 3.7-8.24 8.24-8.24m4.52 11.66c-.25-.13-1.47-.72-1.7-.81-.23-.08-.4-.13-.56.13-.17.25-.65.81-.79.98-.15.17-.3.19-.55.06-.25-.13-1.06-.39-2.02-1.24-.75-.67-1.25-1.5-1.4-1.75-.15-.25-.02-.39.11-.51.11-.11.25-.29.38-.44.13-.15.17-.25.25-.42.08-.17.04-.32-.02-.44-.06-.13-.56-1.36-.77-1.86-.2-.49-.41-.42-.56-.43h-.48c-.17 0-.44.06-.67.32-.23.25-.88.86-.88 2.1 0 1.24.9 2.44 1.03 2.61.13.17 1.77 2.7 4.29 3.79.6.26 1.07.41 1.44.53.6.19 1.15.16 1.58.1.48-.07 1.47-.6 1.68-1.18.21-.58.21-1.07.15-1.18-.06-.1-.23-.17-.48-.29" />
+                            </svg>
+                            Kirim Formulir &amp; Lanjut ke WhatsApp →
+                          </>
+                        )}
+                      </button>
+                      <p className="commission-form-note">
+                        Permintaan Anda tersimpan dengan status menunggu konsultasi DP. WhatsApp akan
+                        terbuka setelah lembar arsip berhasil dicatat.
+                      </p>
+                    </form>
+                  </>
+                )}
               </div>
             </div>
           </section>
