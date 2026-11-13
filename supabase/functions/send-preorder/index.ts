@@ -258,6 +258,7 @@ Deno.serve(async (req: Request) => {
   }
 
   // 9) Simpan (service_role melewati RLS).
+  const setupToken = createSetupToken();
   const { data: row, error: insertError } = await admin
     .from("preorder_orders")
     .insert({
@@ -275,7 +276,7 @@ Deno.serve(async (req: Request) => {
       total_amount: totalAmount,
       dp_amount: dpAmount,
       wa_sent: false,
-      vault_setup_token: createSetupToken(),
+      vault_setup_token: setupToken,
       vault_setup_expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
     })
     .select("id")
@@ -312,6 +313,7 @@ Deno.serve(async (req: Request) => {
     orderId: row.id,
     orderNumber,
     dpAmount,
+    setupToken,
     waStatus: "manual_redirect",
   }, 201);
 });

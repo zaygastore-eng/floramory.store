@@ -2063,3 +2063,1077 @@
   border: none;
   border-radius: 12px;
 }
+
+/* ══════════════════════════════════════════════════════════════
+   MEMORY VAULT JOURNEY — DP GATE, PHOTOBOOTH STRIP, LACE LETTER,
+   WAX-SEAL GATEWAY
+   ══════════════════════════════════════════════════════════════ */
+
+/* ── WAX-SEAL GATEWAY (recipient) ── */
+.vault-seal-gate {
+  position: fixed;
+  inset: 0;
+  z-index: 500;
+  display: grid;
+  place-items: center;
+  padding: clamp(1.25rem, 4vw, 2.5rem);
+  overflow-y: auto;
+  background:
+    radial-gradient(ellipse at 50% 18%, rgba(139, 58, 74, 0.5), transparent 62%),
+    linear-gradient(180deg, #3a1016 0%, #24070c 100%);
+  animation: vaultSealFade 280ms ease-out;
+}
+
+@keyframes vaultSealFade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.vault-seal-gate-card {
+  position: relative;
+  width: min(100%, 460px);
+  text-align: center;
+  padding: clamp(2rem, 6vw, 3rem) clamp(1.5rem, 5vw, 2.5rem);
+  border-radius: 6px;
+  border: 1px solid rgba(197, 168, 128, 0.7);
+  background-color: #f9edde;
+  background-image:
+    linear-gradient(rgba(249, 237, 222, 0.94), rgba(249, 237, 222, 0.97)),
+    url("/landing/cream-paper.webp");
+  background-position: center;
+  background-size: cover;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.45), inset 0 0 0 6px rgba(255, 255, 255, 0.3);
+}
+
+.vault-seal-gate-card::before {
+  content: "";
+  position: absolute;
+  inset: 10px;
+  border: 1px solid rgba(107, 31, 42, 0.18);
+  border-radius: 3px;
+  pointer-events: none;
+}
+
+.vault-seal-gate-kicker {
+  display: block;
+  font-family: var(--font-body);
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: #8b3a4a;
+}
+
+.vault-seal-gate-title {
+  font-family: var(--font-display);
+  font-size: clamp(1.9rem, 6vw, 2.6rem);
+  font-weight: 500;
+  line-height: 1.12;
+  color: #6b1f2a;
+  margin: 0.6rem 0 0.7rem;
+}
+
+.vault-seal-gate-sub {
+  font-family: var(--font-body);
+  font-size: 0.88rem;
+  line-height: 1.65;
+  color: #6d5a52;
+  margin: 0 auto 1.9rem;
+  max-width: 34ch;
+}
+
+.vault-seal-gate-sub strong {
+  color: #6b1f2a;
+}
+
+.vault-seal-tap {
+  position: relative;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 1rem 1.5rem 1.2rem;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  cursor: pointer;
+  transition: transform 200ms ease;
+}
+
+.vault-seal-tap:hover { transform: translateY(-2px); }
+.vault-seal-tap:active { transform: scale(0.97); }
+.vault-seal-tap:focus-visible {
+  outline: 2px solid #6b1f2a;
+  outline-offset: 6px;
+}
+
+.vault-seal-tap-ring {
+  position: absolute;
+  top: 0.85rem;
+  left: 50%;
+  width: 104px;
+  height: 104px;
+  transform: translateX(-50%);
+  border-radius: 50%;
+  border: 1px solid rgba(197, 168, 128, 0.75);
+  animation: vaultSealPulse 2.4s ease-out infinite;
+  pointer-events: none;
+}
+
+@keyframes vaultSealPulse {
+  0% { transform: translateX(-50%) scale(0.9); opacity: 0.85; }
+  100% { transform: translateX(-50%) scale(1.4); opacity: 0; }
+}
+
+.vault-seal-tap-wax {
+  position: relative;
+  width: 96px;
+  height: 96px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  border: 2px solid #c5a880;
+  background: radial-gradient(circle at 32% 28%, #8b3a4a 0%, #6b1f2a 55%, #4a1019 100%);
+  color: #f7e9d8;
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  box-shadow: 0 12px 28px rgba(74, 16, 25, 0.5), inset 0 2px 6px rgba(255, 255, 255, 0.22);
+}
+
+.vault-seal-tap-label {
+  font-family: var(--font-body);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: #6b1f2a;
+}
+
+.vault-seal-gate-hint {
+  font-family: var(--font-body);
+  font-size: 0.72rem;
+  line-height: 1.6;
+  color: #8a746a;
+  margin: 1.2rem auto 0;
+  max-width: 32ch;
+}
+
+/* ── NOW PLAYING PILL ── */
+.vault-now-playing {
+  align-self: center;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.5rem 0.95rem;
+  border-radius: 999px;
+  border: 1px solid rgba(107, 31, 42, 0.2);
+  background: rgba(188, 200, 245, 0.35);
+  color: #6b1f2a;
+  font-family: var(--font-body);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+}
+
+.vault-now-playing-bars {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 12px;
+}
+
+.vault-now-playing-bars i {
+  width: 2.5px;
+  height: 100%;
+  border-radius: 1px;
+  background: #6b1f2a;
+  transform-origin: bottom;
+  animation: vaultBars 0.9s ease-in-out infinite;
+}
+
+.vault-now-playing-bars i:nth-child(1) { height: 55%; animation-delay: 0s; }
+.vault-now-playing-bars i:nth-child(2) { height: 100%; animation-delay: 0.15s; }
+.vault-now-playing-bars i:nth-child(3) { height: 70%; animation-delay: 0.3s; }
+
+@keyframes vaultBars {
+  0%, 100% { transform: scaleY(0.5); }
+  50% { transform: scaleY(1); }
+}
+
+/* ── RECIPIENT PHOTOBOOTH STRIP ── */
+.vault-strip-stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.85rem;
+  width: 100%;
+}
+
+.vault-recipient-strip {
+  width: min(100%, 300px);
+  padding: 1.1rem 0.95rem 1.5rem;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 4px;
+  box-shadow: 0 20px 44px rgba(58, 22, 27, 0.22);
+  transition: background-color 0.25s ease, color 0.25s ease, border-color 0.25s ease;
+}
+
+.vault-recipient-strip-head {
+  text-align: center;
+  padding-bottom: 0.7rem;
+  border-bottom: 1px dashed rgba(120, 100, 100, 0.25);
+  margin-bottom: 0.7rem;
+}
+
+.vault-recipient-strip-head .strip-atelier-tag {
+  display: block;
+  font-family: "Cinzel", serif;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+}
+
+.vault-recipient-strip-head .strip-edition {
+  display: block;
+  font-family: var(--font-body);
+  font-size: 0.55rem;
+  letter-spacing: 0.12em;
+  opacity: 0.75;
+  margin-top: 0.2rem;
+}
+
+.vault-recipient-strip-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.vault-recipient-strip-frame {
+  position: relative;
+  display: block;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  border-radius: 2px;
+  background: rgba(0, 0, 0, 0.06);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.1);
+}
+
+.vault-recipient-strip-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform 0.35s ease;
+}
+
+.vault-recipient-strip-frame:hover .vault-recipient-strip-img {
+  transform: scale(1.04);
+}
+
+.vault-recipient-frame-num {
+  position: absolute;
+  bottom: 5px;
+  right: 7px;
+  font-family: "Cinzel", serif;
+  font-size: 0.55rem;
+  font-weight: 600;
+  color: #ffffff;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85);
+  pointer-events: none;
+}
+
+.vault-recipient-strip-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 0.9rem;
+  padding-top: 0.65rem;
+  border-top: 1px dashed rgba(120, 100, 100, 0.25);
+}
+
+.vault-recipient-strip-foot .strip-date {
+  font-family: var(--font-body);
+  font-size: 0.55rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  opacity: 0.85;
+}
+
+.vault-recipient-strip-foot .strip-monogram {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 1px solid currentColor;
+  font-family: var(--font-display);
+  font-size: 0.65rem;
+  opacity: 0.85;
+}
+
+.vault-strip-caption {
+  font-family: var(--font-body);
+  font-size: 0.72rem;
+  letter-spacing: 0.02em;
+  color: var(--chapter-taupe, #756C64);
+  text-align: center;
+  margin: 0;
+}
+
+/* ── RECIPIENT LACE LETTER ── */
+.vault-letter-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.vault-lace-sheet {
+  position: relative;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.vault-lace-mat {
+  width: 100%;
+  height: auto;
+  display: block;
+  border-radius: 6px;
+  box-shadow: 0 20px 44px rgba(58, 22, 27, 0.2);
+  pointer-events: none;
+}
+
+/* Surat diletakkan sebagai lembar perkamen di bawah papan renda dan
+   tumbuh mengikuti panjang isi — tidak pernah terpotong. */
+.vault-lace-parchment {
+  position: relative;
+  z-index: 1;
+  width: min(100%, 560px);
+  margin: -1.25rem auto 0;
+  display: flex;
+  flex-direction: column;
+  padding: 1.6rem 1.9rem 1.9rem;
+  border-radius: 2px;
+  background-color: #fdf6e9;
+  background-image:
+    linear-gradient(rgba(253, 246, 233, 0.93), rgba(253, 246, 233, 0.96)),
+    url("/landing/cream-paper.webp");
+  background-position: center;
+  background-size: cover;
+  box-shadow: 0 18px 40px rgba(58, 22, 27, 0.16);
+}
+
+.vault-lace-letter {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.vault-lace-salutation {
+  font-family: var(--font-display);
+  font-size: clamp(0.9rem, 3vw, 1.15rem);
+  font-weight: 600;
+  font-style: italic;
+  color: #6d5943;
+  margin: 0;
+}
+
+.vault-lace-body {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.vault-lace-signoff {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin-top: auto;
+  padding-top: 0.4rem;
+}
+
+.vault-lace-signoff .signoff-phrase {
+  font-family: var(--font-script, "Pinyon Script", cursive);
+  font-size: clamp(1rem, 3.4vw, 1.35rem);
+  color: #531B21;
+}
+
+.vault-lace-signoff .signoff-author {
+  font-family: var(--font-display);
+  font-size: clamp(0.85rem, 3vw, 1.05rem);
+  color: #232B38;
+}
+
+.vault-lace-caption {
+  font-family: var(--font-body);
+  font-size: 0.72rem;
+  line-height: 1.6;
+  color: var(--chapter-taupe, #756C64);
+  text-align: center;
+  margin: 0;
+}
+
+/* ── SETUP: DP 50% GATE CARD ── */
+.vault-dp-card {
+  text-align: center;
+  overflow: hidden;
+}
+
+.vault-dp-seal {
+  width: 58px;
+  height: 58px;
+  margin: 0 auto 1rem;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  border: 2px solid #c5a880;
+  background: radial-gradient(circle at 32% 28%, #8b3a4a 0%, #531B21 60%, #3a1016 100%);
+  color: #f7e9d8;
+  font-family: var(--font-body);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  box-shadow: 0 8px 20px rgba(83, 27, 33, 0.35);
+}
+
+.vault-dp-kicker {
+  display: block;
+  font-family: var(--font-body);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #8b3a4a;
+}
+
+.vault-dp-title { margin-top: 0.5rem; }
+
+.vault-dp-lead {
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  line-height: 1.7;
+  color: #6d5a52;
+  max-width: 52ch;
+  margin: 0 auto 1.6rem;
+}
+
+.vault-dp-lead strong { color: #6b1f2a; }
+
+.vault-dp-meta {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+  text-align: left;
+  padding: 1rem 1.1rem;
+  margin: 0 auto 1.6rem;
+  max-width: 560px;
+  border: 1px solid rgba(107, 31, 42, 0.14);
+  border-radius: 4px;
+  background: #fffdf8;
+}
+
+.vault-dp-meta-label {
+  display: block;
+  font-family: var(--font-body);
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #8a746a;
+  margin-bottom: 0.2rem;
+}
+
+.vault-dp-meta strong {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  color: #6b1f2a;
+}
+
+.vault-dp-steps {
+  list-style: none;
+  margin: 0 auto 1.4rem;
+  padding: 0;
+  max-width: 520px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  text-align: left;
+}
+
+.vault-dp-steps li {
+  display: flex;
+  gap: 0.85rem;
+  align-items: flex-start;
+}
+
+.vault-dp-step-dot {
+  flex: 0 0 auto;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-family: var(--font-body);
+  font-size: 0.7rem;
+  font-weight: 700;
+  background: #f0e7db;
+  color: #8a746a;
+  border: 1px solid rgba(107, 31, 42, 0.14);
+}
+
+.vault-dp-steps li.is-done .vault-dp-step-dot {
+  background: #6b1f2a;
+  color: #f7e9d8;
+  border-color: #6b1f2a;
+}
+
+.vault-dp-steps li.is-active .vault-dp-step-dot {
+  background: #bcc8f5;
+  color: #3a1016;
+  border-color: #6b1f2a;
+  box-shadow: 0 0 0 4px rgba(188, 200, 245, 0.4);
+}
+
+.vault-dp-steps li strong {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 1rem;
+  color: #3a2326;
+}
+
+.vault-dp-steps li div span {
+  font-family: var(--font-body);
+  font-size: 0.78rem;
+  line-height: 1.55;
+  color: #6d5a52;
+}
+
+.vault-dp-note {
+  font-family: var(--font-body);
+  font-size: 0.78rem;
+  line-height: 1.6;
+  color: #8a746a;
+  max-width: 46ch;
+  margin: 0 auto 1.5rem;
+}
+
+.vault-dp-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  justify-content: center;
+}
+
+.vault-dp-actions .hero-cta { min-height: 46px; }
+
+.vault-dp-wa {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 46px;
+  padding: 14px 26px;
+  border-radius: 2px;
+  border: 1px solid #6b1f2a;
+  color: #6b1f2a;
+  background: transparent;
+  font-family: var(--font-body);
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  text-decoration: none;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.vault-dp-wa:hover {
+  background: #6b1f2a;
+  color: #fdf5e9;
+}
+
+.vault-setup-success-card { padding: clamp(2rem, 6vw, 3.5rem); }
+.vault-setup-empty-icon { font-size: 2.4rem; margin-bottom: 0.5rem; }
+.vault-meta-dp { color: #2f6b47; font-size: 0.95rem; }
+
+/* ── SETUP: PHOTOBOOTH STRIP EDITOR ── */
+.vault-photobooth {
+  display: flex;
+  flex-wrap: wrap;
+  gap: clamp(1.5rem, 4vw, 2.75rem);
+  align-items: flex-start;
+}
+
+.vault-photobooth-editor {
+  flex: 1 1 300px;
+  min-width: 0;
+}
+
+.vault-photobooth-slots {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.65rem;
+}
+
+.vault-photo-slot-wrap { position: relative; }
+
+.vault-photo-slot {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 3 / 4;
+  border-radius: 4px;
+  border: 1.5px dashed rgba(107, 31, 42, 0.28);
+  background: #fdfbf7;
+  cursor: pointer;
+  overflow: hidden;
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.vault-photo-slot:hover,
+.vault-photo-slot.is-dragging {
+  border-color: #6b1f2a;
+  background: #f8f1e7;
+}
+
+.vault-photo-slot.has-photo {
+  border-style: solid;
+  border-color: rgba(107, 31, 42, 0.18);
+}
+
+.vault-photo-slot-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.vault-photo-slot-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  font-family: var(--font-body);
+  font-size: 0.66rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #8a746a;
+}
+
+.vault-photo-slot-plus {
+  font-size: 1.3rem;
+  line-height: 1;
+  color: #6b1f2a;
+}
+
+.vault-photo-slot-overlay {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 0.4rem;
+  background: rgba(58, 16, 22, 0.62);
+  color: #ffffff;
+  font-family: var(--font-body);
+  font-size: 0.66rem;
+  font-weight: 600;
+  text-align: center;
+}
+
+.vault-photo-slot-badge {
+  position: absolute;
+  top: 5px;
+  left: 6px;
+  font-family: "Cinzel", serif;
+  font-size: 0.55rem;
+  font-weight: 600;
+  color: #ffffff;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+  pointer-events: none;
+}
+
+.vault-photo-slot-remove {
+  margin-top: 0.3rem;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #8b3a4a;
+  font-family: var(--font-body);
+  font-size: 0.6rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.vault-photo-slot-remove:hover {
+  color: #531B21;
+  text-decoration: underline;
+}
+
+.vault-photo-hint-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 0.9rem;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 0.7rem;
+}
+
+.vault-compress-savings {
+  font-family: var(--font-body);
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: #3f6b4a;
+  background: rgba(120, 180, 140, 0.16);
+  padding: 0.25rem 0.55rem;
+  border-radius: 999px;
+}
+
+.vault-theme-block { margin-top: 1.25rem; }
+
+.vault-theme-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.vault-theme-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem 0.75rem;
+  border-radius: 999px;
+  border: 1.5px solid transparent;
+  font-family: var(--font-body);
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.vault-theme-chip:hover { transform: translateY(-1px); }
+
+.vault-theme-chip.is-active {
+  box-shadow: 0 0 0 2px rgba(107, 31, 42, 0.22);
+}
+
+.vault-theme-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.15);
+}
+
+.vault-strip-preview-wrap {
+  flex: 0 0 240px;
+  max-width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.vault-strip-preview {
+  width: 100%;
+  padding: 1rem 0.85rem 1.4rem;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 4px;
+  box-shadow: 0 16px 36px rgba(30, 10, 15, 0.22);
+  transition: background-color 0.25s ease, color 0.25s ease, border-color 0.25s ease;
+}
+
+.vault-strip-preview-head {
+  text-align: center;
+  padding-bottom: 0.65rem;
+  border-bottom: 1px dashed rgba(120, 100, 100, 0.25);
+  margin-bottom: 0.65rem;
+}
+
+.vault-strip-atelier {
+  display: block;
+  font-family: "Cinzel", serif;
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+}
+
+.vault-strip-edition {
+  display: block;
+  font-family: var(--font-body);
+  font-size: 0.55rem;
+  letter-spacing: 0.12em;
+  opacity: 0.75;
+  margin-top: 0.15rem;
+}
+
+.vault-strip-preview-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.vault-strip-preview-frame {
+  position: relative;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  border-radius: 2px;
+  background: rgba(0, 0, 0, 0.06);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.1);
+}
+
+.vault-strip-preview-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.vault-strip-preview-empty {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  font-family: "Cinzel", serif;
+  font-size: 0.7rem;
+  opacity: 0.35;
+}
+
+.vault-strip-frame-num {
+  position: absolute;
+  bottom: 4px;
+  right: 6px;
+  font-family: "Cinzel", serif;
+  font-size: 0.55rem;
+  font-weight: 600;
+  color: #ffffff;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+  pointer-events: none;
+}
+
+.vault-strip-preview-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 0.85rem;
+  padding-top: 0.6rem;
+  border-top: 1px dashed rgba(120, 100, 100, 0.25);
+}
+
+.vault-strip-date {
+  font-family: var(--font-body);
+  font-size: 0.55rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  opacity: 0.85;
+}
+
+.vault-strip-monogram {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1px solid currentColor;
+  font-family: var(--font-display);
+  font-size: 0.65rem;
+  opacity: 0.85;
+}
+
+/* ── SETUP: LACE LETTER RICH-TEXT TOOLBAR ── */
+.vault-letter-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.25rem;
+  align-items: flex-end;
+  padding: 0.85rem 1rem;
+  margin-bottom: 1rem;
+  border: 1px solid rgba(107, 31, 42, 0.14);
+  border-radius: 4px;
+  background: #fffdf8;
+}
+
+.vault-toolbar-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.vault-toolbar-label {
+  font-family: var(--font-body);
+  font-size: 0.56rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #8a746a;
+}
+
+.vault-toolbar-btn-group {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.vault-toolbar-btn {
+  min-height: 34px;
+  padding: 0.35rem 0.6rem;
+  border-radius: 3px;
+  border: 1px solid rgba(107, 31, 42, 0.18);
+  background: #fffaf2;
+  color: #3a2326;
+  font-family: var(--font-body);
+  font-size: 0.72rem;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.vault-toolbar-btn:hover { border-color: #6b1f2a; }
+
+.vault-toolbar-btn.is-active {
+  background: #6b1f2a;
+  border-color: #6b1f2a;
+  color: #fdf5e9;
+}
+
+.vault-toolbar-btn--size {
+  min-width: 38px;
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.vault-toolbar-btn--icon {
+  min-width: 34px;
+  display: grid;
+  place-items: center;
+  font-size: 0.9rem;
+}
+
+.vault-toolbar-color-group {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.vault-toolbar-color-dot {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 2px solid #fffaf2;
+  box-shadow: 0 0 0 1px rgba(58, 22, 27, 0.2);
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.vault-toolbar-color-dot:hover { transform: scale(1.08); }
+
+.vault-toolbar-color-dot.is-active {
+  transform: scale(1.08);
+  box-shadow: 0 0 0 2px #6b1f2a;
+}
+
+.vault-lace-board {
+  position: relative;
+  width: min(100%, 940px);
+  margin: 0 auto;
+}
+
+.vault-lace-board .vault-lace-mat {
+  border-radius: 8px;
+  box-shadow: 0 18px 44px rgba(35, 12, 18, 0.18);
+}
+
+.vault-lace-board .vault-lace-parchment {
+  width: min(100%, 720px);
+  padding: 1.4rem 1.6rem;
+}
+
+.vault-lace-textarea {
+  width: 100%;
+  min-height: 220px;
+  height: auto;
+  padding: 0;
+  margin: 0;
+  border: 0;
+  outline: none;
+  background: transparent;
+  resize: none;
+  overflow-y: auto;
+  field-sizing: content;
+  scrollbar-width: thin;
+}
+
+.vault-letter-foot {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.4rem 0.9rem;
+  margin-top: 0.6rem;
+}
+
+/* ── RESPONSIVE ── */
+@media (max-width: 720px) {
+  .vault-dp-meta { grid-template-columns: 1fr; gap: 0.6rem; }
+  .vault-photobooth-slots { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .vault-strip-preview-wrap { flex: 1 1 100%; }
+  .vault-strip-preview { width: 100%; max-width: 280px; }
+  .vault-letter-toolbar { gap: 0.65rem 0.9rem; }
+
+  /* Di ponsel, papan renda menjadi kepala dekoratif dan surat turun
+     ke lembar perkamen yang tumbuh mengikuti panjang isi. */
+  .vault-lace-mat {
+    border-radius: 6px;
+    box-shadow: 0 14px 30px rgba(58, 22, 27, 0.18);
+  }
+
+  .vault-lace-parchment {
+    width: 100%;
+    margin: -1rem 0 0;
+    padding: 1.15rem 1rem;
+    border-radius: 3px;
+  }
+
+  .vault-lace-board .vault-lace-parchment {
+    width: 100%;
+    margin: 0.75rem 0 0;
+    padding: 0.75rem 0.85rem;
+  }
+
+  /* Editor surat tumbuh mengikuti panjang isi agar tidak ada teks
+     yang tersembunyi di dalam kotak gulir sempit. */
+  .vault-lace-textarea {
+    min-height: 240px;
+  }
+}
+
+@media (max-width: 420px) {
+  .vault-seal-tap-wax { width: 84px; height: 84px; font-size: 0.85rem; }
+  .vault-seal-tap-ring { width: 92px; height: 92px; }
+  .vault-recipient-strip { width: 100%; }
+}
+
+/* Preview modal: render the recipient page inside the dialog without
+   forcing a full viewport height. */
+.vault-preview-content .vault-memoir-wrapper {
+  min-height: 0;
+  padding: 0.75rem 0 1.5rem;
+  background: transparent;
+}
+
+.vault-preview-content .vault-memoir-container {
+  max-width: 100%;
+  padding: 1.25rem 1rem;
+}
+
+.vault-preview-content .vault-seal-gate {
+  position: absolute;
+  border-radius: 6px;
+}

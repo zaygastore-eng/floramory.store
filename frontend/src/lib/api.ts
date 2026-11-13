@@ -43,6 +43,9 @@ export interface Product extends CatalogProduct {
   audio_durasi: number; // in seconds
   video_url: string;
   foto_vault: string;
+  vault_photos?: string[];
+  vault_photobooth_theme?: string;
+  vault_letter_style?: Record<string, unknown>;
   vault_pin?: string;
   is_catalog: boolean;
   recipient_whatsapp?: string;
@@ -64,6 +67,9 @@ export interface PreOrder {
   sender_name: string;
   personal_message: string;
   foto_vault?: string;
+  vault_photos?: string[];
+  vault_photobooth_theme?: string;
+  vault_letter_style?: Record<string, unknown>;
   audio_url?: string;
   audio_durasi?: number;
   video_url?: string;
@@ -81,6 +87,7 @@ export interface PreOrderSubmissionResult extends PreOrder {
   orderId: string;
   orderNumber: string;
   dpAmount: number;
+  setupToken?: string;
   waStatus: "manual_redirect";
 }
 
@@ -562,6 +569,7 @@ export async function fetchVaultSetup(orderId: string): Promise<{
   message?: string;
   vaultLocked?: boolean;
   vaultExpired?: boolean;
+  dpRequired?: boolean;
 }> {
   const { status, data } = await callVaultSetup({ action: "get", order_id: orderId });
   if (data.expired === true || data.vault_expired === true) {
@@ -583,6 +591,7 @@ export async function fetchVaultSetup(orderId: string): Promise<{
     order: normalizePreOrder(rawOrder as Partial<PreOrder> & Record<string, unknown>),
     vaultLocked: data.vault_locked === true,
     vaultExpired: data.vault_expired === true,
+    dpRequired: data.dp_required === true,
   };
 }
 
@@ -615,8 +624,10 @@ export async function uploadVaultMedia(
   orderId: string,
   fileType: "photo" | "audio" | "video",
   file: File,
-  onProgress?: (info: UploadProgressInfo) => void
+  onProgress?: (info: UploadProgressInfo) => void,
+  slot = 1
 ): Promise<string> {
+  const safeSlot = Number.isInteger(slot) && slot >= 1 && slot <= 4 ? slot : 1;
   let directError: Error | null = null;
 
   // 1. Direct Binary Upload via Signed Upload URL.
@@ -628,6 +639,7 @@ export async function uploadVaultMedia(
       file_type: fileType,
       mime_type: file.type,
       file_name: file.name,
+      slot: safeSlot,
     });
 
     if (status >= 400 || data.ok !== true) {
@@ -706,6 +718,7 @@ export async function uploadVaultMedia(
     file_type: fileType,
     file_base64: await fileToBase64(file),
     mime_type: file.type,
+    slot: safeSlot,
   });
   if (status >= 400 || data.ok !== true || typeof data.publicUrl !== "string") {
     throw new Error(String(data.message || "Gagal mengunggah media."));
@@ -719,12 +732,22 @@ export async function saveVaultSetup(
   payload: {
     personal_message: string;
     foto_vault: string;
+    vault_photos?: string[];
+    vault_photobooth_theme?: string;
+    vault_letter_style?: Record<string, unknown>;
     audio_url: string;
     audio_durasi?: number;
     video_url: string;
     vault_pin?: string;
   }
-): Promise<{ ok: boolean; message: string; locked?: boolean; expired?: boolean; pin?: string }> {
+): Promise<{
+  ok: boolean;
+  message: string;
+  locked?: boolean;
+  expired?: boolean;
+  dpRequired?: boolean;
+  pin?: string;
+}> {
   const { status, data } = await callVaultSetup({
     action: "save",
     order_id: orderId,
@@ -735,6 +758,7 @@ export async function saveVaultSetup(
     message: String(data.message || "Gagal menyimpan Memory Vault."),
     ...(data.locked === true ? { locked: true } : {}),
     ...(data.expired === true ? { expired: true } : {}),
+    ...(data.dp_required === true ? { dpRequired: true } : {}),
     ...(typeof data.pin === "string" ? { pin: data.pin } : {}),
   };
 }
@@ -790,6 +814,13 @@ function tierToDbValue(tier: string): string {
   return legacyMap[normalized] || normalized;
 }
 
+function toStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item) => String(item || "").trim())
+    .filter((item) => item.length > 0);
+}
+
 function normalizeProduct(obj: Partial<Product>): Product {
   const record = obj as Record<string, unknown>;
   const parsedDurasi = Number(obj.audio_durasi ?? record.audio_durasi ?? 0);
@@ -811,6 +842,14 @@ function normalizeProduct(obj: Partial<Product>): Product {
     audio_durasi: Number.isFinite(parsedDurasi) ? Math.max(0, Math.round(parsedDurasi)) : 0,
     video_url: String(obj.video_url || record.video_url || "").trim(),
     foto_vault: String(obj.foto_vault || record.foto_vault || "").trim(),
+    vault_photos: toStringArray(obj.vault_photos ?? record.vault_photos),
+    vault_photobooth_theme: String(obj.vault_photobooth_theme || record.vault_photobooth_theme || "").trim(),
+    vault_letter_style:
+      obj.vault_letter_style && typeof obj.vault_letter_style === "object" && !Array.isArray(obj.vault_letter_style)
+        ? (obj.vault_letter_style as Record<string, unknown>)
+        : record.vault_letter_style && typeof record.vault_letter_style === "object" && !Array.isArray(record.vault_letter_style)
+          ? (record.vault_letter_style as Record<string, unknown>)
+          : {},
     vault_pin: String(obj.vault_pin || record.vault_pin || "").trim(),
     is_catalog: Boolean(obj.is_catalog ?? record.is_catalog ?? false),
     recipient_whatsapp: String(obj.recipient_whatsapp || record.recipient_whatsapp || "").trim(),
@@ -861,6 +900,12 @@ function normalizePreOrder(obj: Partial<PreOrder> & Record<string, unknown>): Pr
     sender_name: String(obj.sender_name || "").trim(),
     personal_message: String(obj.personal_message || "").trim(),
     foto_vault: String(obj.foto_vault || "").trim(),
+    vault_photos: toStringArray(obj.vault_photos),
+    vault_photobooth_theme: String(obj.vault_photobooth_theme || "").trim(),
+    vault_letter_style:
+      obj.vault_letter_style && typeof obj.vault_letter_style === "object" && !Array.isArray(obj.vault_letter_style)
+        ? (obj.vault_letter_style as Record<string, unknown>)
+        : {},
     audio_url: String(obj.audio_url || "").trim(),
     audio_durasi: Number(obj.audio_durasi) || 0,
     video_url: String(obj.video_url || "").trim(),
@@ -1252,11 +1297,13 @@ export async function createPreOrder(
       ...order,
       id: data.orderId || data.id || "",
       status: "waiting_dp",
+      vault_setup_token: data.setupToken || data.vault_setup_token || "",
     }),
     success: data.success === true,
     orderId: String(data.orderId || data.id || ""),
     orderNumber: String(data.orderNumber || ""),
     dpAmount: Number(data.dpAmount || 0),
+    setupToken: String(data.setupToken || data.vault_setup_token || ""),
     waStatus: "manual_redirect",
   };
 }

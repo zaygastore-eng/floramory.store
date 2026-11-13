@@ -10,6 +10,12 @@ import {
 import { resolveVaultMedia } from "@/lib/media";
 import { normalizeWhatsApp } from "@/lib/site";
 import { applyProductMeta, applyNoIndexMeta } from "@/lib/seo";
+import {
+  getPhotoboothTheme,
+  letterStyleToCss,
+  normalizeLetterStyle,
+} from "@/lib/vaultDesign";
+import type { AudioPlayerHandle } from "@/components/AudioPlayer";
 
 const AudioPlayer = lazy(() => import("@/components/AudioPlayer"));
 
@@ -52,6 +58,13 @@ export default function VaultExperience({
   const [pinLocked, setPinLocked] = useState(false);
   const pinInputRefs = useRef<Array<HTMLInputElement | null>>([]);
 
+  // Wax-seal gateway: konten sudah termuat di balik segel, lalu satu
+  // ketukan membuka tirai sekaligus memutar voice note di dalam gesture.
+  const [sealOpened, setSealOpened] = useState(Boolean(previewData));
+  const [autoPlayAudio, setAutoPlayAudio] = useState(false);
+  const [isAudioPlaying, setIsAudioPlaying] = useState(false);
+  const audioPlayerRef = useRef<AudioPlayerHandle | null>(null);
+
   // Touch swipe support for polaroid
   const touchStartXRef = useRef<number | null>(null);
   const touchEndXRef = useRef<number | null>(null);
@@ -76,6 +89,9 @@ export default function VaultExperience({
         audio_durasi: previewData.audio_durasi || 0,
         video_url: previewData.video_url || "",
         foto_vault: previewData.foto_vault || "",
+        vault_photos: previewData.vault_photos || [],
+        vault_photobooth_theme: previewData.vault_photobooth_theme || "",
+        vault_letter_style: previewData.vault_letter_style || {},
         is_catalog: false,
       });
       setVaultUnlocked(true);
@@ -171,19 +187,37 @@ export default function VaultExperience({
     };
   }, [vaultId, previewData]);
 
-  // Animasi pembuka brankas: tampil sebentar setelah PIN benar, lalu menyingkap konten.
+  // Animasi pembuka brankas: tampil sebentar setelah PIN benar, lalu menyingkap segel.
   useEffect(() => {
     if (openingCeremony !== "opening") return;
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-    const timer = window.setTimeout(() => setOpeningCeremony("done"), 3600);
+    const timer = window.setTimeout(() => setOpeningCeremony("done"), 2600);
     return () => {
       window.clearTimeout(timer);
       document.body.style.overflow = previousOverflow;
     };
   }, [openingCeremony]);
 
+  // Saat segel belum dibuka, kunci gulir agar fokus penerima pada ritual.
+  useEffect(() => {
+    if (!vaultUnlocked || sealOpened || openingCeremony === "opening") return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [vaultUnlocked, sealOpened, openingCeremony]);
+
   const finishOpeningCeremony = () => setOpeningCeremony("done");
+
+  const handleOpenSeal = () => {
+    // play() dipanggil sinkron di dalam event gesture — inilah kunci
+    // agar iOS/Android mengizinkan suara tanpa tombol play tambahan.
+    audioPlayerRef.current?.play();
+    setAutoPlayAudio(true);
+    setSealOpened(true);
+  };
 
   const handlePinDigitChange = (index: number, val: string) => {
     const digit = val.slice(-1);
@@ -246,16 +280,27 @@ export default function VaultExperience({
     }
   };
 
-  // Build Polaroid photo list
+  // Foto dari photobooth strip (maks. 4). Fallback ke polaroid lama
+  // untuk vault yang dibuat sebelum fitur strip tersedia.
+  const savedVaultPhotos = (product?.vault_photos || []).filter(
+    (url) => Boolean(url && url.trim())
+  );
   const photos: string[] = [];
-  if (product?.foto_vault && product.foto_vault.trim()) photos.push(product.foto_vault.trim());
-  if (product?.foto_produk && product.foto_produk.trim() && !photos.includes(product.foto_produk.trim())) {
+  if (savedVaultPhotos.length > 0) {
+    photos.push(...savedVaultPhotos);
+  } else if (product?.foto_vault && product.foto_vault.trim()) {
+    photos.push(product.foto_vault.trim());
+  }
+  if (photos.length === 0 && product?.foto_produk && product.foto_produk.trim()) {
     photos.push(product.foto_produk.trim());
   }
   if (photos.length === 0) {
     photos.push("/opengraph.jpg");
   }
 
+  const hasStrip = savedVaultPhotos.length > 0;
+  const stripTheme = getPhotoboothTheme(product?.vault_photobooth_theme);
+  const letterStyle = normalizeLetterStyle(product?.vault_letter_style);
   const currentPhoto = photos[activePhotoIdx] || photos[0];
 
   // Touch handlers for swipe
@@ -315,10 +360,12 @@ export default function VaultExperience({
   }
 
   const { audioMedia, videoMedia } = resolveVaultMedia(product.audio_url, product.video_url);
-  const letterBody = product.pesan_personal ||
-    "Setiap bunga A Chapter dirangkai untuk menyimpan kenangan abadi. Karya seni botani ini diawetkan dengan cermat di laboratorium agar keindahan dan ketulusan momen istimewa Anda tetap mekar selamanya.";
-  const firstLetter = letterBody.trim().charAt(0) || "S";
-  const restOfLetter = letterBody.trim().slice(1);
+  const hasAudioMemoir = audioMedia.isAudio && Boolean(audioMedia.url);
+  const hasCustomLetter = Boolean(product.pesan_personal && product.pesan_personal.trim());
+  const letterBody = hasCustomLetter
+    ? product.pesan_personal
+    : "Setiap bunga A Chapter dirangkai untuk menyimpan kenangan abadi. Karya seni botani ini diawetkan dengan cermat di laboratorium agar keindahan dan ketulusan momen istimewa Anda tetap mekar selamanya.";
+  const showSealGate = vaultUnlocked && !sealOpened && openingCeremony !== "opening";
 
   return (
     <div className={`vault-memoir-wrapper public-v2${openingCeremony === "opening" ? " is-ceremony" : ""}`}>
@@ -341,7 +388,42 @@ export default function VaultExperience({
           </div>
         </div>
       )}
-      <div className="vault-memoir-container">
+
+      {/* ── WAX-SEAL GATEWAY: satu ketukan membuka tirai + memutar suara ── */}
+      {showSealGate && (
+        <div className="vault-seal-gate" role="dialog" aria-modal="true" aria-label="Buka Memory Vault">
+          <div className="vault-seal-gate-card">
+            <span className="vault-seal-gate-kicker">A CHAPTER · MEMORY VAULT</span>
+            <h2 className="vault-seal-gate-title">Sebuah babak rahasia menanti</h2>
+            <p className="vault-seal-gate-sub">
+              Disimpan untuk <strong>{product.nama_pembeli || "Anda"}</strong> oleh{" "}
+              <strong>{product.dari || "seseorang yang menyayangi Anda"}</strong>.
+            </p>
+
+            <button
+              type="button"
+              className="vault-seal-tap"
+              onClick={handleOpenSeal}
+              aria-label="Ketuk segel lilin untuk membuka brankas memori"
+            >
+              <span className="vault-seal-tap-ring" aria-hidden="true" />
+              <span className="vault-seal-tap-wax" aria-hidden="true">A · C</span>
+              <span className="vault-seal-tap-label">Tap to Open Vault</span>
+            </button>
+
+            <p className="vault-seal-gate-hint">
+              {hasAudioMemoir
+                ? "Ketuk segel — kenangan, surat, dan pesan suara terbuka bersamaan."
+                : "Ketuk segel lilin untuk membuka kenangan yang disimpan untuk Anda."}
+            </p>
+          </div>
+        </div>
+      )}
+
+      <div
+        className="vault-memoir-container"
+        aria-hidden={showSealGate ? true : undefined}
+      >
         {/* ── 1. WAX SEAL REVEAL HERO ── */}
         <header className="vault-memoir-hero">
           <div className="vault-wax-seal-hero" aria-hidden="true">
@@ -416,6 +498,21 @@ export default function VaultExperience({
         ) : (
           /* ── 2. UNLOCKED LIVING MEMOIR EXPERIENCE ── */
           <div className="vault-unlocked-content">
+            {sealOpened && isAudioPlaying && activeTab !== "audio" && hasAudioMemoir && (
+              <button
+                type="button"
+                className="vault-now-playing"
+                onClick={() => setActiveTab("audio")}
+              >
+                <span className="vault-now-playing-bars" aria-hidden="true">
+                  <i />
+                  <i />
+                  <i />
+                </span>
+                Voice note sedang diputar · buka pemutar
+              </button>
+            )}
+
             {/* Roman Tab Navigation */}
             <nav className="vault-roman-nav" role="tablist" aria-label="Memoir Vault Tabs">
               <button
@@ -458,40 +555,90 @@ export default function VaultExperience({
 
             {/* TAB PANELS */}
             <div className="vault-panel-body">
-              {/* PANEL I: TOUCH-SWIPE POLAROID */}
+              {/* PANEL I: PHOTOBOOTH STRIP / TOUCH-SWIPE POLAROID */}
               {activeTab === "photos" && (
                 <div className="vault-polaroid-touch" role="tabpanel">
-                  <div
-                    className="vault-polaroid-frame"
-                    onTouchStart={onTouchStart}
-                    onTouchMove={onTouchMove}
-                    onTouchEnd={onTouchEnd}
-                  >
-                    <div className="vault-polaroid-pin" aria-hidden="true">✦</div>
-                    <div className="vault-polaroid-image-box">
-                      <img
-                        src={currentPhoto}
-                        alt="Foto kenangan abadi"
-                        className="vault-polaroid-img"
-                      />
+                  {hasStrip ? (
+                    <div className="vault-strip-stage">
+                      <div
+                        className="vault-recipient-strip"
+                        style={{
+                          backgroundColor: stripTheme.bg,
+                          color: stripTheme.text,
+                          borderColor: stripTheme.border,
+                        }}
+                      >
+                        <div className="vault-recipient-strip-head">
+                          <span className="strip-atelier-tag">A CHAPTER ATELIER</span>
+                          <span className="strip-edition">
+                            ARCHIVAL PHOTOBOOTH · {photos.length} CUT{photos.length > 1 ? "S" : ""}
+                          </span>
+                        </div>
+                        <div className="vault-recipient-strip-grid">
+                          {photos.map((photo, index) => (
+                            <a
+                              key={`${photo}-${index}`}
+                              href={photo}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="vault-recipient-strip-frame"
+                            >
+                              <img
+                                src={photo}
+                                alt={`Kenangan photobooth ${index + 1}`}
+                                className="vault-recipient-strip-img"
+                                loading={index > 1 ? "lazy" : "eager"}
+                              />
+                              <span className="vault-recipient-frame-num" aria-hidden="true">
+                                0{index + 1}
+                              </span>
+                            </a>
+                          ))}
+                        </div>
+                        <div className="vault-recipient-strip-foot">
+                          <span className="strip-date">SURABAYA ATELIER · 2026</span>
+                          <span className="strip-monogram" aria-hidden="true">A · C</span>
+                        </div>
+                      </div>
+                      <p className="vault-strip-caption">
+                        Ketuk setiap bingkai untuk menyimpan foto resolusi tinggi.
+                      </p>
                     </div>
-                    <p className="vault-polaroid-cursive">
-                      “To endless beginnings · Surabaya, 2026”
-                    </p>
-                  </div>
+                  ) : (
+                    <>
+                      <div
+                        className="vault-polaroid-frame"
+                        onTouchStart={onTouchStart}
+                        onTouchMove={onTouchMove}
+                        onTouchEnd={onTouchEnd}
+                      >
+                        <div className="vault-polaroid-pin" aria-hidden="true">✦</div>
+                        <div className="vault-polaroid-image-box">
+                          <img
+                            src={currentPhoto}
+                            alt="Foto kenangan abadi"
+                            className="vault-polaroid-img"
+                          />
+                        </div>
+                        <p className="vault-polaroid-cursive">
+                          “To endless beginnings · Surabaya, 2026”
+                        </p>
+                      </div>
 
-                  {photos.length > 1 && (
-                    <div className="vault-carousel-dots" aria-label="Indikator Foto">
-                      {photos.map((_, i) => (
-                        <button
-                          key={i}
-                          type="button"
-                          className={`carousel-dot${activePhotoIdx === i ? " active" : ""}`}
-                          onClick={() => setActivePhotoIdx(i)}
-                          aria-label={`Lihat foto ${i + 1}`}
-                        />
-                      ))}
-                    </div>
+                      {photos.length > 1 && (
+                        <div className="vault-carousel-dots" aria-label="Indikator Foto">
+                          {photos.map((_, i) => (
+                            <button
+                              key={i}
+                              type="button"
+                              className={`carousel-dot${activePhotoIdx === i ? " active" : ""}`}
+                              onClick={() => setActivePhotoIdx(i)}
+                              aria-label={`Lihat foto ${i + 1}`}
+                            />
+                          ))}
+                        </div>
+                      )}
+                    </>
                   )}
 
                   <div className="vault-photo-actions">
@@ -507,80 +654,105 @@ export default function VaultExperience({
                 </div>
               )}
 
-              {/* PANEL II: CRYSTAL AUDIO & VIDEO */}
-              {activeTab === "audio" && (
-                <div className="vault-audio-panel" role="tabpanel">
-                  {audioMedia.type === "spotify" && audioMedia.embedUrl ? (
-                    <div className="vault-crystal-audio-card">
-                      <span className="vault-audio-badge-top">✦ SPOTIFY SOUNDTRACK</span>
-                      <iframe
-                        title="Spotify Memory Soundtrack"
-                        src={audioMedia.embedUrl}
-                        width="100%"
-                        height="352"
-                        className="vault-spotify-embed"
-                        allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-                        loading="lazy"
-                        style={{ border: "none", borderRadius: "12px", marginTop: "1rem" }}
+              {/* PANEL II: CRYSTAL AUDIO — selalu termuat agar voice note
+                  bisa mulai tepat saat segel diketuk, walau tab lain aktif. */}
+              <div
+                className="vault-audio-panel"
+                role="tabpanel"
+                aria-hidden={activeTab !== "audio"}
+                style={{ display: activeTab === "audio" ? undefined : "none" }}
+              >
+                {audioMedia.type === "spotify" && audioMedia.embedUrl ? (
+                  <div className="vault-crystal-audio-card">
+                    <span className="vault-audio-badge-top">✦ SPOTIFY SOUNDTRACK</span>
+                    <iframe
+                      title="Spotify Memory Soundtrack"
+                      src={audioMedia.embedUrl}
+                      width="100%"
+                      height="352"
+                      className="vault-spotify-embed"
+                      allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+                      loading="lazy"
+                      style={{ border: "none", borderRadius: "12px", marginTop: "1rem" }}
+                    />
+                    <a
+                      className="spotify-open-link"
+                      href={product.audio_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      Buka langsung di Spotify ↗
+                    </a>
+                    <blockquote className="vault-audio-quote">
+                      <p>
+                        {product.pesan_personal?.trim()
+                          ? `“${product.pesan_personal.trim()}”`
+                          : "“Lagu yang dipilih khusus untuk mewakili setiap rasa yang tak sempat terucap.”"}
+                      </p>
+                      <footer>— {product.dari || "Atelier Keepsake"}</footer>
+                    </blockquote>
+                  </div>
+                ) : audioMedia.isAudio && audioMedia.url ? (
+                  <div className="vault-crystal-audio-card">
+                    <span className="vault-audio-badge-top">✦ AUDIO MEMOIR RECORDING</span>
+                    <Suspense fallback={<div className="vault-audio-loading">Memuat pemutar suara...</div>}>
+                      <AudioPlayer
+                        ref={audioPlayerRef}
+                        src={getVaultAudioUrl(audioMedia.url)}
+                        initialDuration={product.audio_durasi}
+                        title={`Pesan Suara dari ${product.dari || "Pengirim"}`}
+                        className="vault-player-custom"
+                        autoPlay={autoPlayAudio}
+                        onPlayingChange={setIsAudioPlaying}
                       />
-                      <a
-                        className="spotify-open-link"
-                        href={product.audio_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        Buka langsung di Spotify ↗
-                      </a>
-                      <blockquote className="vault-audio-quote">
-                        <p>
-                          {product.pesan_personal?.trim()
-                            ? `“${product.pesan_personal.trim()}”`
-                            : "“Lagu yang dipilih khusus untuk mewakili setiap rasa yang tak sempat terucap.”"}
-                        </p>
-                        <footer>— {product.dari || "Atelier Keepsake"}</footer>
-                      </blockquote>
-                    </div>
-                  ) : audioMedia.isAudio && audioMedia.url ? (
-                    <div className="vault-crystal-audio-card">
-                      <span className="vault-audio-badge-top">✦ AUDIO MEMOIR RECORDING</span>
-                      <Suspense fallback={<div className="vault-audio-loading">Memuat pemutar suara...</div>}>
-                        <AudioPlayer
-                          src={getVaultAudioUrl(audioMedia.url)}
-                          initialDuration={product.audio_durasi}
-                          title={`Pesan Suara dari ${product.dari || "Pengirim"}`}
-                          className="vault-player-custom"
-                        />
-                      </Suspense>
-                      <blockquote className="vault-audio-quote">
-                        <p>“Dengarkan dengan saksama suara yang dirangkai untuk menemani babak terindah hidupmu.”</p>
-                        <footer>— {product.dari || "Atelier Keepsake"}</footer>
-                      </blockquote>
-                    </div>
-                  ) : (
-                    <div className="vault-empty-note">
-                      <p>Tidak ada pesan suara yang disematkan dalam brankas ini.</p>
-                    </div>
-                  )}
-                </div>
-              )}
+                    </Suspense>
+                    <blockquote className="vault-audio-quote">
+                      <p>“Dengarkan dengan saksama suara yang dirangkai untuk menemani babak terindah hidupmu.”</p>
+                      <footer>— {product.dari || "Atelier Keepsake"}</footer>
+                    </blockquote>
+                  </div>
+                ) : (
+                  <div className="vault-empty-note">
+                    <p>Tidak ada pesan suara yang disematkan dalam brankas ini.</p>
+                  </div>
+                )}
+              </div>
 
-              {/* PANEL III: THE PARCHMENT LETTER */}
+              {/* PANEL III: THE LACE LETTER */}
               {activeTab === "letter" && (
                 <div className="vault-letter-panel" role="tabpanel">
-                  <div className="vault-parchment-sheet">
-                    <div className="vault-parchment-seal" aria-hidden="true">A · C</div>
-                    <div className="vault-letter-salutation">
-                      To My Dearest {product.nama_pembeli || ""},
-                    </div>
-                    <p className="vault-letter-body-text">
-                      <span className="vault-drop-cap">{firstLetter}</span>
-                      {restOfLetter}
-                    </p>
-                    <div className="vault-letter-signoff">
-                      <span className="signoff-phrase">With all my love, always yours,</span>
-                      <strong className="signoff-author">{product.dari || "Someone Special"}</strong>
+                  <div className="vault-lace-sheet">
+                    <img
+                      src="/landing/lace-letter-card.webp"
+                      alt="Papan renda surat rahasia"
+                      className="vault-lace-mat"
+                      loading="lazy"
+                    />
+                    <div className="vault-lace-parchment">
+                      <div className="vault-lace-letter">
+                        {!hasCustomLetter && (
+                          <p className="vault-lace-salutation">
+                            To My Dearest {product.nama_pembeli || ""},
+                          </p>
+                        )}
+                        <p
+                          className="vault-lace-body"
+                          style={letterStyleToCss(letterStyle, "compact")}
+                        >
+                          {letterBody}
+                        </p>
+                        {!hasCustomLetter && (
+                          <div className="vault-lace-signoff">
+                            <span className="signoff-phrase">With all my love, always yours,</span>
+                            <strong className="signoff-author">{product.dari || "Someone Special"}</strong>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
+                  <p className="vault-lace-caption">
+                    Surat ini disimpan di atas papan renda yang sama dengan yang Anda pilih saat meracik kenangan.
+                  </p>
                 </div>
               )}
 

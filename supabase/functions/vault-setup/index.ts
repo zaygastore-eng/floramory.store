@@ -93,6 +93,9 @@ const ORDER_SELECT = [
   "product_name",
   "personal_message",
   "foto_vault",
+  "vault_photos",
+  "vault_photobooth_theme",
+  "vault_letter_style",
   "audio_url",
   "audio_durasi",
   "video_url",
@@ -102,7 +105,24 @@ const ORDER_SELECT = [
   "vault_setup_token",
   "vault_setup_expires_at",
   "vault_locked_at",
+  "dp_verified_at",
 ].join(",");
+
+// Status pesanan yang sudah lolos verifikasi DP 50%.
+const DP_VERIFIED_STATUSES = new Set([
+  "dp_verified",
+  "in_production",
+  "in_progress",
+  "completed",
+  "paid",
+]);
+
+const PHOTOBOOTH_THEMES = new Set(["cream", "wine", "periwinkle", "midnight", "blossom"]);
+const LETTER_FONTS = new Set(["parisienne", "cinzel", "cormorant", "sans"]);
+const LETTER_SIZES = new Set(["sm", "md", "lg", "xl"]);
+const LETTER_ALIGNS = new Set(["left", "center", "right"]);
+const LETTER_COLORS = new Set(["#531B21", "#2A2523", "#783642"]);
+const MAX_VAULT_PHOTOS = 4;
 
 // Rate limit per-IP (in-memory) untuk mencegah penyalahgunaan token.
 const MAX_REQUESTS_PER_IP = 60;
@@ -162,6 +182,55 @@ function generateSecurePin(): string {
 
 function isLocked(order: Record<string, unknown>): boolean {
   return Boolean(order.vault_locked_at);
+}
+
+function isDpVerified(order: Record<string, unknown>): boolean {
+  const status = String(order.status || "").trim().toLowerCase();
+  return DP_VERIFIED_STATUSES.has(status);
+}
+
+/**
+ * Sanitasi gaya surat. Hanya nilai yang dikenal yang disimpan, agar
+ * tidak ada CSS/HTML liar yang ikut ke halaman penerima.
+ */
+function cleanLetterStyle(value: unknown): Record<string, unknown> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+  const raw = value as Record<string, unknown>;
+  const font = String(raw.font || "").toLowerCase();
+  const size = String(raw.size || "").toLowerCase();
+  const align = String(raw.align || "").toLowerCase();
+  const color = String(raw.color || "").trim();
+
+  return {
+    font: LETTER_FONTS.has(font) ? font : "parisienne",
+    size: LETTER_SIZES.has(size) ? size : "md",
+    bold: raw.bold === true,
+    italic: raw.italic === true,
+    underline: raw.underline === true,
+    align: LETTER_ALIGNS.has(align) ? align : "center",
+    color: LETTER_COLORS.has(color) ? color : "#531B21",
+  };
+}
+
+function cleanPhotoboothTheme(value: unknown): string {
+  const theme = String(value || "").trim().toLowerCase();
+  return PHOTOBOOTH_THEMES.has(theme) ? theme : "cream";
+}
+
+function normalizePhotoSlot(value: unknown): number {
+  const slot = Number(value);
+  return Number.isInteger(slot) && slot >= 1 && slot <= MAX_VAULT_PHOTOS ? slot : 1;
+}
+
+function cleanPhotoList(value: unknown, orderId: string): string[] {
+  const list = Array.isArray(value) ? value : [];
+  const cleaned: string[] = [];
+  for (const item of list) {
+    const url = cleanMediaUrl(item, orderId, false);
+    if (url && !cleaned.includes(url)) cleaned.push(url);
+    if (cleaned.length >= MAX_VAULT_PHOTOS) break;
+  }
+  return cleaned;
 }
 
 function isExpired(order: Record<string, unknown>): boolean {
@@ -273,6 +342,18 @@ function rejectIfClosed(req: Request, order: Record<string, unknown>, forWrite: 
       410
     );
   }
+  if (forWrite && !isDpVerified(order)) {
+    return json(
+      req,
+      {
+        ok: false,
+        dp_required: true,
+        message:
+          "Konsol Memory Vault terbuka setelah DP 50% diverifikasi atelier. Hubungi concierge bila pembayaran sudah dilakukan.",
+      },
+      403
+    );
+  }
   if (forWrite && isLocked(order)) {
     return json(
       req,
@@ -305,11 +386,30 @@ async function handleGet(
   const closed = rejectIfClosed(req, result.order, false);
   if (closed) return closed;
 
+  const dpRequired = !isDpVerified(result.order);
+
+  // Sebelum DP terverifikasi, hanya metadata pesanan yang dikirim.
+  // Isi vault (surat/media) tidak pernah ikut sebelum gate terbuka.
+  const safeOrder = dpRequired
+    ? {
+        id: result.order.id,
+        order_number: result.order.order_number,
+        customer_name: result.order.customer_name,
+        recipient_name: result.order.recipient_name,
+        sender_name: result.order.sender_name,
+        product_name: result.order.product_name,
+        status: result.order.status,
+        vault_setup_expires_at: result.order.vault_setup_expires_at,
+      }
+    : order;
+
   return json(req, {
     ok: true,
-    order,
+    order: safeOrder,
     vault_locked: isLocked(result.order),
     vault_expired: isExpired(result.order),
+    dp_required: dpRequired,
+    dp_verified_at: result.order.dp_verified_at || null,
   });
 }
 
@@ -345,8 +445,9 @@ async function handleGetUploadUrl(
   if (!allowed) return json(req, { ok: false, message: "Format file tidak didukung." }, 415);
 
   const bucket = isPhoto ? "product-images" : "vault-media";
+  const photoSlot = normalizePhotoSlot(body.slot);
   const filePath = isPhoto
-    ? `vault/${orderId}/polaroid.${PHOTO_EXTENSIONS[mimeType] || "webp"}`
+    ? `vault/${orderId}/polaroid-${photoSlot}.${PHOTO_EXTENSIONS[mimeType] || "webp"}`
     : isAudio
       ? `vault/${orderId}/audio.${AUDIO_EXTENSIONS[mimeType] || "mp3"}`
       : `vault/${orderId}/video.${VIDEO_EXTENSIONS[mimeType] || "mp4"}`;
@@ -420,8 +521,9 @@ async function handleUpload(
   }
 
   const bucket = isPhoto ? "product-images" : "vault-media";
+  const photoSlot = normalizePhotoSlot(body.slot);
   const filePath = isPhoto
-    ? `vault/${orderId}/polaroid.${PHOTO_EXTENSIONS[mimeType] || "webp"}`
+    ? `vault/${orderId}/polaroid-${photoSlot}.${PHOTO_EXTENSIONS[mimeType] || "webp"}`
     : isAudio
       ? `vault/${orderId}/audio.${AUDIO_EXTENSIONS[mimeType] || "mp3"}`
       : `vault/${orderId}/video.${VIDEO_EXTENSIONS[mimeType] || "mp4"}`;
@@ -466,6 +568,12 @@ async function handleSave(
   const audioUrl = cleanMediaUrl(body.audio_url, orderId, true);
   const videoUrl = cleanMediaUrl(body.video_url, orderId, true);
 
+  // Photobooth strip (maks. 4) + tema border + gaya surat.
+  let photos = cleanPhotoList(body.vault_photos, orderId);
+  if (photos.length === 0 && fotoVault) photos = [fotoVault];
+  const photoboothTheme = cleanPhotoboothTheme(body.vault_photobooth_theme);
+  const letterStyle = cleanLetterStyle(body.vault_letter_style);
+
   // Jika klien mengirim URL yang tidak diizinkan, tolak dengan jelas
   // daripada menyimpan tautan asing ke brankas penerima.
   const rawFoto = String(body.foto_vault || "").trim();
@@ -475,6 +583,14 @@ async function handleSave(
     return json(
       req,
       { ok: false, message: "Tautan media tidak valid. Unggah ulang berkas atau gunakan tautan resmi yang didukung." },
+      422
+    );
+  }
+  const rawPhotos = Array.isArray(body.vault_photos) ? body.vault_photos.length : 0;
+  if (rawPhotos > 0 && photos.length === 0) {
+    return json(
+      req,
+      { ok: false, message: "Tautan foto photobooth tidak valid. Unggah ulang foto Anda." },
       422
     );
   }
@@ -494,6 +610,9 @@ async function handleSave(
     p_audio_url: audioUrl,
     p_audio_durasi: audioDurationValue,
     p_video_url: videoUrl,
+    p_photos: photos,
+    p_photobooth_theme: photoboothTheme,
+    p_letter_style: letterStyle,
   });
 
   if (rpcError) {
@@ -530,6 +649,18 @@ async function handleSave(
         423
       );
     }
+    if (code === "dp_required") {
+      return json(
+        req,
+        {
+          ok: false,
+          dp_required: true,
+          message:
+            "Konsol Memory Vault terbuka setelah DP 50% diverifikasi atelier. Hubungi concierge bila pembayaran sudah dilakukan.",
+        },
+        403
+      );
+    }
     if (code === "not_found" || code === "cancelled") {
       return json(req, { ok: false, message: "Pesanan tidak ditemukan atau sudah dibatalkan." }, 404);
     }
@@ -539,7 +670,7 @@ async function handleSave(
   const orderNumber = String(result.order.order_number || orderId.slice(0, 8).toUpperCase());
 
   // Bersihkan berkas media yang tidak lagi dipakai setelah save sukses.
-  await pruneOrderMedia(admin, orderId, [fotoVault, audioUrl, videoUrl]);
+  await pruneOrderMedia(admin, orderId, [fotoVault, audioUrl, videoUrl, ...photos]);
 
   // Notifikasi email ke atelier agar kartu PIN bisa segera dicetak.
   // PIN sengaja tidak dimasukkan ke email.

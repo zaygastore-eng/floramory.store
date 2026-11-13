@@ -73,7 +73,7 @@ Deno.serve(async (req: Request) => {
     // Update status to dp_verified if still in waiting state
     const { error: statusError } = await admin
       .from("preorder_orders")
-      .update({ status: "dp_verified" })
+      .update({ status: "dp_verified", dp_verified_at: new Date().toISOString() })
       .eq("id", orderId);
     if (statusError) {
       console.error("[DP_NOTIFICATION_ERROR] Could not update status:", statusError.message);

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useCallback } from "react";
+import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState, useCallback } from "react";
 
 const PLAYBACK_RATES = [1, 1.25, 1.5, 2] as const;
 type PlaybackRate = (typeof PLAYBACK_RATES)[number];
@@ -8,6 +8,24 @@ export interface AudioPlayerProps {
   initialDuration?: number; // fallback duration in seconds
   title?: string;
   className?: string;
+  /**
+   * Coba putar otomatis tepat setelah komponen muncul. Dipakai saat
+   * penerima menekan segel lilin (user gesture) sehingga browser
+   * mengizinkan pemutaran tanpa interaksi tambahan.
+   */
+  autoPlay?: boolean;
+  /** Memberi tahu induk saat audio mulai berhenti/berputar. */
+  onPlayingChange?: (playing: boolean) => void;
+}
+
+/**
+ * Handle imperatif agar pemanggil bisa memicu `play()` tepat di dalam
+ * event gesture (klik segel lilin). Ini jalur paling andal untuk
+ * melewati kebijakan autoplay iOS/Android.
+ */
+export interface AudioPlayerHandle {
+  play: () => void;
+  pause: () => void;
 }
 
 /**
@@ -21,14 +39,17 @@ function formatTime(seconds: number): string {
   return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
 }
 
-export default function AudioPlayer({
+const AudioPlayer = forwardRef<AudioPlayerHandle, AudioPlayerProps>(function AudioPlayer({
   src,
   initialDuration = 0,
   title = "Pesan Suara Kenangan",
   className = "",
-}: AudioPlayerProps) {
+  autoPlay = false,
+  onPlayingChange,
+}: AudioPlayerProps, ref) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const isSeekingRef = useRef(false);
+  const didAutoPlayRef = useRef(false);
 
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -59,7 +80,25 @@ export default function AudioPlayer({
     setIsPlaying(false);
     setHasError(false);
     setIsLoading(false);
+    didAutoPlayRef.current = false;
   }, [src]);
+
+  // Autoplay sekali setelah mount — dipicu oleh gesture segel lilin / PIN.
+  useEffect(() => {
+    if (!autoPlay || didAutoPlayRef.current) return;
+    const audio = audioRef.current;
+    if (!audio || !src) return;
+    didAutoPlayRef.current = true;
+    setIsLoading(true);
+    const attempt = audio.play();
+    if (attempt && typeof attempt.catch === "function") {
+      attempt.catch((err) => {
+        console.warn("[A Chapter Audio] Autoplay ditolak browser:", err);
+        setIsLoading(false);
+        setIsPlaying(false);
+      });
+    }
+  }, [autoPlay, src]);
 
   // Native audio event bindings
   useEffect(() => {
@@ -135,6 +174,34 @@ export default function AudioPlayer({
       });
     }
   }, [isPlaying, src, hasError]);
+
+  // Jalur gesture: dipanggil langsung dari onClick segel lilin.
+  useImperativeHandle(
+    ref,
+    () => ({
+      play: () => {
+        const audio = audioRef.current;
+        if (!audio || !src || hasError) return;
+        setIsLoading(true);
+        const attempt = audio.play();
+        if (attempt && typeof attempt.catch === "function") {
+          attempt.catch(err => {
+            console.warn("[A Chapter Audio] Playback prevented:", err);
+            setIsLoading(false);
+            setIsPlaying(false);
+          });
+        }
+      },
+      pause: () => {
+        audioRef.current?.pause();
+      },
+    }),
+    [src, hasError]
+  );
+
+  useEffect(() => {
+    onPlayingChange?.(isPlaying);
+  }, [isPlaying, onPlayingChange]);
 
   const handleSliderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const targetTime = Number(e.target.value);
@@ -291,4 +358,6 @@ export default function AudioPlayer({
       )}
     </div>
   );
-}
+});
+
+export default AudioPlayer;

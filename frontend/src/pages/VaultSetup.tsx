@@ -6,17 +6,54 @@ import { classifyMedia, parseSpotifyEmbedUrl, parseYouTubeEmbedUrl, parseGoogleD
 import { compressVaultPhoto, formatBytes, type CompressedImageResult } from "@/lib/imageCompression";
 import { applyNoIndexMeta } from "@/lib/seo";
 import { pageUrl } from "@/lib/site";
+import {
+  DEFAULT_LETTER_STYLE,
+  DEFAULT_PHOTOBOOTH_THEME,
+  LETTER_FONT_OPTIONS,
+  LETTER_INK_TONES,
+  LETTER_SIZE_OPTIONS,
+  MAX_VAULT_PHOTOS,
+  PHOTOBOOTH_THEMES,
+  dpStatusLabel,
+  getPhotoboothTheme,
+  letterStyleToCss,
+  normalizeLetterStyle,
+  normalizePhotoboothTheme,
+  type LetterAlignId,
+  type LetterFontId,
+  type LetterSizeId,
+  type PhotoboothThemeId,
+  type VaultLetterStyle,
+} from "@/lib/vaultDesign";
+
+interface PhotoSlot {
+  url: string;
+  preview: string;
+}
+
+interface SlotProgress {
+  percent: number;
+  loaded: number;
+  total: number;
+}
+
+function emptyPhotoSlots(): PhotoSlot[] {
+  return Array.from({ length: MAX_VAULT_PHOTOS }, () => ({ url: "", preview: "" }));
+}
 
 export default function VaultSetup() {
   const [orderId, setOrderId] = useState("");
   const [order, setOrder] = useState<PreOrder | null>(null);
   const [loading, setLoading] = useState(true);
   const [pageError, setPageError] = useState("");
+  const [dpRequired, setDpRequired] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   // Content states
   const [personalMessage, setPersonalMessage] = useState("");
-  const [photoUrl, setPhotoUrl] = useState("");
-  const [photoPreview, setPhotoPreview] = useState("");
+  const [photoSlots, setPhotoSlots] = useState<PhotoSlot[]>(emptyPhotoSlots);
+  const [photoboothTheme, setPhotoboothTheme] = useState<PhotoboothThemeId>(DEFAULT_PHOTOBOOTH_THEME);
+  const [letterStyle, setLetterStyle] = useState<VaultLetterStyle>(DEFAULT_LETTER_STYLE);
   const [audioUrl, setAudioUrl] = useState("");
   const [audioPreview, setAudioPreview] = useState("");
   const [audioDuration, setAudioDuration] = useState(0);
@@ -36,26 +73,72 @@ export default function VaultSetup() {
   const timerRef = useRef<number | null>(null);
 
   // Upload & Save status
-  const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [uploadingAudio, setUploadingAudio] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState<{
-    photo: { percent: number; loaded: number; total: number };
-    audio: { percent: number; loaded: number; total: number };
-    video: { percent: number; loaded: number; total: number };
-  }>({
-    photo: { percent: 0, loaded: 0, total: 0 },
-    audio: { percent: 0, loaded: 0, total: 0 },
-    video: { percent: 0, loaded: 0, total: 0 },
-  });
+  const [uploadingPhotoSlot, setUploadingPhotoSlot] = useState<number | null>(null);
+  const [compressingSlot, setCompressingSlot] = useState<number | null>(null);
+  const [slotProgress, setSlotProgress] = useState<Record<number, SlotProgress>>({});
+  const [photoCompression, setPhotoCompression] = useState<CompressedImageResult | null>(null);
+  const [audioProgress, setAudioProgress] = useState<SlotProgress>({ percent: 0, loaded: 0, total: 0 });
+  const [videoProgress, setVideoProgress] = useState<SlotProgress>({ percent: 0, loaded: 0, total: 0 });
   const [saving, setSaving] = useState(false);
   const [uploadError, setUploadError] = useState("");
   const [saved, setSaved] = useState(false);
   const [vaultLocked, setVaultLocked] = useState(false);
   const [vaultExpired, setVaultExpired] = useState(false);
   const [previewModalOpen, setPreviewModalOpen] = useState(false);
-  const [photoDragActive, setPhotoDragActive] = useState(false);
-  const [compressingPhoto, setCompressingPhoto] = useState(false);
-  const [photoCompression, setPhotoCompression] = useState<CompressedImageResult | null>(null);
+  const [photoDragSlot, setPhotoDragSlot] = useState<number | null>(null);
+
+  const photos = photoSlots.map(slot => slot.url).filter(Boolean);
+  const primaryPhotoPreview = photoSlots[0]?.preview || photoSlots[0]?.url || "";
+  const activeTheme = getPhotoboothTheme(photoboothTheme);
+
+  const applyOrder = (result: Awaited<ReturnType<typeof fetchVaultSetup>>) => {
+    if (!result.ok || !result.order) {
+      setVaultExpired(Boolean(result.vaultExpired));
+      setPageError(result.message || "Link tidak valid atau pesanan tidak ditemukan.");
+      return;
+    }
+    setOrder(result.order);
+    setVaultLocked(Boolean(result.vaultLocked));
+    setDpRequired(Boolean(result.dpRequired));
+    setPersonalMessage(result.order.personal_message || "");
+
+    const savedPhotos = Array.isArray(result.order.vault_photos) ? result.order.vault_photos : [];
+    const merged = [...savedPhotos];
+    if (merged.length === 0 && result.order.foto_vault) merged.push(result.order.foto_vault);
+    setPhotoSlots(
+      Array.from({ length: MAX_VAULT_PHOTOS }, (_, index) => {
+        const url = merged[index] || "";
+        return { url, preview: url };
+      })
+    );
+    setPhotoboothTheme(normalizePhotoboothTheme(result.order.vault_photobooth_theme));
+    setLetterStyle(normalizeLetterStyle(result.order.vault_letter_style));
+
+    const existingAudioUrl = result.order.audio_url || "";
+    if (classifyMedia(existingAudioUrl).type === "spotify") {
+      setAudioSource("spotify");
+      setSpotifyUrl(existingAudioUrl);
+      setAudioUrl("");
+      setAudioPreview("");
+      setAudioDuration(0);
+    } else {
+      setAudioUrl(existingAudioUrl);
+      setAudioPreview(existingAudioUrl);
+      setAudioDuration(result.order.audio_durasi || 0);
+    }
+    const existingVideoUrl = result.order.video_url || "";
+    setVideoUrl(existingVideoUrl);
+    setVideoPreview(existingVideoUrl);
+    setVideoSource(
+      parseYouTubeEmbedUrl(existingVideoUrl) || parseGoogleDriveEmbedUrl(existingVideoUrl)
+        ? "youtube"
+        : "file"
+    );
+    if (result.order.vault_pin) {
+      setCustomPin(result.order.vault_pin);
+    }
+  };
 
   useEffect(() => {
     applyNoIndexMeta("Vault Setup — A Chapter");
@@ -71,33 +154,7 @@ export default function VaultSetup() {
     let active = true;
     fetchVaultSetup(id)
       .then(result => {
-        if (!active) return;
-        if (!result.ok || !result.order) {
-          setVaultExpired(Boolean(result.vaultExpired));
-          setPageError(result.message || "Link tidak valid atau pesanan tidak ditemukan.");
-          return;
-        }
-        setOrder(result.order);
-        setVaultLocked(Boolean(result.vaultLocked));
-        setPersonalMessage(result.order.personal_message || "");
-        setPhotoUrl(result.order.foto_vault || "");
-        setPhotoPreview(result.order.foto_vault || "");
-        const existingAudioUrl = result.order.audio_url || "";
-        if (classifyMedia(existingAudioUrl).type === "spotify") {
-          setAudioSource("spotify");
-          setSpotifyUrl(existingAudioUrl);
-          setAudioUrl("");
-          setAudioPreview("");
-          setAudioDuration(0);
-        } else {
-          setAudioUrl(existingAudioUrl);
-          setAudioPreview(existingAudioUrl);
-          setAudioDuration(result.order.audio_durasi || 0);
-        }
-        setVideoUrl(result.order.video_url || "");
-        if (result.order.vault_pin) {
-          setCustomPin(result.order.vault_pin);
-        }
+        if (active) applyOrder(result);
       })
       .catch(error => {
         if (active) setPageError(error instanceof Error ? error.message : "Link tidak valid atau pesanan tidak ditemukan.");
@@ -106,13 +163,34 @@ export default function VaultSetup() {
         if (active) setLoading(false);
       });
     return () => { active = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const refreshDpStatus = async () => {
+    if (!orderId || refreshing) return;
+    setRefreshing(true);
+    setUploadError("");
+    try {
+      const result = await fetchVaultSetup(orderId);
+      applyOrder(result);
+      if (result.ok && !result.dpRequired) {
+        setPageError("");
+      }
+    } catch (error) {
+      setUploadError(error instanceof Error ? error.message : "Gagal memeriksa status DP.");
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   useEffect(() => {
     return () => {
-      if (photoPreview.startsWith("blob:")) URL.revokeObjectURL(photoPreview);
+      photoSlots.forEach(slot => {
+        if (slot.preview.startsWith("blob:")) URL.revokeObjectURL(slot.preview);
+      });
     };
-  }, [photoPreview]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -191,13 +269,13 @@ export default function VaultSetup() {
     }
   };
 
-  const uploadFile = async (file: File, type: "photo" | "audio" | "video") => {
+  const uploadFile = async (file: File, type: "photo" | "audio" | "video", slot = 1) => {
     const isPhoto = type === "photo";
     const isAudio = type === "audio";
     const isVideo = type === "video";
-    const setUploading = isPhoto ? setUploadingPhoto : isAudio ? setUploadingAudio : setUploadingVideo;
-    const setPreview = isPhoto ? setPhotoPreview : isAudio ? setAudioPreview : setVideoPreview;
-    const setUrl = isPhoto ? setPhotoUrl : isAudio ? setAudioUrl : setVideoUrl;
+    const clearUploading = isPhoto ? () => setUploadingPhotoSlot(null) : () => undefined;
+    const setPreview = isPhoto ? null : isAudio ? setAudioPreview : setVideoPreview;
+    const setUrl = isPhoto ? null : isAudio ? setAudioUrl : setVideoUrl;
     const maxSize = isPhoto ? 10 * 1024 * 1024 : isAudio ? 25 * 1024 * 1024 : 50 * 1024 * 1024;
     const allowedTypes = isPhoto
       ? ["image/jpeg", "image/png", "image/webp"]
@@ -226,14 +304,13 @@ export default function VaultSetup() {
     // Ini menghemat kuota pelanggan dan membuat upload jauh lebih cepat.
     let fileToUpload = file;
     if (isPhoto) {
-      setCompressingPhoto(true);
-      setPhotoCompression(null);
+      setCompressingSlot(slot);
       try {
         const compressed = await compressVaultPhoto(file);
         fileToUpload = compressed.file;
         if (compressed.didCompress) setPhotoCompression(compressed);
       } finally {
-        setCompressingPhoto(false);
+        setCompressingSlot(null);
       }
       if (fileToUpload.size > maxSize) {
         setUploadError("Foto masih terlalu besar setelah dioptimalkan. Gunakan foto dengan ukuran lebih kecil.");
@@ -242,31 +319,51 @@ export default function VaultSetup() {
     }
 
     const localPreview = URL.createObjectURL(file);
-    setPreview(localPreview);
-    setUploading(true);
-    setUploadProgress(prev => ({
-      ...prev,
-      [type]: { percent: 0, loaded: 0, total: fileToUpload.size },
-    }));
+    if (isPhoto) {
+      setPhotoSlots(prev =>
+        prev.map((item, index) => (index === slot - 1 ? { ...item, preview: localPreview } : item))
+      );
+    } else if (setPreview) {
+      setPreview(localPreview);
+    }
+
+    if (isPhoto) setUploadingPhotoSlot(slot);
+    else if (isAudio) setUploadingAudio(true);
+    else setUploadingVideo(true);
+    const progressSetter = isPhoto
+      ? (info: SlotProgress) => setSlotProgress(prev => ({ ...prev, [slot]: info }))
+      : isAudio
+        ? setAudioProgress
+        : setVideoProgress;
+    progressSetter({ percent: 0, loaded: 0, total: fileToUpload.size });
 
     try {
-      const url = await uploadVaultMedia(orderId, type, fileToUpload, (progress) => {
-        setUploadProgress(prev => ({
-          ...prev,
-          [type]: {
+      const url = await uploadVaultMedia(
+        orderId,
+        type,
+        fileToUpload,
+        (progress) => {
+          progressSetter({
             percent: progress.percent,
             loaded: progress.loadedBytes,
             total: progress.totalBytes,
-          },
-        }));
-      });
-      // Cache-buster: path storage bersifat tetap (polaroid.webp, video.mp4, dst).
+          });
+        },
+        isPhoto ? slot : 1
+      );
+      // Cache-buster: path storage bersifat tetap (polaroid-1.webp, dst).
       // Tanpa parameter unik, browser/CDN akan menampilkan berkas lama saat pelanggan mengganti media.
       const freshUrl = /^https?:/i.test(url)
         ? `${url}${url.includes("?") ? "&" : "?"}v=${Date.now()}`
         : url;
-      setUrl(freshUrl);
-      setPreview(freshUrl);
+      if (isPhoto) {
+        setPhotoSlots(prev =>
+          prev.map((item, index) => (index === slot - 1 ? { url: freshUrl, preview: freshUrl } : item))
+        );
+      } else if (setUrl) {
+        setUrl(freshUrl);
+        if (setPreview) setPreview(freshUrl);
+      }
       if (isAudio) {
         const audio = new Audio(freshUrl);
         audio.addEventListener("loadedmetadata", () => {
@@ -274,24 +371,40 @@ export default function VaultSetup() {
         }, { once: true });
       }
     } catch (error) {
-      setPreview(isPhoto ? photoUrl : isAudio ? audioUrl : videoUrl);
+      if (isPhoto) {
+        setPhotoSlots(prev =>
+          prev.map((item, index) => (index === slot - 1 ? { ...item, preview: item.url } : item))
+        );
+      } else if (setPreview) {
+        setPreview(isAudio ? audioUrl : videoUrl);
+      }
       setUploadError(error instanceof Error ? error.message : "Gagal mengunggah file.");
     } finally {
-      setUploading(false);
+      clearUploading();
+      if (!isPhoto) {
+        if (isAudio) setUploadingAudio(false);
+        else setUploadingVideo(false);
+      }
     }
   };
 
-  const handlePhotoChange = (event: ChangeEvent<HTMLInputElement>) => {
+  const handlePhotoChange = (slot: number) => (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (file) void uploadFile(file, "photo");
+    if (file) void uploadFile(file, "photo", slot);
     event.target.value = "";
   };
 
-  const handleDropPhoto = (event: DragEvent<HTMLLabelElement>) => {
+  const handleDropPhoto = (slot: number) => (event: DragEvent<HTMLLabelElement>) => {
     event.preventDefault();
-    setPhotoDragActive(false);
+    setPhotoDragSlot(null);
     const file = event.dataTransfer.files[0];
-    if (file) void uploadFile(file, "photo");
+    if (file) void uploadFile(file, "photo", slot);
+  };
+
+  const removePhotoSlot = (slot: number) => {
+    setPhotoSlots(prev =>
+      prev.map((item, index) => (index === slot - 1 ? { url: "", preview: "" } : item))
+    );
   };
 
   const handleAudioChange = (event: ChangeEvent<HTMLInputElement>) => {
@@ -312,9 +425,17 @@ export default function VaultSetup() {
     if (file) void uploadFile(file, "video");
   };
 
+  const updateLetterStyle = <K extends keyof VaultLetterStyle>(key: K, value: VaultLetterStyle[K]) => {
+    setLetterStyle(prev => ({ ...prev, [key]: value }));
+  };
+
   const handleSave = async (event: FormEvent) => {
     event.preventDefault();
     if (!orderId || saving) return;
+    if (photos.length === 0) {
+      setUploadError("Unggah minimal satu foto untuk photobooth strip kenangan Anda.");
+      return;
+    }
     if (audioSource === "spotify" && spotifyUrl.trim() && !parseSpotifyEmbedUrl(spotifyUrl)) {
       setUploadError("Periksa kembali link Spotify. Gunakan tautan track, album, atau playlist yang valid.");
       return;
@@ -329,7 +450,10 @@ export default function VaultSetup() {
     try {
       const result = await saveVaultSetup(orderId, {
         personal_message: personalMessage,
-        foto_vault: photoUrl,
+        foto_vault: photos[0] || "",
+        vault_photos: photos,
+        vault_photobooth_theme: photoboothTheme,
+        vault_letter_style: letterStyle as unknown as Record<string, unknown>,
         audio_url: audioSource === "spotify" ? spotifyUrl.trim() : audioUrl,
         audio_durasi: audioSource === "spotify" ? 0 : audioDuration,
         video_url: videoUrl.trim(),
@@ -345,6 +469,10 @@ export default function VaultSetup() {
           setVaultLocked(true);
           return;
         }
+        if (result.dpRequired) {
+          setDpRequired(true);
+          return;
+        }
         throw new Error(result.message);
       }
       setVaultLocked(true);
@@ -358,8 +486,16 @@ export default function VaultSetup() {
 
   const orderLabel = order?.order_number || order?.id || orderId;
   const spotifyEmbedPreviewUrl = parseSpotifyEmbedUrl(spotifyUrl);
-  const letterInitial = personalMessage.trim().charAt(0) || "A";
-  const letterRest = personalMessage.trim().slice(1) || "Tuliskan isi surat...";
+  const isBusy =
+    saving ||
+    uploadingAudio ||
+    uploadingVideo ||
+    uploadingPhotoSlot !== null ||
+    compressingSlot !== null;
+
+  const whatsappHelpUrl = `https://wa.me/6285235242425?text=${encodeURIComponent(
+    `Halo A Chapter Concierge, saya ingin menanyakan status DP 50% untuk pesanan #${orderLabel}.`
+  )}`;
 
   return (
     <main className="vault-setup-page public-v2">
@@ -410,6 +546,98 @@ export default function VaultSetup() {
               </a>
             </div>
           </section>
+        ) : dpRequired ? (
+          /* ── DP 50% GATE: konsol terkunci sampai admin memverifikasi ── */
+          <section className="vault-setup-card vault-dp-card" role="status">
+            <div className="vault-dp-seal" aria-hidden="true">
+              <span className="wax-seal-circle">A · C</span>
+            </div>
+            <span className="vault-dp-kicker">MEMORY VAULT · MENUNGGU VERIFIKASI DP</span>
+            <h2 className="vault-setup-card-title vault-dp-title">
+              Konsol Kenangan Terkunci Sementara
+            </h2>
+            <p className="vault-dp-lead">
+              Terima kasih, <strong>{order.customer_name || "Sahabat A Chapter"}</strong>. Konsol pengisian
+              foto, suara, dan surat rahasia terbuka otomatis setelah atelier memverifikasi{" "}
+              <strong>DP 50%</strong> pesanan Anda.
+            </p>
+
+            <div className="vault-dp-meta">
+              <div>
+                <span className="vault-dp-meta-label">NOMOR PESANAN</span>
+                <strong>#{orderLabel}</strong>
+              </div>
+              <div>
+                <span className="vault-dp-meta-label">PENERIMA</span>
+                <strong>{order.recipient_name || "Penerima Kado"}</strong>
+              </div>
+              <div>
+                <span className="vault-dp-meta-label">STATUS</span>
+                <strong>{dpStatusLabel(order.status)}</strong>
+              </div>
+            </div>
+
+            <ol className="vault-dp-steps">
+              <li className="is-done">
+                <span className="vault-dp-step-dot" aria-hidden="true">✓</span>
+                <div>
+                  <strong>Pesanan diterima</strong>
+                  <span>Lembar komisi Anda sudah tercatat di arsip atelier.</span>
+                </div>
+              </li>
+              <li className="is-active">
+                <span className="vault-dp-step-dot" aria-hidden="true">2</span>
+                <div>
+                  <strong>Verifikasi DP 50%</strong>
+                  <span>Concierge memeriksa bukti transfer Anda (biasanya &lt; 1 × 24 jam).</span>
+                </div>
+              </li>
+              <li>
+                <span className="vault-dp-step-dot" aria-hidden="true">3</span>
+                <div>
+                  <strong>Racik Memory Vault</strong>
+                  <span>Photobooth 4-cut, surat renda, suara, dan video memoir.</span>
+                </div>
+              </li>
+              <li>
+                <span className="vault-dp-step-dot" aria-hidden="true">4</span>
+                <div>
+                  <strong>Produksi karya botani</strong>
+                  <span>Bunga didehidrasi, QR code dicetak, lalu dikirim ke penerima.</span>
+                </div>
+              </li>
+            </ol>
+
+            <p className="vault-dp-note">
+              Simpan tautan halaman ini. Begitu DP diverifikasi, halaman akan terbuka otomatis
+              tanpa perlu tautan baru.
+            </p>
+
+            {uploadError && (
+              <div className="vault-setup-error" role="alert">
+                {uploadError}
+              </div>
+            )}
+
+            <div className="vault-dp-actions">
+              <button
+                type="button"
+                className="hero-cta hero-cta-primary"
+                onClick={refreshDpStatus}
+                disabled={refreshing}
+              >
+                {refreshing ? "Memeriksa status..." : "Cek Status DP Sekarang"}
+              </button>
+              <a
+                href={whatsappHelpUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hero-cta hero-cta-outline vault-dp-wa"
+              >
+                Konfirmasi Bukti DP via WhatsApp
+              </a>
+            </div>
+          </section>
         ) : saved || vaultLocked ? (
           <section className="vault-setup-card text-center vault-setup-success-card" role="status">
             <div className="vault-wax-seal-hero" aria-hidden="true" style={{ margin: "0 auto 1.5rem" }}>
@@ -439,94 +667,167 @@ export default function VaultSetup() {
                 <span className="meta-bar-tag">RECIPIENT</span>
                 <strong className="meta-bar-name">{order.recipient_name || "Penerima Kado"}</strong>
               </div>
+              <div>
+                <span className="meta-bar-tag">DP STATUS</span>
+                <strong className="meta-bar-name vault-meta-dp">✓ {dpStatusLabel(order.status)}</strong>
+              </div>
             </div>
 
             <form onSubmit={handleSave} className="vault-setup-form">
-              {/* CARD 1: UPLOAD POLAROID PHOTOS */}
+              {/* CARD 1: PHOTOBOOTH 4-CUT STRIP */}
               <section className="vault-setup-card">
                 <div className="card-step-badge">STEP 01</div>
-                <h2 className="vault-setup-card-title">Upload Polaroid Photos</h2>
+                <h2 className="vault-setup-card-title">Photobooth Memory Strip</h2>
                 <p className="vault-setup-card-sub">
-                  Pilih momen berharga yang akan dicetak dalam gaya polaroid digital dengan kertas linen bertekstur.
+                  Unggah hingga 4 momen terbaik, pilih gaya border, dan lihat hasilnya persis seperti
+                  strip photobooth yang akan dibuka penerima lewat QR code.
                 </p>
 
-                <label
-                  htmlFor="vault-photo-input"
-                  onDragOver={e => {
-                    e.preventDefault();
-                    if (!uploadingPhoto && !compressingPhoto) setPhotoDragActive(true);
-                  }}
-                  onDragEnter={e => {
-                    e.preventDefault();
-                    if (!uploadingPhoto && !compressingPhoto) setPhotoDragActive(true);
-                  }}
-                  onDragLeave={e => {
-                    if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
-                      setPhotoDragActive(false);
-                    }
-                  }}
-                  onDrop={handleDropPhoto}
-                  className={`vault-drop-zone${photoDragActive ? " is-dragging" : ""}`}
-                >
-                  <span className="drop-icon">📷</span>
-                  <strong className="drop-title">
-                    {compressingPhoto
-                      ? "Mengoptimalkan foto..."
-                      : uploadingPhoto
-                        ? "Sedang mengunggah foto..."
-                        : "Sentuh untuk memilih foto atau seret ke sini"}
-                  </strong>
-                  <span className="drop-hint">Format JPG, PNG, atau WebP · Maksimal 10 MB · otomatis dioptimalkan</span>
-                  <input
-                    id="vault-photo-input"
-                    type="file"
-                    accept="image/jpeg,image/png,image/webp"
-                    onChange={handlePhotoChange}
-                    disabled={uploadingPhoto || compressingPhoto}
-                    style={{ position: "absolute", width: 1, height: 1, opacity: 0 }}
-                  />
-                </label>
+                <div className="vault-photobooth">
+                  <div className="vault-photobooth-editor">
+                    <div className="vault-photobooth-slots">
+                      {Array.from({ length: MAX_VAULT_PHOTOS }, (_, index) => {
+                        const slot = index + 1;
+                        const current = photoSlots[index];
+                        const isUploading = uploadingPhotoSlot === slot;
+                        const isCompressing = compressingSlot === slot;
+                        const progress = slotProgress[slot];
+                        return (
+                          <div className="vault-photo-slot-wrap" key={slot}>
+                            <label
+                              htmlFor={`vault-photo-input-${slot}`}
+                              onDragOver={e => {
+                                e.preventDefault();
+                                if (!isUploading && !isCompressing) setPhotoDragSlot(slot);
+                              }}
+                              onDragEnter={e => {
+                                e.preventDefault();
+                                if (!isUploading && !isCompressing) setPhotoDragSlot(slot);
+                              }}
+                              onDragLeave={e => {
+                                if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
+                                  setPhotoDragSlot(null);
+                                }
+                              }}
+                              onDrop={handleDropPhoto(slot)}
+                              className={`vault-photo-slot${photoDragSlot === slot ? " is-dragging" : ""}${current.preview ? " has-photo" : ""}`}
+                            >
+                              {current.preview ? (
+                                <img src={current.preview} alt={`Foto photobooth ${slot}`} className="vault-photo-slot-img" />
+                              ) : (
+                                <span className="vault-photo-slot-empty">
+                                  <span className="vault-photo-slot-plus" aria-hidden="true">＋</span>
+                                  <span>Cut 0{slot}</span>
+                                </span>
+                              )}
 
-                {uploadingPhoto && (
-                  <div className="vault-upload-progress-box">
-                    <div className="vault-upload-progress-top">
-                      <span>Mengunggah Foto...</span>
-                      <span>{uploadProgress.photo.percent}%</span>
+                              {isCompressing && <span className="vault-photo-slot-overlay">Mengoptimalkan…</span>}
+                              {isUploading && (
+                                <span className="vault-photo-slot-overlay">
+                                  {progress ? `${progress.percent}%` : "Mengunggah…"}
+                                </span>
+                              )}
+
+                              <span className="vault-photo-slot-badge">0{slot}</span>
+                              <input
+                                id={`vault-photo-input-${slot}`}
+                                type="file"
+                                accept="image/jpeg,image/png,image/webp"
+                                onChange={handlePhotoChange(slot)}
+                                disabled={isUploading || isCompressing}
+                                style={{ position: "absolute", width: 1, height: 1, opacity: 0 }}
+                              />
+                            </label>
+                            {current.url && !isUploading && (
+                              <button
+                                type="button"
+                                className="vault-photo-slot-remove"
+                                onClick={() => removePhotoSlot(slot)}
+                                aria-label={`Hapus foto cut ${slot}`}
+                              >
+                                Hapus
+                              </button>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
-                    <div className="vault-upload-progress-bar-bg">
-                      <div
-                        className="vault-upload-progress-bar-fill"
-                        style={{ width: `${uploadProgress.photo.percent}%` }}
-                      />
+
+                    <div className="vault-photo-hint-row">
+                      <span className="drop-hint">JPG, PNG, atau WebP · Maks. 10 MB per foto · otomatis dioptimalkan</span>
+                      {photoCompression && (
+                        <span className="vault-compress-savings">
+                          {formatBytes(photoCompression.originalBytes)} → {formatBytes(photoCompression.compressedBytes)}
+                        </span>
+                      )}
                     </div>
-                    <div className="vault-upload-progress-sub">
-                      <span>{(uploadProgress.photo.loaded / (1024 * 1024)).toFixed(1)} MB / {(uploadProgress.photo.total / (1024 * 1024)).toFixed(1)} MB</span>
-                      <span>Mohon tunggu sebentar...</span>
+
+                    <div className="vault-theme-block">
+                      <span className="vault-toolbar-label">PILIH GAYA BORDER</span>
+                      <div className="vault-theme-chips" role="radiogroup" aria-label="Pilih gaya border photobooth">
+                        {PHOTOBOOTH_THEMES.map(theme => {
+                          const isSelected = photoboothTheme === theme.id;
+                          return (
+                            <button
+                              key={theme.id}
+                              type="button"
+                              role="radio"
+                              aria-checked={isSelected}
+                              className={`vault-theme-chip${isSelected ? " is-active" : ""}`}
+                              onClick={() => setPhotoboothTheme(theme.id)}
+                              style={{
+                                backgroundColor: theme.bg,
+                                color: theme.text,
+                                borderColor: isSelected ? theme.text : theme.border,
+                              }}
+                            >
+                              <span className="vault-theme-dot" style={{ backgroundColor: theme.dot }} />
+                              <span>{theme.name}</span>
+                              {isSelected && <span aria-hidden="true">✓</span>}
+                            </button>
+                          );
+                        })}
+                      </div>
                     </div>
                   </div>
-                )}
 
-                {!uploadingPhoto && (photoPreview || photoUrl) && (
-                  <span className="vault-upload-success-badge" role="status">
-                    ✓ Foto polaroid tersimpan
-                    {photoCompression && (
-                      <span className="vault-compress-savings">
-                        {formatBytes(photoCompression.originalBytes)} → {formatBytes(photoCompression.compressedBytes)}
-                      </span>
-                    )}
-                  </span>
-                )}
-
-                {photoPreview && (
-                  <div className="vault-setup-photo-preview">
-                    <div className="folio-polaroid-frame" style={{ maxWidth: "260px", margin: "1.5rem auto 0" }}>
-                      <img src={photoPreview} alt="Pratinjau Polaroid" style={{ width: "100%", aspectRatio: "1/1", objectFit: "cover" }} />
-                      <p className="folio-polaroid-script" style={{ fontSize: "1.1rem", marginTop: "8px" }}>
-                        A moment kept close
-                      </p>
+                  {/* Live strip preview */}
+                  <div className="vault-strip-preview-wrap">
+                    <div
+                      className="vault-strip-preview"
+                      style={{
+                        backgroundColor: activeTheme.bg,
+                        color: activeTheme.text,
+                        borderColor: activeTheme.border,
+                      }}
+                    >
+                      <div className="vault-strip-preview-head">
+                        <span className="vault-strip-atelier">A CHAPTER ATELIER</span>
+                        <span className="vault-strip-edition">ARCHIVAL PHOTOBOOTH · 4 CUTS</span>
+                      </div>
+                      <div className="vault-strip-preview-grid">
+                        {Array.from({ length: MAX_VAULT_PHOTOS }, (_, index) => {
+                          const current = photoSlots[index];
+                          return (
+                            <div className="vault-strip-preview-frame" key={index}>
+                              {current.preview ? (
+                                <img src={current.preview} alt={`Pratinjau cut ${index + 1}`} className="vault-strip-preview-img" />
+                              ) : (
+                                <span className="vault-strip-preview-empty">0{index + 1}</span>
+                              )}
+                              <span className="vault-strip-frame-num" aria-hidden="true">0{index + 1}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                      <div className="vault-strip-preview-foot">
+                        <span className="vault-strip-date">SURABAYA ATELIER · 2026</span>
+                        <span className="vault-strip-monogram" aria-hidden="true">A · C</span>
+                      </div>
                     </div>
+                    <span className="vault-strip-caption">Live preview strip penerima</span>
                   </div>
-                )}
+                </div>
               </section>
 
               {/* CARD 2: RECORD OR UPLOAD VOICE MEMORY */}
@@ -586,16 +887,16 @@ export default function VaultSetup() {
                       <div className="vault-upload-progress-box">
                         <div className="vault-upload-progress-top">
                           <span>Mengunggah Audio Suara...</span>
-                          <span>{uploadProgress.audio.percent}%</span>
+                          <span>{audioProgress.percent}%</span>
                         </div>
                         <div className="vault-upload-progress-bar-bg">
                           <div
                             className="vault-upload-progress-bar-fill"
-                            style={{ width: `${uploadProgress.audio.percent}%` }}
+                            style={{ width: `${audioProgress.percent}%` }}
                           />
                         </div>
                         <div className="vault-upload-progress-sub">
-                          <span>{(uploadProgress.audio.loaded / (1024 * 1024)).toFixed(1)} MB / {(uploadProgress.audio.total / (1024 * 1024)).toFixed(1)} MB</span>
+                          <span>{(audioProgress.loaded / (1024 * 1024)).toFixed(1)} MB / {(audioProgress.total / (1024 * 1024)).toFixed(1)} MB</span>
                           <span>Mohon jangan tutup halaman...</span>
                         </div>
                       </div>
@@ -736,16 +1037,16 @@ export default function VaultSetup() {
                       <div className="vault-upload-progress-box">
                         <div className="vault-upload-progress-top">
                           <span>Mengunggah Video Kenangan...</span>
-                          <span>{uploadProgress.video.percent}%</span>
+                          <span>{videoProgress.percent}%</span>
                         </div>
                         <div className="vault-upload-progress-bar-bg">
                           <div
                             className="vault-upload-progress-bar-fill"
-                            style={{ width: `${uploadProgress.video.percent}%` }}
+                            style={{ width: `${videoProgress.percent}%` }}
                           />
                         </div>
                         <div className="vault-upload-progress-sub">
-                          <span>{(uploadProgress.video.loaded / (1024 * 1024)).toFixed(1)} MB / {(uploadProgress.video.total / (1024 * 1024)).toFixed(1)} MB</span>
+                          <span>{(videoProgress.loaded / (1024 * 1024)).toFixed(1)} MB / {(videoProgress.total / (1024 * 1024)).toFixed(1)} MB</span>
                           <span>Mohon jangan tutup halaman saat proses unggah...</span>
                         </div>
                       </div>
@@ -801,35 +1102,141 @@ export default function VaultSetup() {
                 )}
               </section>
 
-              {/* CARD 3: WRITE THE SECRET LETTER */}
+              {/* CARD 3: WRITE THE SECRET LETTER ON LACE BOARD */}
               <section className="vault-setup-card">
                 <div className="card-step-badge">STEP 03</div>
                 <h2 className="vault-setup-card-title">Write The Secret Letter</h2>
                 <p className="vault-setup-card-sub">
-                  Surat ini akan dirender dengan huruf inisial drop-cap bergaya manuskrip kuno pada kertas perkamen linen.
+                  Tulis surat langsung di atas papan renda. Atur font, ukuran, perataan, dan warna tinta
+                  persis seperti di Word atau Google Docs.
                 </p>
 
-                <textarea
-                  id="vault-letter-input"
-                  className="form-textarea vault-setup-textarea"
-                  rows={6}
-                  maxLength={2000}
-                  value={personalMessage}
-                  onChange={e => setPersonalMessage(e.target.value)}
-                  placeholder="Tuliskan kata-kata tulus dari lubuk hati Anda..."
-                />
-                <span className="char-counter">{personalMessage.length} / 2000 karakter</span>
+                <div className="vault-letter-toolbar" aria-label="Pengaturan gaya tulisan surat">
+                  <div className="vault-toolbar-group">
+                    <span className="vault-toolbar-label">FONT</span>
+                    <div className="vault-toolbar-btn-group">
+                      {LETTER_FONT_OPTIONS.map(option => (
+                        <button
+                          key={option.id}
+                          type="button"
+                          className={`vault-toolbar-btn${letterStyle.font === option.id ? " is-active" : ""}`}
+                          onClick={() => updateLetterStyle("font", option.id as LetterFontId)}
+                          style={{ fontFamily: option.stack, fontSize: option.sampleSize }}
+                        >
+                          {option.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
 
-                {/* Drop-cap live preview */}
-                <div className="letter-dropcap-preview">
-                  <span className="preview-label">LIVE PARCHMENT PREVIEW:</span>
-                  <div className="preview-body">
-                    <span className="vault-drop-cap">{letterInitial}</span>
-                    <p className="preview-text">{letterRest}</p>
+                  <div className="vault-toolbar-group">
+                    <span className="vault-toolbar-label">UKURAN</span>
+                    <div className="vault-toolbar-btn-group">
+                      {LETTER_SIZE_OPTIONS.map(option => (
+                        <button
+                          key={option.id}
+                          type="button"
+                          className={`vault-toolbar-btn vault-toolbar-btn--size${letterStyle.size === option.id ? " is-active" : ""}`}
+                          onClick={() => updateLetterStyle("size", option.id as LetterSizeId)}
+                        >
+                          {option.label}
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                  <div className="preview-signoff">
-                    With all my love, always yours, <strong>{order.sender_name || "You"}</strong>
+
+                  <div className="vault-toolbar-group">
+                    <span className="vault-toolbar-label">GAYA</span>
+                    <div className="vault-toolbar-btn-group">
+                      <button
+                        type="button"
+                        className={`vault-toolbar-btn vault-toolbar-btn--icon${letterStyle.bold ? " is-active" : ""}`}
+                        onClick={() => updateLetterStyle("bold", !letterStyle.bold)}
+                        aria-pressed={letterStyle.bold}
+                        title="Tebal"
+                      >
+                        <strong>B</strong>
+                      </button>
+                      <button
+                        type="button"
+                        className={`vault-toolbar-btn vault-toolbar-btn--icon${letterStyle.italic ? " is-active" : ""}`}
+                        onClick={() => updateLetterStyle("italic", !letterStyle.italic)}
+                        aria-pressed={letterStyle.italic}
+                        title="Miring"
+                      >
+                        <em>I</em>
+                      </button>
+                      <button
+                        type="button"
+                        className={`vault-toolbar-btn vault-toolbar-btn--icon${letterStyle.underline ? " is-active" : ""}`}
+                        onClick={() => updateLetterStyle("underline", !letterStyle.underline)}
+                        aria-pressed={letterStyle.underline}
+                        title="Garis bawah"
+                      >
+                        <u>U</u>
+                      </button>
+                    </div>
                   </div>
+
+                  <div className="vault-toolbar-group">
+                    <span className="vault-toolbar-label">POSISI</span>
+                    <div className="vault-toolbar-btn-group">
+                      {(["left", "center", "right"] as LetterAlignId[]).map(align => (
+                        <button
+                          key={align}
+                          type="button"
+                          className={`vault-toolbar-btn vault-toolbar-btn--icon${letterStyle.align === align ? " is-active" : ""}`}
+                          onClick={() => updateLetterStyle("align", align)}
+                          aria-pressed={letterStyle.align === align}
+                          title={align === "left" ? "Rata kiri" : align === "center" ? "Rata tengah" : "Rata kanan"}
+                        >
+                          {align === "left" ? "≡" : align === "center" ? "⁞" : "≡"}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="vault-toolbar-group">
+                    <span className="vault-toolbar-label">TINTA</span>
+                    <div className="vault-toolbar-color-group">
+                      {LETTER_INK_TONES.map(ink => (
+                        <button
+                          key={ink.color}
+                          type="button"
+                          className={`vault-toolbar-color-dot${letterStyle.color === ink.color ? " is-active" : ""}`}
+                          style={{ backgroundColor: ink.color }}
+                          onClick={() => updateLetterStyle("color", ink.color)}
+                          aria-label={`Warna tinta ${ink.name}`}
+                          aria-pressed={letterStyle.color === ink.color}
+                          title={ink.name}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="vault-lace-board">
+                  <img
+                    src="/landing/lace-letter-card.webp"
+                    alt="Papan renda tempat menulis surat"
+                    className="vault-lace-mat"
+                    loading="lazy"
+                  />
+                  <div className="vault-lace-parchment">
+                    <textarea
+                      id="vault-letter-input"
+                      className="vault-lace-textarea"
+                      value={personalMessage}
+                      onChange={e => setPersonalMessage(e.target.value.slice(0, 2000))}
+                      maxLength={2000}
+                      placeholder="Tuliskan kata-kata tulus dari lubuk hati Anda..."
+                      style={letterStyleToCss(letterStyle, "board")}
+                    />
+                  </div>
+                </div>
+                <div className="vault-letter-foot">
+                  <span className="char-counter">{personalMessage.length} / 2000 karakter</span>
+                  <span className="drop-hint">Ketik langsung di atas perkamen renda — hasilnya sama dengan yang dilihat penerima.</span>
                 </div>
               </section>
 
@@ -873,7 +1280,7 @@ export default function VaultSetup() {
 
                 <button
                   type="submit"
-                  disabled={saving || uploadingPhoto || uploadingAudio || uploadingVideo || compressingPhoto}
+                  disabled={isBusy}
                   className="hero-cta hero-cta-primary vault-setup-save-btn"
                 >
                   {saving ? "Mengunci Kenangan..." : "KUNCI & SIMPAN BRANKAS MEMORI →"}
@@ -885,7 +1292,7 @@ export default function VaultSetup() {
                 <button
                   type="submit"
                   aria-label="Kunci dan simpan brankas memori"
-                  disabled={saving || uploadingPhoto || uploadingAudio || uploadingVideo || compressingPhoto}
+                  disabled={isBusy}
                 >
                   {saving ? "Menyimpan..." : "Kunci & Simpan"}
                 </button>
@@ -922,7 +1329,10 @@ export default function VaultSetup() {
                   nama_pembeli: order?.recipient_name || "Recipient Name",
                   dari: order?.sender_name || "Sender Name",
                   pesan_personal: personalMessage || "Pesan kenangan manis Anda...",
-                  foto_vault: photoPreview || photoUrl,
+                  foto_vault: primaryPhotoPreview,
+                  vault_photos: photos,
+                  vault_photobooth_theme: photoboothTheme,
+                  vault_letter_style: letterStyle as unknown as Record<string, unknown>,
                   audio_url:
                     audioSource === "spotify"
                       ? spotifyUrl.trim()

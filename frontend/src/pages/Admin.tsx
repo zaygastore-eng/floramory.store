@@ -1016,7 +1016,7 @@ export default function Admin() {
   };
 
   const exportPreOrders = () => {
-    const columns: (keyof PreOrder)[] = [
+    const columns = [
       "id",
       "customer_name",
       "whatsapp",
@@ -1024,7 +1024,7 @@ export default function Admin() {
       "status",
       "created_at",
       "custom_request",
-    ];
+    ] as const;
     const escapeCsv = (value: string | number | undefined) => {
       const text = String(value ?? "");
       const safeText = /^[\t\r ]*[=+\-@]/.test(text) ? `'${text}` : text;

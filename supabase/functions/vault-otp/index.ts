@@ -56,6 +56,9 @@ const PRODUCT_SELECT = [
   "dari",
   "pesan_personal",
   "foto_vault",
+  "vault_photos",
+  "vault_photobooth_theme",
+  "vault_letter_style",
   "audio_url",
   "audio_durasi",
   "video_url",
@@ -194,6 +197,9 @@ function vaultProduct(product: ProductRow): Record<string, unknown> {
     ...publicProduct(product),
     pesan_personal: product.pesan_personal,
     foto_vault: product.foto_vault,
+    vault_photos: Array.isArray(product.vault_photos) ? product.vault_photos : [],
+    vault_photobooth_theme: product.vault_photobooth_theme,
+    vault_letter_style: product.vault_letter_style,
     audio_url: product.audio_url,
     audio_durasi: product.audio_durasi,
     video_url: product.video_url,
@@ -207,8 +213,10 @@ function hasPin(product: ProductRow): boolean {
 }
 
 function hasVault(product: ProductRow): boolean {
+  const photos = Array.isArray(product.vault_photos) ? product.vault_photos.length : 0;
   return Boolean(
     String(product.foto_vault || "").trim() ||
+      photos > 0 ||
       String(product.audio_url || "").trim() ||
       String(product.video_url || "").trim() ||
       String(product.pesan_personal || "").trim()
