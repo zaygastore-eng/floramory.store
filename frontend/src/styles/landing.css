@@ -1589,18 +1589,20 @@
   opacity: 0.65;
 }
 
+.landing-v2 .photobooth-strip-foot .strip-brand-mark,
 .landing-v2 .photobooth-strip-foot .strip-monogram {
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 0.1rem;
-  width: 24px;
+  justify-content: flex-end;
   height: 24px;
-  border-radius: 50%;
-  border: 1px solid currentColor;
-  font-family: var(--lp-display);
-  font-size: 0.6rem;
-  opacity: 0.85;
+}
+
+.landing-v2 .photobooth-strip-foot .strip-logo-img {
+  max-width: 68px;
+  width: auto;
+  height: 20px;
+  object-fit: contain;
+  opacity: 0.9;
 }
 
 /* ── LACE BOARD RICH-TEXT LETTER ── */

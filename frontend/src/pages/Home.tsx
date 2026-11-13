@@ -915,10 +915,16 @@ export default function Home() {
                                       <span className="strip-date">JUNE 2026 · SURABAYA ATELIER</span>
                                       <span className="strip-stamp">№ 2026-CH-0482</span>
                                     </div>
-                                    <div className="strip-monogram" aria-hidden="true">
-                                      <span>A</span>
-                                      <span>·</span>
-                                      <span>C</span>
+                                    <div className="strip-brand-mark" aria-hidden="true">
+                                      <img
+                                        src={["wine", "crimson", "noir"].includes(activeTheme.id) ? "/a-chapter-logo-light.png" : "/a-chapter-logo.png"}
+                                        alt="A Chapter"
+                                        className="strip-logo-img"
+                                        width={68}
+                                        height={20}
+                                        loading="lazy"
+                                        decoding="async"
+                                      />
                                     </div>
                                   </div>
                                 </div>
