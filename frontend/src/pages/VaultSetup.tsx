@@ -773,17 +773,21 @@ export default function VaultSetup() {
                               type="button"
                               role="radio"
                               aria-checked={isSelected}
+                              aria-label={`Tema ${theme.name}`}
                               className={`vault-theme-chip${isSelected ? " is-active" : ""}`}
                               onClick={() => setPhotoboothTheme(theme.id)}
-                              style={{
-                                backgroundColor: theme.bg,
-                                color: theme.text,
-                                borderColor: isSelected ? theme.text : theme.border,
-                              }}
                             >
-                              <span className="vault-theme-dot" style={{ backgroundColor: theme.dot }} />
+                              <span
+                                className="vault-swatch-circle"
+                                style={{
+                                  backgroundColor: theme.bg,
+                                  borderColor: isSelected ? "var(--sage, #531B21)" : theme.border,
+                                  color: theme.text,
+                                }}
+                              >
+                                {isSelected && <span aria-hidden="true" className="swatch-check">✓</span>}
+                              </span>
                               <span>{theme.name}</span>
-                              {isSelected && <span aria-hidden="true">✓</span>}
                             </button>
                           );
                         })}

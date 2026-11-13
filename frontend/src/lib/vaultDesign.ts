@@ -83,7 +83,7 @@ export const LETTER_INK_TONES: ReadonlyArray<{ color: string; name: string }> = 
 ] as const;
 
 export const DEFAULT_LETTER_STYLE: VaultLetterStyle = {
-  font: "parisienne",
+  font: "cormorant",
   size: "md",
   bold: false,
   italic: false,
@@ -129,17 +129,17 @@ export function letterFontStack(font: LetterFontId): string {
 export function letterFontSize(size: LetterSizeId, mode: "board" | "compact" = "board"): string {
   if (mode === "compact") {
     return {
-      sm: "clamp(0.8rem, 3.4vw, 0.95rem)",
-      md: "clamp(0.92rem, 4vw, 1.12rem)",
-      lg: "clamp(1.05rem, 4.6vw, 1.3rem)",
-      xl: "clamp(1.18rem, 5.2vw, 1.5rem)",
+      sm: "clamp(0.85rem, 3.4vw, 0.98rem)",
+      md: "clamp(0.98rem, 4vw, 1.14rem)",
+      lg: "clamp(1.1rem, 4.6vw, 1.32rem)",
+      xl: "clamp(1.24rem, 5.2vw, 1.54rem)",
     }[size];
   }
   return {
-    sm: "clamp(0.78rem, 1.1vw, 0.95rem)",
-    md: "clamp(0.92rem, 1.4vw, 1.18rem)",
-    lg: "clamp(1.05rem, 1.8vw, 1.4rem)",
-    xl: "clamp(1.22rem, 2.2vw, 1.7rem)",
+    sm: "clamp(0.85rem, 1.1vw, 0.98rem)",
+    md: "clamp(1rem, 1.3vw, 1.14rem)", // 16px - 18.2px
+    lg: "clamp(1.15rem, 1.8vw, 1.42rem)",
+    xl: "clamp(1.3rem, 2.2vw, 1.72rem)",
   }[size];
 }
 
@@ -155,7 +155,7 @@ export function letterStyleToCss(
     textDecoration: style.underline ? "underline" : "none",
     textAlign: style.align,
     color: style.color,
-    lineHeight: style.font === "parisienne" ? 1.5 : 1.65,
+    lineHeight: style.font === "parisienne" ? 1.5 : 1.8,
   };
 }
 

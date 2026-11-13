@@ -49,6 +49,13 @@ const PHOTOBOOTH_SAMPLE_PHOTOS = [
   { id: "cut-4", src: "/landing/polaroid-4.webp", alt: "Keepsake flowers framed" },
 ];
 
+const WAVEFORM_SEEK_BARS = [
+  24, 32, 46, 65, 50, 76, 60, 88, 70, 82, 52, 64, 90, 68, 96, 56,
+  72, 84, 62, 40, 55, 78, 92, 66, 84, 50, 74, 86, 58, 42, 66, 78,
+  85, 94, 60, 48, 70, 84, 52, 66, 90, 74, 44, 60, 78, 88, 58, 46,
+  68, 82, 94, 70, 54, 76, 86, 62, 46, 66, 80, 58, 44, 56, 36, 26,
+];
+
 function ProductCard({
   product,
   onClick,
@@ -282,7 +289,7 @@ export default function Home() {
   const [letterText, setLetterText] = useState(
     "Untuk Sahabat & Belahan Jiwa yang Terkasih,\n\nWaktu mungkin membawa kita ke persimpangan jalan yang berbeda, namun kenangan yang telah kita ukir bersama takkan pernah lekang oleh jarak dan masa. Sebagaimana kelopak bunga ini yang diawetkan abadi di laboratorium A Chapter, rasa sayang, syukur, dan doa tulusku akan selalu menyertai setiap langkahmu.\n\nIni bukan akhir, melainkan sebuah babak baru. Until we meet again, simpanlah memori ini selamanya.\n\nDengan cinta terdalam,\nSelalu Sahabat Terbaikmu"
   );
-  const [letterFont, setLetterFont] = useState<"parisienne" | "cinzel" | "cormorant" | "sans">("parisienne");
+  const [letterFont, setLetterFont] = useState<"parisienne" | "cinzel" | "cormorant" | "sans">("cormorant");
   const [letterSize, setLetterSize] = useState<"sm" | "md" | "lg" | "xl">("md");
   const [letterBold, setLetterBold] = useState(false);
   const [letterItalic, setLetterItalic] = useState(false);
@@ -992,17 +999,21 @@ export default function Home() {
                                         type="button"
                                         role="radio"
                                         aria-checked={isSelected}
+                                        aria-label={`Gaya ${theme.name}`}
                                         className={`photobooth-theme-chip${isSelected ? " is-active" : ""}`}
                                         onClick={() => setPhotoboothBorder(theme.id)}
-                                        style={{
-                                          backgroundColor: theme.bg,
-                                          color: theme.text,
-                                          borderColor: isSelected ? theme.text : theme.border,
-                                        }}
                                       >
-                                        <span className="theme-dot" style={{ backgroundColor: theme.dot }} />
+                                        <span
+                                          className="photobooth-swatch-circle"
+                                          style={{
+                                            backgroundColor: theme.bg,
+                                            borderColor: isSelected ? "var(--lp-wine, #531B21)" : theme.border,
+                                            color: theme.text,
+                                          }}
+                                        >
+                                          {isSelected && <span className="theme-check" aria-hidden="true">✓</span>}
+                                        </span>
                                         <span className="theme-name">{theme.name}</span>
-                                        {isSelected && <span className="theme-check">✓</span>}
                                       </button>
                                     );
                                   })}
@@ -1069,7 +1080,15 @@ export default function Home() {
                           return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
                         };
                         const curTimeStr = formatTime(audioCurrentTime);
-                        const totalTimeStr = formatTime(audioDuration);
+                        const totalTimeStr = formatTime(audioDuration || 131);
+                        const currentRatio = audioDuration > 0 ? Math.min(1, Math.max(0, audioCurrentTime / audioDuration)) : 0;
+
+                        const handleSeekFromEvent = (e: React.MouseEvent<HTMLDivElement> | React.TouchEvent<HTMLDivElement>) => {
+                          const rect = e.currentTarget.getBoundingClientRect();
+                          const clientX = "touches" in e ? e.touches[0].clientX : e.clientX;
+                          const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+                          seekAudio(ratio * (audioDuration || 131));
+                        };
 
                         return (
                           <div className="sim-panel" key={tab.kind}>
@@ -1077,54 +1096,57 @@ export default function Home() {
                               <div className="folio-audio-kicker">
                                 {tab.songTitle || "SEE YOU AGAIN — ACOUSTIC KEEPSAKE MEMOIR"}
                               </div>
-                              <div
-                                className={`folio-waveform${isAudioPlaying ? " is-playing" : ""}`}
-                                aria-hidden="true"
-                                onClick={() => toggleAudio(tab.audioSrc || "/see-you-again.mp3")}
-                                style={{ cursor: "pointer" }}
-                                title="Klik untuk memutar lagu"
-                              >
-                                {[24, 38, 58, 34, 72, 48, 88, 55, 96, 42, 68, 34, 82, 50, 100, 58, 75, 38, 64, 46, 86, 54, 72, 32, 60, 42, 92, 48, 68, 36, 78, 52].map((height, index) => (
-                                  <span
-                                    key={index}
-                                    style={{ height: `${height}%`, animationDelay: `${index * -27}ms` }}
-                                  />
-                                ))}
-                              </div>
-                              <div className="folio-audio-scrub">
-                                <input
-                                  type="range"
-                                  className="folio-audio-range"
-                                  min={0}
-                                  max={audioDuration > 0 ? audioDuration : 0}
-                                  step={0.1}
-                                  value={Math.min(audioCurrentTime, audioDuration || 0)}
-                                  onChange={(event) => seekAudio(Number(event.target.value))}
-                                  onMouseDown={handleAudioSeekStart}
-                                  onMouseUp={handleAudioSeekEnd}
-                                  onTouchStart={handleAudioSeekStart}
-                                  onTouchEnd={handleAudioSeekEnd}
-                                  aria-label="Geser posisi lagu"
-                                  style={{
-                                    background: `linear-gradient(to right, var(--brand-burgundy) ${audioDuration > 0 ? (audioCurrentTime / audioDuration) * 100 : 0}%, rgba(83, 27, 33, 0.15) ${audioDuration > 0 ? (audioCurrentTime / audioDuration) * 100 : 0}%)`,
-                                  }}
-                                />
-                              </div>
-                              <div className="folio-audio-controls">
+
+                              {/* 1-Baris Kompak Waveform Seekbar (540-600px, bar 2px, gap 3px) */}
+                              <div className="folio-waveform-unified">
                                 <button
                                   type="button"
-                                  className="folio-play-btn"
+                                  className={`folio-audio-circle-btn${isAudioPlaying ? " is-playing" : ""}`}
                                   aria-label={isAudioPlaying ? "Jeda lagu See You Again" : "Putar lagu See You Again"}
-                                  aria-pressed={isAudioPlaying}
                                   onClick={() => toggleAudio(tab.audioSrc || "/see-you-again.mp3")}
                                 >
-                                  <span aria-hidden="true">{isAudioPlaying ? "Ⅱ" : "▶"}</span>
-                                  {isAudioPlaying ? "JEDA LAGU" : "PUTAR LAGU (SEE YOU AGAIN)"}
+                                  <span aria-hidden="true">{isAudioPlaying ? "❚❚" : "▶"}</span>
                                 </button>
-                                <span className="folio-audio-time">
-                                  {isAudioPlaying || audioCurrentTime > 0 ? curTimeStr : "00:00"} / {totalTimeStr}
-                                </span>
+
+                                <div
+                                  className={`folio-waveform-seeker${isAudioPlaying ? " is-playing" : ""}`}
+                                  role="slider"
+                                  tabIndex={0}
+                                  aria-label="Seekbar rekaman audio"
+                                  aria-valuemin={0}
+                                  aria-valuemax={audioDuration || 131}
+                                  aria-valuenow={audioCurrentTime}
+                                  onClick={handleSeekFromEvent}
+                                  onMouseDown={handleAudioSeekStart}
+                                  onMouseUp={handleAudioSeekEnd}
+                                  onTouchStart={(e) => {
+                                    handleAudioSeekStart();
+                                    handleSeekFromEvent(e);
+                                  }}
+                                  onTouchMove={handleSeekFromEvent}
+                                  onTouchEnd={handleAudioSeekEnd}
+                                  title="Klik atau geser waveform untuk melompat ke menit tertentu"
+                                >
+                                  {WAVEFORM_SEEK_BARS.map((heightPct, idx) => {
+                                    const barRatio = idx / (WAVEFORM_SEEK_BARS.length - 1);
+                                    const isPlayed = barRatio <= currentRatio;
+                                    return (
+                                      <span
+                                        key={idx}
+                                        className={`waveform-bar${isPlayed ? " is-played" : ""}`}
+                                        style={{ height: `${heightPct}%` }}
+                                      />
+                                    );
+                                  })}
+                                </div>
+
+                                <div className="folio-audio-time-badge">
+                                  <span>{isAudioPlaying || audioCurrentTime > 0 ? curTimeStr : "00:00"}</span>
+                                  <span className="time-sep">/</span>
+                                  <span className="time-total">{totalTimeStr}</span>
+                                </div>
                               </div>
+
                               <div className="folio-audio-extra">
                                 <button
                                   type="button"
@@ -1151,6 +1173,7 @@ export default function Home() {
                                   {audioRate}x
                                 </button>
                               </div>
+
                               <blockquote className="folio-audio-quote">
                                 <p>{tab.quoteExcerpt}</p>
                                 <footer>— {tab.quoteAttribution}</footer>
@@ -1328,17 +1351,17 @@ export default function Home() {
                                         sans: "'DM Sans', sans-serif",
                                       }[letterFont],
                                       fontSize: {
-                                        sm: "clamp(0.78rem, 1.1vw, 0.95rem)",
-                                        md: "clamp(0.92rem, 1.4vw, 1.18rem)",
-                                        lg: "clamp(1.05rem, 1.8vw, 1.4rem)",
-                                        xl: "clamp(1.22rem, 2.2vw, 1.7rem)",
+                                        sm: "clamp(0.85rem, 1.1vw, 0.98rem)",
+                                        md: "clamp(1.02rem, 1.35vw, 1.15rem)", // 16px - 18.4px
+                                        lg: "clamp(1.15rem, 1.8vw, 1.4rem)",
+                                        xl: "clamp(1.3rem, 2.2vw, 1.7rem)",
                                       }[letterSize],
                                       fontWeight: letterBold ? 700 : 400,
                                       fontStyle: letterItalic ? "italic" : "normal",
                                       textDecoration: letterUnderline ? "underline" : "none",
                                       textAlign: letterAlign,
                                       color: letterColor,
-                                      lineHeight: letterFont === "parisienne" ? 1.45 : 1.6,
+                                      lineHeight: letterFont === "parisienne" ? 1.5 : 1.8,
                                     }}
                                   />
                                 </div>
@@ -1352,11 +1375,11 @@ export default function Home() {
                       }
 
                       return (
-                        <div className="sim-panel" key={tab.kind}>
-                          <div className={`folio-video-card${isVideoPlaying ? " is-playing" : ""}`}>
+                        <div className="sim-panel sim-panel--video" key={tab.kind}>
+                          <div className={`folio-video-card folio-video-card--portrait${isVideoPlaying ? " is-playing" : ""}`}>
                             <button
                               type="button"
-                              className="folio-video-frame"
+                              className="folio-video-frame folio-video-frame--vertical"
                               onClick={() => setIsVideoPlaying((playing) => !playing)}
                               aria-label={isVideoPlaying ? "Jeda simulasi video memoir" : "Putar simulasi video memoir"}
                             >
@@ -1370,7 +1393,7 @@ export default function Home() {
                               {!isVideoPlaying && (
                                 <span className="folio-video-play" aria-hidden="true">▶</span>
                               )}
-                              <span className="folio-video-badge">SIMULASI VIDEO MEMOIR · {tab.durationLabel}</span>
+                              <span className="folio-video-badge">KEEPSAKE MEMOIR FRAME · {tab.durationLabel}</span>
                               <span className="folio-video-progress" aria-hidden="true">
                                 <span className="folio-video-progress-fill" />
                               </span>

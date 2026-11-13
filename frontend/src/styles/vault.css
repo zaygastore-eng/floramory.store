@@ -2807,29 +2807,51 @@
 .vault-theme-chip {
   display: inline-flex;
   align-items: center;
-  gap: 0.4rem;
-  padding: 0.45rem 0.75rem;
+  gap: 0.5rem;
+  min-height: 44px;
+  padding: 0.35rem 0.85rem 0.35rem 0.45rem;
   border-radius: 999px;
-  border: 1.5px solid transparent;
+  border: 1.5px solid rgba(107, 31, 42, 0.16);
+  background: #ffffff;
+  color: var(--chapter-burgundy, #531B21);
   font-family: var(--font-body);
-  font-size: 0.68rem;
+  font-size: 0.72rem;
   font-weight: 600;
   letter-spacing: 0.03em;
   cursor: pointer;
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
 }
 
-.vault-theme-chip:hover { transform: translateY(-1px); }
+.vault-theme-chip:hover {
+  transform: translateY(-1px);
+  border-color: rgba(107, 31, 42, 0.35);
+}
 
 .vault-theme-chip.is-active {
-  box-shadow: 0 0 0 2px rgba(107, 31, 42, 0.22);
+  border-color: var(--chapter-burgundy, #531B21);
+  box-shadow: 0 4px 12px rgba(107, 31, 42, 0.15);
 }
 
-.vault-theme-dot {
-  width: 9px;
-  height: 9px;
+.vault-swatch-circle {
+  width: 30px;
+  height: 30px;
   border-radius: 50%;
-  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.15);
+  border: 1.5px solid rgba(0, 0, 0, 0.12);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.vault-theme-chip.is-active .vault-swatch-circle {
+  box-shadow: 0 0 0 2px #ffffff, 0 0 0 4px var(--chapter-burgundy, #531B21);
+}
+
+.vault-swatch-circle .swatch-check {
+  font-size: 0.82rem;
+  font-weight: 800;
+  line-height: 1;
 }
 
 .vault-strip-preview-wrap {
