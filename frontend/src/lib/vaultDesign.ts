@@ -7,7 +7,14 @@ import type { CSSProperties } from "react";
  * dijanjikan di landing benar-benar bisa dibuat pelanggan.
  */
 
-export type PhotoboothThemeId = "cream" | "wine" | "periwinkle" | "midnight" | "blossom";
+export type PhotoboothThemeId =
+  | "cream"
+  | "wine"
+  | "periwinkle"
+  | "crimson"
+  | "blossom"
+  | "midnight"
+  | "sage";
 
 export interface PhotoboothTheme {
   id: PhotoboothThemeId;
@@ -19,15 +26,22 @@ export interface PhotoboothTheme {
 }
 
 export const PHOTOBOOTH_THEMES: readonly PhotoboothTheme[] = [
+  // ── Palette Utama ──
   { id: "cream", name: "Atelier Cream", bg: "#FAF7F2", border: "#E5DDD0", text: "#531B21", dot: "#D8C7B0" },
   { id: "wine", name: "Wine Romance", bg: "#531B21", border: "#6D252D", text: "#FBF3E8", dot: "#8C3843" },
-  { id: "periwinkle", name: "Periwinkle Blue", bg: "#BCC8F5", border: "#A2B3ED", text: "#3B1418", dot: "#8CA2E5" },
-  { id: "midnight", name: "Midnight Noir", bg: "#1D1A1B", border: "#353031", text: "#F3ECE1", dot: "#524A4B" },
+  { id: "periwinkle", name: "Periwinkle Blue", bg: "#B4C6E7", border: "#9EB2D8", text: "#351419", dot: "#8EA8DA" },
+
+  // ── Romance & Floral ──
+  { id: "crimson", name: "Crimson Velvet", bg: "#7A222D", border: "#912E3B", text: "#FAF5EE", dot: "#A93A49" },
   { id: "blossom", name: "Blossom Pink", bg: "#F5D8DB", border: "#E8BAC0", text: "#531B21", dot: "#DB9FA8" },
+
+  // ── Umum & Botanical ──
+  { id: "midnight", name: "Midnight Noir", bg: "#1D1A1B", border: "#353031", text: "#F3ECE1", dot: "#524A4B" },
+  { id: "sage", name: "Sage Olive", bg: "#DCE4D8", border: "#C6D1C1", text: "#2E3A2C", dot: "#B0C0AA" },
 ] as const;
 
 export const DEFAULT_PHOTOBOOTH_THEME: PhotoboothThemeId = "cream";
-export const MAX_VAULT_PHOTOS = 4;
+export const MAX_VAULT_PHOTOS = 1;
 
 const THEME_IDS = new Set<string>(PHOTOBOOTH_THEMES.map((theme) => theme.id));
 

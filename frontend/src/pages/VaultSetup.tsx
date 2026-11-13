@@ -674,13 +674,13 @@ export default function VaultSetup() {
             </div>
 
             <form onSubmit={handleSave} className="vault-setup-form">
-              {/* CARD 1: PHOTOBOOTH 4-CUT STRIP */}
+              {/* CARD 1: ARCHIVAL KEEPSAKE PHOTO */}
               <section className="vault-setup-card">
                 <div className="card-step-badge">STEP 01</div>
-                <h2 className="vault-setup-card-title">Photobooth Memory Strip</h2>
+                <h2 className="vault-setup-card-title">Archival Keepsake Photo</h2>
                 <p className="vault-setup-card-sub">
-                  Unggah hingga 4 momen terbaik, pilih gaya border, dan lihat hasilnya persis seperti
-                  strip photobooth yang akan dibuka penerima lewat QR code.
+                  Unggah 1 foto kenangan terbaik, pilih gaya border favoritmu, dan lihat hasilnya persis seperti
+                  bingkai foto kenangan yang akan dibuka penerima lewat chip QR code.
                 </p>
 
                 <div className="vault-photobooth">
@@ -807,7 +807,7 @@ export default function VaultSetup() {
                     >
                       <div className="vault-strip-preview-head">
                         <span className="vault-strip-atelier">A CHAPTER ATELIER</span>
-                        <span className="vault-strip-edition">ARCHIVAL PHOTOBOOTH · 4 CUTS</span>
+                        <span className="vault-strip-edition">ARCHIVAL MEMORY · KEEPSAKE FRAME</span>
                       </div>
                       <div className="vault-strip-preview-grid">
                         {Array.from({ length: MAX_VAULT_PHOTOS }, (_, index) => {

@@ -25,6 +25,7 @@ import {
   formatHarga,
   formatBespokeCommissionWhatsApp,
 } from "@/lib/site";
+import { PHOTOBOOTH_THEMES, type PhotoboothThemeId } from "@/lib/vaultDesign";
 import useToast from "@/hooks/useToast";
 import { useAudioPlayback } from "@/hooks/useAudioPlayback";
 
@@ -32,15 +33,7 @@ import { useAudioPlayback } from "@/hooks/useAudioPlayback";
 // catalog only has a couple of active pieces.
 const editorialChapters = getHomeContentCatalogProducts("framed");
 
-const PHOTOBOOTH_THEMES = [
-  { id: "cream", name: "Atelier Cream", bg: "#FAF7F2", border: "#E5DDD0", text: "#531B21", dot: "#D8C7B0" },
-  { id: "wine", name: "Wine Romance", bg: "#531B21", border: "#6D252D", text: "#FBF3E8", dot: "#8C3843" },
-  { id: "periwinkle", name: "Periwinkle Blue", bg: "#BCC8F5", border: "#A2B3ED", text: "#3B1418", dot: "#8CA2E5" },
-  { id: "midnight", name: "Midnight Noir", bg: "#1D1A1B", border: "#353031", text: "#F3ECE1", dot: "#524A4B" },
-  { id: "blossom", name: "Blossom Pink", bg: "#F5D8DB", border: "#E8BAC0", text: "#531B21", dot: "#DB9FA8" },
-] as const;
-
-type PhotoboothBorderId = typeof PHOTOBOOTH_THEMES[number]["id"];
+type PhotoboothBorderId = PhotoboothThemeId;
 
 const PHOTOBOOTH_SAMPLE_PHOTOS = [
   { id: "cut-1", src: "/landing/polaroid-1.webp", alt: "Flower market morning bouquet" },
@@ -984,13 +977,13 @@ export default function Home() {
                               {/* Border / Style Picker */}
                               <div className="photobooth-controls">
                                 <div className="photobooth-control-header">
-                                  <span className="photobooth-control-badge">STUDIO PHOTOBOOTH</span>
-                                  <h4 className="photobooth-control-title">Pilih Gaya Border Photobooth</h4>
+                                  <span className="photobooth-control-badge">ARCHIVAL KEEPSAKE</span>
+                                  <h4 className="photobooth-control-title">Pilih Gaya Border Kenangan</h4>
                                   <p className="photobooth-control-desc">
-                                    Unggah 4 momen terbaikmu layaknya berfoto di studio photobooth, pilih bordermu sendiri, dan simpan selamanya di dalam chip QR.
+                                    Abadikan 1 momen terbaikmu dalam bingkai atelier eksklusif. Pilih warna bordermu sendiri dan simpan abadi di dalam chip QR.
                                   </p>
                                 </div>
-                                <div className="photobooth-theme-chips" role="radiogroup" aria-label="Pilih border photobooth">
+                                <div className="photobooth-theme-chips" role="radiogroup" aria-label="Pilih border foto kenangan">
                                   {PHOTOBOOTH_THEMES.map((theme) => {
                                     const isSelected = photoboothBorder === theme.id;
                                     return (
@@ -1019,16 +1012,16 @@ export default function Home() {
                                   })}
                                 </div>
                                 <div className="photobooth-perks">
-                                  <span className="photobooth-perk-item">✦ 4-Cut Vertical Strip</span>
+                                  <span className="photobooth-perk-item">✦ Single Keepsake Frame</span>
                                   <span className="photobooth-perk-item">✦ High-Res Cloud Record</span>
                                   <span className="photobooth-perk-item">✦ Scan to Relive</span>
                                 </div>
                               </div>
 
-                              {/* The Photobooth Strip */}
+                              {/* Single Keepsake Photo Frame */}
                               <div className="photobooth-strip-wrap">
                                 <div
-                                  className="photobooth-strip"
+                                  className="photobooth-strip photobooth-strip--single"
                                   style={{
                                     backgroundColor: activeTheme.bg,
                                     color: activeTheme.text,
@@ -1037,21 +1030,17 @@ export default function Home() {
                                 >
                                   <div className="photobooth-strip-head">
                                     <span className="strip-atelier-tag">A CHAPTER ATELIER</span>
-                                    <span className="strip-edition">ARCHIVAL PHOTOBOOTH · 4 CUTS</span>
+                                    <span className="strip-edition">ARCHIVAL MEMORY · KEEPSAKE FRAME</span>
                                   </div>
 
-                                  <div className="photobooth-strip-grid">
-                                    {PHOTOBOOTH_SAMPLE_PHOTOS.map((photo, pIdx) => (
-                                      <div key={photo.id} className="photobooth-strip-frame">
-                                        <img
-                                          src={photo.src}
-                                          alt={photo.alt}
-                                          className="photobooth-strip-img"
-                                          loading="lazy"
-                                        />
-                                        <span className="photobooth-frame-num" aria-hidden="true">0{pIdx + 1}</span>
-                                      </div>
-                                    ))}
+                                  <div className="photobooth-single-frame">
+                                    <img
+                                      src="/landing/polaroid-1.webp"
+                                      alt="Buket mawar kenangan abadi"
+                                      className="photobooth-strip-img"
+                                      loading="lazy"
+                                    />
+                                    <span className="photobooth-frame-num" aria-hidden="true">01</span>
                                   </div>
 
                                   <div className="photobooth-strip-foot">
