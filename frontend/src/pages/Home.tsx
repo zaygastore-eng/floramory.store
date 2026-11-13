@@ -1266,13 +1266,6 @@ export default function Home() {
           {/* ── KOLOM PENGISIAN ── */}
           <section className="lp-kolom" id="pesan">
             <span id="kolom-pengisian" className="lp-anchor" aria-hidden="true" />
-            <img
-              className="lp-kolom-lace"
-              src="/landing/kolom-lace.webp"
-              alt=""
-              aria-hidden="true"
-              loading="lazy"
-            />
             <div className="lp-kolom-inner">
               <h2 className="lp-script lp-kolom-title">Kolom Pengisian</h2>
               <p className="lp-kolom-lead">
@@ -1586,9 +1579,6 @@ export default function Home() {
                   );
                 })}
               </div>
-
-              <img className="lp-faq-envelope" src="/landing/envelope-pink.webp" alt="" aria-hidden="true" loading="lazy" />
-              <img className="lp-faq-applique" src="/landing/flower-applique.webp" alt="" aria-hidden="true" loading="lazy" />
             </div>
           </section>
         </main>

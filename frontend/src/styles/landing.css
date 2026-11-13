@@ -622,17 +622,6 @@
   pointer-events: none;
 }
 
-.landing-v2 .lp-kolom-lace {
-  position: absolute;
-  top: 0;
-  right: 0;
-  width: clamp(34px, 5vw, 68px);
-  height: 100%;
-  object-fit: cover;
-  opacity: 0.92;
-  pointer-events: none;
-}
-
 @media (min-width: 761px) {
   .landing-v2 .lp-vault-sim .folio-polaroid-script {
     color: #fdf5e9;
@@ -2012,28 +2001,6 @@
   color: #5c4740;
 }
 
-.landing-v2 .lp-faq-envelope {
-  position: absolute;
-  bottom: 2%;
-  left: 2%;
-  z-index: 1;
-  width: clamp(120px, 12vw, 160px);
-  transform: rotate(-9deg);
-  filter: drop-shadow(0 18px 30px rgba(107, 31, 42, 0.26));
-  pointer-events: none;
-}
-
-.landing-v2 .lp-faq-applique {
-  position: absolute;
-  top: 1.5%;
-  left: 38%;
-  z-index: 1;
-  width: clamp(44px, 5vw, 64px);
-  transform: rotate(12deg);
-  filter: drop-shadow(0 8px 14px rgba(107, 31, 42, 0.18));
-  pointer-events: none;
-}
-
 /* ── CLOSING ── */
 .landing-v2 .lp-closing {
   position: relative;
@@ -2125,11 +2092,6 @@
   .landing-v2 .lp-faq-head p {
     margin: 0 auto;
   }
-
-  .landing-v2 .lp-faq-envelope,
-  .landing-v2 .lp-faq-applique {
-    display: none;
-  }
 }
 
 @media (max-width: 760px) {
@@ -2184,11 +2146,6 @@
   .landing-v2 .lp-kolom {
     padding-left: 1rem;
     padding-right: 1rem;
-  }
-
-  .landing-v2 .lp-kolom-lace {
-    width: 28px;
-    opacity: 0.6;
   }
 
   .landing-v2 .lp-form-grid {
@@ -2269,10 +2226,6 @@
   .landing-v2 .lp-faq {
     padding-left: 1rem;
     padding-right: 1rem;
-  }
-
-  .landing-v2 .lp-kolom-lace {
-    display: none;
   }
 }
 
