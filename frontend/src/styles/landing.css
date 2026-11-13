@@ -892,27 +892,32 @@
 }
 
 .landing-v2 .lp-vault-head {
-  max-width: 700px;
-  margin: 0 auto clamp(2rem, 4vw, 3rem);
+  max-width: 620px;
+  margin: 0 auto clamp(1.2rem, 2.5vw, 1.8rem);
   text-align: center;
   color: #f8ede0;
 }
 
 .landing-v2 .lp-vault-head .lp-eyebrow {
-  color: #d9bfa9;
+  color: #B4C6E7;
+  font-size: 0.65rem;
+  letter-spacing: 0.16em;
 }
 
 .landing-v2 .lp-vault-title {
-  margin: 0.6rem 0 0.8rem;
-  font-size: clamp(3rem, 7vw, 5.2rem);
+  margin: 0.35rem 0 0.5rem;
+  font-size: clamp(2rem, 4vw, 3rem);
   color: #f3d9c8;
+  line-height: 1.15;
 }
 
 .landing-v2 .lp-vault-head p {
   font-family: var(--lp-body);
-  font-size: 0.94rem;
-  line-height: 1.85;
+  font-size: 0.82rem;
+  line-height: 1.65;
   color: rgba(251, 240, 228, 0.82);
+  max-width: 540px;
+  margin: 0 auto;
 }
 
 .landing-v2 .lp-vault-sim {
