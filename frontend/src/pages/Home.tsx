@@ -316,9 +316,9 @@ export default function Home() {
 
   useEffect(() => {
     applyPageMeta({
-      title: "A Chapter — Atelier of Botanical Keepsakes & Smart Memory Vault",
+      title: "A Chapter — Atelier Preserved Flowers & Smart Memory Vault",
       description:
-        "Aksesori preserved flower dengan Smart-QR Memory Vault. Simpan babak terindah hidupmu dalam keindahan botani abadi.",
+        "Karya seni botani abadi dari kelopak bunga asli, dipadukan dengan Smart-QR Memory Vault seumur hidup untuk menyimpan foto, rekaman suara, video, dan surat personal Anda.",
       path: "/",
     });
   }, []);
@@ -608,13 +608,14 @@ export default function Home() {
           <div className="lp-hero-veil" aria-hidden="true" />
           <div className="lp-hero-inner">
             <span className="lp-hero-kicker">A CHAPTER · PRE-ORDER 2026</span>
-            <h1 className="lp-hero-title" aria-label="Where Every Flowers Tells Your Chapter">
-              <span className="lp-hero-flowers-wrap">
-                <span className="lp-hero-where">WHERE EVERY</span>
-                <span className="lp-hero-flowers">Flowers</span>
+            <h1 className="lp-hero-title" aria-label="Where Every Flower Tells Your Chapter">
+              <span className="lp-hero-line-primary">
+                <span className="lp-hero-serif">WHERE EVERY FLOWER</span>
               </span>
-              <span className="lp-hero-tells">TELLS YOUR</span>
-              <span className="lp-hero-chapter">Chapter</span>
+              <span className="lp-hero-line-secondary">
+                <span className="lp-hero-serif">TELLS YOUR</span>
+                <span className="lp-hero-chapter">Chapter</span>
+              </span>
             </h1>
             <p className="lp-hero-sub">
               The Pre-Order phase is officially open.

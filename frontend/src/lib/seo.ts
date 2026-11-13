@@ -88,9 +88,9 @@ function setCanonical(href: string): void {
 // Setelah app dimuat: isi url/gambar absolut utk halaman umum (mis. /).
 export function ensureBaseMeta(): void {
   applyPageMeta({
-    title: "A Chapter — Atelier of Botanical Keepsakes & Smart Memory Vault",
+    title: "A Chapter — Atelier Preserved Flowers & Smart Memory Vault",
     description:
-      "Aksesori preserved flower dengan Smart-QR Memory Vault. Simpan babak terindah hidupmu dalam keindahan botani abadi.",
+      "Karya seni botani abadi dari kelopak bunga asli, dipadukan dengan Smart-QR Memory Vault seumur hidup untuk menyimpan foto, rekaman suara, video, dan surat personal Anda.",
     path: "/",
   });
 }
