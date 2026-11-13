@@ -1453,7 +1453,6 @@ export default function Home() {
                         id={`faq-btn-${index}`}
                         onClick={() => toggleFaq(index)}
                       >
-                        <span className="lp-faq-seal" aria-hidden="true" />
                         <span className="faq-question-text">{item.q}</span>
                         <span className="faq-toggle-icon" aria-hidden="true">+</span>
                       </button>
