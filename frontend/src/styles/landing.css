@@ -395,7 +395,9 @@
   justify-content: center;
   gap: clamp(1rem, 3vw, 2.2rem);
   padding: clamp(1.2rem, 2.6vw, 2rem) 1rem;
-  background: linear-gradient(180deg, #cfd8fb 0%, var(--lp-periwinkle) 100%);
+  background: linear-gradient(180deg, #f4ece1 0%, #ebe0d0 100%);
+  border-top: 1px solid rgba(83, 27, 33, 0.08);
+  border-bottom: 1px solid rgba(83, 27, 33, 0.08);
 }
 
 .landing-v2 .lp-band-line {
@@ -414,10 +416,10 @@
 
 .landing-v2 .lp-products-body {
   padding: clamp(2.5rem, 5vw, 4.5rem) clamp(1rem, 5vw, 5rem);
-  background-color: #b4c6ee;
+  background-color: #faf5ee;
   background-image:
-    radial-gradient(ellipse at 50% 15%, rgba(255, 255, 255, 0.55), transparent 65%),
-    linear-gradient(180deg, #bcc8f5 0%, #a2b7ed 100%);
+    radial-gradient(ellipse at 50% 15%, rgba(255, 255, 255, 0.7), transparent 65%),
+    linear-gradient(180deg, #fdf8f2 0%, #f4ede2 100%);
   color: var(--lp-wine, #531B21);
 }
 
@@ -444,6 +446,11 @@
   color: var(--lp-wine, #531B21);
   text-align: center;
   cursor: pointer;
+  transition: transform 0.25s ease;
+}
+
+.landing-v2 .lp-products .product-card:hover {
+  transform: translateY(-4px);
 }
 
 .landing-v2 .lp-products .product-img {
@@ -451,8 +458,15 @@
   aspect-ratio: 7 / 10;
   border-radius: 6px;
   overflow: visible;
-  background: #bcc8f5;
-  box-shadow: 0 18px 34px rgba(40, 50, 90, 0.22);
+  background: #fdfaf5;
+  border: 1px solid #e8e2d9;
+  box-shadow: 0 16px 32px rgba(60, 30, 35, 0.1);
+  transition: box-shadow 0.25s ease, border-color 0.25s ease;
+}
+
+.landing-v2 .lp-products .product-card:hover .product-img {
+  border-color: #d8cebf;
+  box-shadow: 0 22px 42px rgba(83, 27, 33, 0.16);
 }
 
 .landing-v2 .lp-products .product-img-layer {
@@ -460,7 +474,7 @@
   inset: 0;
   overflow: hidden;
   border-radius: 6px;
-  background: #bcc8f5;
+  background: #fdfaf5;
 }
 
 .landing-v2 .lp-products .product-thumb {
@@ -474,7 +488,7 @@
   position: absolute;
   inset: 0;
   z-index: 4;
-  background: url("/landing/ornate-card-mat.webp") center / 100% 100% no-repeat;
+  background: url("/landing/ornate-card-mat-warm.webp") center / 100% 100% no-repeat;
   pointer-events: none;
 }
 
@@ -715,35 +729,36 @@
 .landing-v2 .lp-form .form-select,
 .landing-v2 .lp-form .form-textarea {
   width: 100%;
-  padding: 0.65rem 0;
-  border: 0;
-  border-bottom: 1px solid rgba(107, 31, 42, 0.32);
-  border-radius: 0;
-  background: transparent;
+  padding: 0.75rem 0.95rem;
+  border: 1.5px solid rgba(107, 31, 42, 0.22);
+  border-radius: 4px;
+  background: #fffdf9;
   color: var(--lp-ink);
-  font-family: var(--lp-display);
-  font-size: 1.02rem;
+  font-family: var(--lp-body);
+  font-size: 0.94rem;
   line-height: 1.5;
   outline: none;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
 }
 
 .landing-v2 .lp-form .form-input::placeholder,
 .landing-v2 .lp-form .form-textarea::placeholder {
-  color: rgba(90, 70, 64, 0.5);
+  color: #8c7870;
   font-family: var(--lp-body);
-  font-size: 0.82rem;
+  font-size: 0.86rem;
+  opacity: 0.9;
 }
 
 .landing-v2 .lp-form .form-input:focus,
 .landing-v2 .lp-form .form-select:focus,
 .landing-v2 .lp-form .form-textarea:focus {
-  border-bottom-color: var(--lp-wine);
-  box-shadow: 0 1px 0 var(--lp-wine);
+  border-color: var(--lp-wine);
+  background: #ffffff;
+  box-shadow: 0 0 0 3px rgba(107, 31, 42, 0.14);
 }
 
 .landing-v2 .lp-form .form-select {
-  background-color: transparent;
+  background-color: #fffdf9;
   cursor: pointer;
 }
 
@@ -767,6 +782,17 @@
 .landing-v2 .lp-submit {
   width: 100%;
   margin-top: 1.6rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  min-height: 48px;
+  font-size: 0.8rem;
+  letter-spacing: 0.12em;
+}
+
+.landing-v2 .lp-submit-wa-icon {
+  flex: 0 0 auto;
 }
 
 .landing-v2 .commission-form-note {
