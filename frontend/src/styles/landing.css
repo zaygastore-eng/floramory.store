@@ -236,52 +236,59 @@
 
 .landing-v2 .lp-hero-title {
   display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: nowrap;
+  gap: clamp(0.35rem, 1.2vw, 1.4rem);
+  width: 100%;
+  max-width: 1240px;
+  margin: clamp(1rem, 2.5vh, 2.2rem) auto clamp(1.2rem, 2.8vh, 2.2rem);
+  line-height: 1;
+}
+
+.landing-v2 .lp-hero-script {
+  font-family: var(--lp-script);
+  font-size: clamp(3.2rem, 7.8vw, 7.4rem);
+  font-weight: 400;
+  line-height: 0.9;
+  color: #ffffff;
+  white-space: nowrap;
+  text-shadow:
+    0 0 12px rgba(255, 245, 225, 0.95),
+    0 0 28px rgba(255, 220, 180, 0.65),
+    0 4px 18px rgba(15, 5, 8, 0.8);
+}
+
+.landing-v2 .lp-hero-flowers {
+  transform: translateY(-0.02em);
+}
+
+.landing-v2 .lp-hero-chapter {
+  transform: translateY(0.04em);
+}
+
+.landing-v2 .lp-hero-middle {
+  display: inline-flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: clamp(0.35rem, 1.2vh, 0.85rem);
-  width: 100%;
-  max-width: 1100px;
-  margin: clamp(1rem, 2.4vh, 1.8rem) auto clamp(1.2rem, 2.6vh, 1.8rem);
-  line-height: 1.1;
-}
-
-.landing-v2 .lp-hero-line-primary,
-.landing-v2 .lp-hero-line-secondary {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-wrap: wrap;
-  gap: clamp(0.4rem, 1.2vw, 1rem);
+  gap: clamp(0.1rem, 0.4vw, 0.35rem);
+  padding: 0 clamp(0.15rem, 0.5vw, 0.6rem);
 }
 
 .landing-v2 .lp-hero-serif {
-  font-family: "Cinzel", serif;
-  font-size: clamp(1.4rem, 3.8vw, 2.9rem);
-  font-weight: 500;
+  font-family: "Cinzel", "Playfair Display", serif;
+  font-size: clamp(0.72rem, 1.9vw, 1.6rem);
+  font-weight: 600;
   letter-spacing: 0.16em;
   line-height: 1.15;
   text-transform: uppercase;
   color: #ffffff;
   white-space: nowrap;
   text-shadow:
-    0 2px 14px rgba(0, 0, 0, 0.8),
-    0 0 20px rgba(83, 27, 33, 0.4);
-}
-
-.landing-v2 .lp-hero-chapter {
-  font-family: "Parisienne", cursive;
-  font-size: clamp(2.8rem, 6.8vw, 5.6rem);
-  font-weight: 400;
-  line-height: 0.85;
-  color: #ffe6bd;
-  white-space: nowrap;
-  margin-left: clamp(0.2rem, 0.6vw, 0.6rem);
-  transform: translateY(0.08em);
-  text-shadow:
-    0 0 12px rgba(255, 230, 189, 0.85),
-    0 0 28px rgba(230, 162, 70, 0.5),
-    0 4px 18px rgba(20, 8, 10, 0.7);
+    0 2px 12px rgba(0, 0, 0, 0.85),
+    0 0 16px rgba(83, 27, 33, 0.45);
 }
 
 .landing-v2 .lp-hero-sub {
@@ -2077,31 +2084,28 @@
 
 @media (max-width: 760px) {
   .landing-v2 .lp-hero-title {
-    flex-direction: column;
-    gap: 0.4rem;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    gap: clamp(0.2rem, 1vw, 0.6rem);
   }
 
-  .landing-v2 .lp-hero-line-primary,
-  .landing-v2 .lp-hero-line-secondary {
-    flex-direction: column;
-    gap: 0.15rem;
+  .landing-v2 .lp-hero-script {
+    font-size: clamp(2.4rem, 11vw, 4.2rem);
   }
 
   .landing-v2 .lp-hero-serif {
-    font-size: clamp(1.2rem, 5.8vw, 1.85rem);
-    letter-spacing: 0.14em;
-    line-height: 1.25;
+    font-size: clamp(0.55rem, 2.5vw, 0.95rem);
+    letter-spacing: 0.12em;
+    line-height: 1.15;
   }
 
-  .landing-v2 .lp-hero-chapter {
-    font-size: clamp(2.6rem, 13vw, 4rem);
-    margin-left: 0;
-    transform: none;
-    line-height: 0.9;
+  .landing-v2 .lp-hero-middle {
+    gap: 0.15rem;
+    padding: 0 0.15rem;
   }
 
   .landing-v2 .lp-hero-inner {
-    padding-top: 6.5rem;
+    padding-top: 5.5rem;
   }
 
   .landing-v2 .lp-intro-copy {

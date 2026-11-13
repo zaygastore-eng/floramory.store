@@ -664,15 +664,13 @@ export default function Home() {
           />
           <div className="lp-hero-veil" aria-hidden="true" />
           <div className="lp-hero-inner">
-            <span className="lp-hero-kicker">A CHAPTER · PRE-ORDER 2026</span>
-            <h1 className="lp-hero-title" aria-label="Where Every Flower Tells Your Chapter">
-              <span className="lp-hero-line-primary">
-                <span className="lp-hero-serif">WHERE EVERY FLOWER</span>
-              </span>
-              <span className="lp-hero-line-secondary">
+            <h1 className="lp-hero-title" aria-label="Where Every Flowers Tells Your Chapter">
+              <span className="lp-hero-script lp-hero-flowers">Flowers</span>
+              <span className="lp-hero-middle">
+                <span className="lp-hero-serif">WHERE EVERY</span>
                 <span className="lp-hero-serif">TELLS YOUR</span>
-                <span className="lp-hero-chapter">Chapter</span>
               </span>
+              <span className="lp-hero-script lp-hero-chapter">Chapter</span>
             </h1>
             <p className="lp-hero-sub">
               The Pre-Order phase is officially open.
