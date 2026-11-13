@@ -36,15 +36,20 @@ export function formatHarga(raw: string): string {
 
 export function formatBespokeCommissionWhatsApp(params: {
   customerName: string;
-  productName: string;
-  moment?: string;
+  collection: string;
+  initial: string;
+  colorPalette: string;
   notes?: string;
+  isVip?: boolean;
 }): string {
-  return `Halo Concierge A Chapter, saya ingin memesan karya botani abadi:
-• Nama Pemesan: ${params.customerName.trim()}
-• Pilihan Koleksi: ${params.productName.trim()}
-• Momen: ${params.moment?.trim() || "-"}
-• Catatan Khusus: ${params.notes?.trim() || "-"}
+  return `Halo Concierge A Chapter, saya ingin menyegel pre-order:
 
-Mohon info ketersediaan slot dan langkah pengunggahan brankas memori berikutnya. Terima kasih.`;
+• Nama Pemesan: ${params.customerName.trim()}
+• Pilihan Koleksi: ${params.collection.trim()}
+• Inisial Pilihan: ${params.initial.trim()}
+• Nuansa Warna: ${params.colorPalette.trim()}
+• Catatan Khusus / Ucapan: ${params.notes?.trim() || "-"}
+• Status VIP Waiting List: ${params.isVip ? "Ya (Klaim Early-Bird Privilege)" : "Belum Terdaftar"}
+
+Mohon verifikasi ketersediaan slot, nomor registrasi arsip, dan langkah pengisian brankas memori saya. Terima kasih.`;
 }
