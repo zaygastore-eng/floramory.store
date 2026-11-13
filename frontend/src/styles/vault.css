@@ -2426,13 +2426,13 @@
   width: 100%;
   height: auto;
   display: block;
-  border-radius: 6px;
-  box-shadow: 0 20px 44px rgba(58, 22, 27, 0.2);
+  border-radius: 10px;
+  background-color: #ffffff;
+  box-shadow: 0 16px 36px rgba(58, 22, 27, 0.1);
   pointer-events: none;
 }
 
-/* Surat diletakkan sebagai lembar perkamen di bawah papan renda dan
-   tumbuh mengikuti panjang isi — tidak pernah terpotong. */
+/* Surat diletakkan sebagai lembar kertas putih bersih yang tumbuh mengikuti panjang isi */
 .vault-lace-parchment {
   position: relative;
   z-index: 1;
@@ -2441,14 +2441,10 @@
   display: flex;
   flex-direction: column;
   padding: 1.6rem 1.9rem 1.9rem;
-  border-radius: 2px;
-  background-color: #fdf6e9;
-  background-image:
-    linear-gradient(rgba(253, 246, 233, 0.93), rgba(253, 246, 233, 0.96)),
-    url("/landing/cream-paper.webp");
-  background-position: center;
-  background-size: cover;
-  box-shadow: 0 18px 40px rgba(58, 22, 27, 0.16);
+  border-radius: 6px;
+  background-color: #ffffff;
+  border: 1px solid rgba(228, 218, 208, 0.7);
+  box-shadow: 0 16px 36px rgba(58, 22, 27, 0.08);
 }
 
 .vault-lace-letter {
@@ -3088,13 +3084,17 @@
 }
 
 .vault-lace-board .vault-lace-mat {
-  border-radius: 8px;
-  box-shadow: 0 18px 44px rgba(35, 12, 18, 0.18);
+  border-radius: 10px;
+  background-color: #ffffff;
+  box-shadow: 0 16px 40px rgba(35, 12, 18, 0.1);
 }
 
 .vault-lace-board .vault-lace-parchment {
   width: min(100%, 720px);
   padding: 1.4rem 1.6rem;
+  background-color: #ffffff;
+  border: 1px solid rgba(228, 218, 208, 0.7);
+  box-shadow: 0 16px 36px rgba(58, 22, 27, 0.08);
 }
 
 .vault-lace-textarea {

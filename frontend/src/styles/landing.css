@@ -1710,9 +1710,10 @@
 .landing-v2 .lace-board-frame {
   position: relative;
   width: min(100%, 640px);
-  border-radius: 10px;
+  border-radius: 12px;
   overflow: hidden;
-  box-shadow: 0 16px 40px rgba(35, 12, 18, 0.2);
+  background: #ffffff;
+  box-shadow: 0 16px 40px rgba(35, 12, 18, 0.12);
 }
 
 .landing-v2 .lace-board-mat {
@@ -1724,10 +1725,10 @@
 
 .landing-v2 .lace-board-parchment {
   position: absolute;
-  top: 24%;
-  bottom: 12%;
-  left: 22%;
-  right: 17%;
+  top: 18%;
+  bottom: 19%;
+  left: 16%;
+  right: 22%;
   display: flex;
   flex-direction: column;
   padding: 0.5rem 0.8rem;
