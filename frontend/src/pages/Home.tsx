@@ -665,12 +665,15 @@ export default function Home() {
           <div className="lp-hero-veil" aria-hidden="true" />
           <div className="lp-hero-inner">
             <h1 className="lp-hero-title" aria-label="Where Every Flowers Tells Your Chapter">
-              <span className="lp-hero-script lp-hero-flowers">Flowers</span>
-              <span className="lp-hero-middle">
-                <span className="lp-hero-serif">WHERE EVERY</span>
-                <span className="lp-hero-serif">TELLS YOUR</span>
-              </span>
-              <span className="lp-hero-script lp-hero-chapter">Chapter</span>
+              <img
+                src="/landing/hero-title-lockup.webp"
+                alt="Where Every Flowers Tells Your Chapter"
+                className="lp-hero-title-image"
+                width="2829"
+                height="535"
+                loading="eager"
+                decoding="async"
+              />
             </h1>
             <p className="lp-hero-sub">
               The Pre-Order phase is officially open.
