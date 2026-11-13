@@ -27,8 +27,16 @@ export default function ProductSpecimen({
               height={1250}
               loading="eager"
               fallback={
-                <div className="product-img-monogram">
-                  <span className="product-monogram-inner">A · C</span>
+                <div className="product-img-monogram" aria-label="A Chapter Botanical Atelier">
+                  <img
+                    src="/a-chapter-logo.png"
+                    alt="A Chapter"
+                    className="product-fallback-logo"
+                    width={150}
+                    height={45}
+                    loading="lazy"
+                    decoding="async"
+                  />
                 </div>
               }
             />

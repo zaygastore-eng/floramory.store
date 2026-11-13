@@ -550,7 +550,9 @@ export default function VaultSetup() {
           /* ── DP 50% GATE: konsol terkunci sampai admin memverifikasi ── */
           <section className="vault-setup-card vault-dp-card" role="status">
             <div className="vault-dp-seal" aria-hidden="true">
-              <span className="wax-seal-circle">A · C</span>
+              <span className="wax-seal-circle">
+                <img src="/a-chapter-logo-light.png" alt="" className="wax-seal-logo-img" />
+              </span>
             </div>
             <span className="vault-dp-kicker">MEMORY VAULT · MENUNGGU VERIFIKASI DP</span>
             <h2 className="vault-setup-card-title vault-dp-title">
@@ -641,7 +643,9 @@ export default function VaultSetup() {
         ) : saved || vaultLocked ? (
           <section className="vault-setup-card text-center vault-setup-success-card" role="status">
             <div className="vault-wax-seal-hero" aria-hidden="true" style={{ margin: "0 auto 1.5rem" }}>
-              <span className="wax-seal-circle">A · C</span>
+              <span className="wax-seal-circle">
+                <img src="/a-chapter-logo-light.png" alt="" className="wax-seal-logo-img" />
+              </span>
             </div>
             <h2 className="vault-setup-card-title" style={{ fontSize: "2rem" }}>Kenangan Berhasil Dikunci</h2>
             <p className="vault-setup-hint" style={{ maxWidth: "480px", margin: "1rem auto 2rem" }}>
@@ -826,7 +830,9 @@ export default function VaultSetup() {
                       </div>
                       <div className="vault-strip-preview-foot">
                         <span className="vault-strip-date">SURABAYA ATELIER · 2026</span>
-                        <span className="vault-strip-monogram" aria-hidden="true">A · C</span>
+                        <span className="vault-strip-monogram" aria-hidden="true">
+                          <img src="/a-chapter-logo.png" alt="" className="strip-logo-img" />
+                        </span>
                       </div>
                     </div>
                     <span className="vault-strip-caption">Live preview strip penerima</span>

@@ -16,10 +16,14 @@
   border: 3px solid var(--accent-gold, #C5A880);
   box-shadow: 0 18px 40px rgba(83, 27, 33, 0.28);
   animation: loadingSealPulse 1.8s ease-in-out infinite;
+  padding: 12px;
 }
-.loading-seal .wax-seal-circle {
-  font-size: 0.95rem;
-  letter-spacing: 0.1em;
+.loading-seal-logo {
+  max-width: 58px;
+  width: 80%;
+  height: auto;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.35));
 }
 .loading-brand {
   font-family: var(--font-body, system-ui, sans-serif);

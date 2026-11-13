@@ -78,7 +78,9 @@ export default function AboutUs() {
               <div className="philosophy-visual">
                 <div className="philosophy-visual-card">
                   <div className="philosophy-visual-box">
-                    <span className="philosophy-herbarium-seal">A · C</span>
+                    <span className="philosophy-herbarium-seal">
+                      <img src="/a-chapter-logo-light.png" alt="" className="herbarium-seal-logo" />
+                    </span>
                     <div className="philosophy-art-frame">
                       <span className="art-frame-text">ARCHIVAL BOTANICAL SPECIMEN · 2026</span>
                     </div>

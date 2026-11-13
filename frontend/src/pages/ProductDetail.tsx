@@ -248,7 +248,15 @@ export default function ProductDetail() {
                     loading="eager"
                     fallback={
                       <div className="product-img-monogram" aria-label="A Chapter Atelier">
-                        <span className="product-monogram-inner">A · C</span>
+                        <img
+                          src="/a-chapter-logo.png"
+                          alt="A Chapter"
+                          className="product-fallback-logo"
+                          width={150}
+                          height={45}
+                          loading="lazy"
+                          decoding="async"
+                        />
                       </div>
                     }
                   />
@@ -426,8 +434,16 @@ export default function ProductDetail() {
                         height={750}
                         loading="lazy"
                         fallback={
-                          <div className="product-img-monogram">
-                            <span className="product-monogram-inner">A · C</span>
+                          <div className="product-img-monogram" aria-label="A Chapter">
+                            <img
+                              src="/a-chapter-logo.png"
+                              alt="A Chapter"
+                              className="product-fallback-logo"
+                              width={130}
+                              height={39}
+                              loading="lazy"
+                              decoding="async"
+                            />
                           </div>
                         }
                       />

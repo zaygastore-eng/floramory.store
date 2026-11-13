@@ -854,6 +854,14 @@
   display: grid;
   place-items: center;
   border: 1px solid var(--chapter-gold);
+  padding: 4px;
+}
+
+.herbarium-seal-logo {
+  max-width: 26px;
+  width: 80%;
+  height: auto;
+  object-fit: contain;
 }
 
 .philosophy-art-frame {

@@ -918,6 +918,15 @@
   background: radial-gradient(circle at 32% 28%, #7d2b33 0%, #531B21 60%, #3c1317 100%);
   border: 2px solid var(--accent-gold, #C5A880);
   box-shadow: 0 6px 16px rgba(83, 27, 33, 0.3);
+  padding: 6px;
+}
+
+.vault-seal-logo-img {
+  max-width: 32px;
+  width: 80%;
+  height: auto;
+  object-fit: contain;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.4));
 }
 
 .hero-vault-kicker {

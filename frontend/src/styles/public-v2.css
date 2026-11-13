@@ -201,6 +201,15 @@
   background:
     radial-gradient(circle at 50% 42%, rgba(232, 201, 168, 0.16), transparent 62%),
     linear-gradient(160deg, #7a2733 0%, #4a1019 100%);
+  padding: 1.5rem;
+}
+
+.public-v2 .shop-card .product-fallback-logo {
+  max-width: 135px;
+  width: 70%;
+  height: auto;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.35));
 }
 
 .public-v2 .shop-card .product-monogram-inner {

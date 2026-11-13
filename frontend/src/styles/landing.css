@@ -496,6 +496,17 @@
   justify-content: center;
   background: #c5d3f8;
   background-image: radial-gradient(circle at 50% 48%, #dae5fd 0%, #b8c8f2 100%);
+  padding: 1.5rem;
+}
+
+.landing-v2 .lp-products .product-fallback-logo {
+  max-width: 135px;
+  width: 70%;
+  height: auto;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 8px rgba(83, 27, 33, 0.16));
+  pointer-events: none;
+  user-select: none;
 }
 
 .landing-v2 .lp-products .product-monogram-inner {

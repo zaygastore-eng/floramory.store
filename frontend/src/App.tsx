@@ -23,7 +23,7 @@ function LoadingPage() {
   return (
     <div className="loading-screen" role="status" aria-live="polite">
       <div className="loading-seal" aria-hidden="true">
-        <span className="wax-seal-circle">A · C</span>
+        <img src="/a-chapter-logo-light.png" alt="A Chapter" className="loading-seal-logo" />
       </div>
       <span className="loading-brand">A CHAPTER</span>
       <span className="loading-caption">Menyiapkan arsip kenangan...</span>

@@ -111,7 +111,9 @@ export default function SmartQrVault() {
                 <div className="hero-phone-screen">
                   <span className="hero-phone-scan" />
                   <div className="hero-vault-card">
-                    <span className="hero-vault-seal">A · C</span>
+                    <span className="hero-vault-seal">
+                      <img src="/a-chapter-logo-light.png" alt="" className="vault-seal-logo-img" />
+                    </span>
                     <span className="hero-vault-kicker">MEMORY VAULT</span>
                     <p className="hero-vault-dedication">
                       Untuk seseorang yang paling berarti
@@ -207,7 +209,11 @@ export default function SmartQrVault() {
                                 alt={tab.excerpt}
                                 width={900}
                                 height={675}
-                                fallback={<div className="folio-polaroid-placeholder">A · C</div>}
+                                fallback={
+                                  <div className="folio-polaroid-placeholder" aria-label="A Chapter">
+                                    <img src="/a-chapter-logo.png" alt="A Chapter" className="folio-polaroid-fallback-logo" />
+                                  </div>
+                                }
                               />
                             </div>
                             <p className="folio-polaroid-script">{tab.handwrittenCaption}</p>
@@ -322,7 +328,9 @@ export default function SmartQrVault() {
                       return (
                         <div className="sim-panel" key={tab.kind}>
                           <div className="folio-letter">
-                            <div className="folio-letter-seal" aria-hidden="true">A · C</div>
+                            <div className="folio-letter-seal" aria-hidden="true">
+                              <img src="/a-chapter-logo-light.png" alt="" className="vault-seal-logo-img" />
+                            </div>
                             <p className="folio-letter-greeting">{tab.greeting}</p>
                             <p className="folio-letter-body">{tab.letterText}</p>
                             <div className="folio-letter-signoff">

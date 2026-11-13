@@ -328,7 +328,9 @@ export default function VaultExperience({
     return (
       <div className="vault-memoir-loading public-v2">
         <div className="vault-wax-seal-hero pulse" aria-hidden="true">
-          <span className="wax-seal-circle">A · C</span>
+          <span className="wax-seal-circle">
+            <img src="/a-chapter-logo-light.png" alt="" className="wax-seal-logo-img" />
+          </span>
         </div>
         <p className="vault-loading-text">Membuka Brankas Memoar Rahasia...</p>
       </div>
@@ -375,7 +377,9 @@ export default function VaultExperience({
             <span className="vault-opening-ring" aria-hidden="true" />
             <span className="vault-opening-ring ring-two" aria-hidden="true" />
             <div className="vault-opening-seal" aria-hidden="true">
-              <span className="wax-seal-circle">A · C</span>
+              <span className="wax-seal-circle">
+                <img src="/a-chapter-logo-light.png" alt="" className="wax-seal-logo-img" />
+              </span>
             </div>
             <span className="vault-opening-kicker">A CHAPTER · MEMORY VAULT</span>
             <h2 className="vault-opening-title">Membuka babak rahasia...</h2>
@@ -407,7 +411,9 @@ export default function VaultExperience({
               aria-label="Ketuk segel lilin untuk membuka brankas memori"
             >
               <span className="vault-seal-tap-ring" aria-hidden="true" />
-              <span className="vault-seal-tap-wax" aria-hidden="true">A · C</span>
+              <span className="vault-seal-tap-wax" aria-hidden="true">
+                <img src="/a-chapter-logo-light.png" alt="" className="wax-seal-logo-img" />
+              </span>
               <span className="vault-seal-tap-label">Tap to Open Vault</span>
             </button>
 
@@ -427,7 +433,9 @@ export default function VaultExperience({
         {/* ── 1. WAX SEAL REVEAL HERO ── */}
         <header className="vault-memoir-hero">
           <div className="vault-wax-seal-hero" aria-hidden="true">
-            <span className="wax-seal-circle">A · C</span>
+            <span className="wax-seal-circle">
+              <img src="/a-chapter-logo-light.png" alt="" className="wax-seal-logo-img" />
+            </span>
           </div>
 
           <div className="vault-hero-text">
@@ -597,7 +605,9 @@ export default function VaultExperience({
                         </div>
                         <div className="vault-recipient-strip-foot">
                           <span className="strip-date">SURABAYA ATELIER · 2026</span>
-                          <span className="strip-monogram" aria-hidden="true">A · C</span>
+                          <span className="strip-monogram" aria-hidden="true">
+                            <img src="/a-chapter-logo.png" alt="" className="strip-logo-img" />
+                          </span>
                         </div>
                       </div>
                       <p className="vault-strip-caption">

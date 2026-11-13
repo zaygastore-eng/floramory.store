@@ -521,6 +521,16 @@
   justify-content: center;
   background: #f6f4ee;
   position: relative;
+  padding: 1.5rem;
+}
+.product-fallback-logo {
+  max-width: 135px;
+  width: 70%;
+  height: auto;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 8px rgba(83, 27, 33, 0.16));
+  pointer-events: none;
+  user-select: none;
 }
 .product-monogram-inner {
   font-family: var(--font-display, 'Cormorant Garamond', serif);
@@ -1553,8 +1563,8 @@
 .certificate-seal {
   display: inline-grid;
   place-items: center;
-  width: 44px;
-  height: 44px;
+  width: 52px;
+  height: 52px;
   border-radius: 50%;
   background: var(--chapter-burgundy, #531B21);
   color: #f7e9d8;
@@ -1563,6 +1573,15 @@
   font-weight: 700;
   margin-bottom: 1.25rem;
   border: 1px solid var(--chapter-gold, #C5A880);
+  padding: 6px;
+  box-shadow: 0 4px 12px rgba(83, 27, 33, 0.25);
+}
+.certificate-seal-logo {
+  max-width: 36px;
+  width: 80%;
+  height: auto;
+  object-fit: contain;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.4));
 }
 .certificate-eyebrow {
   font-family: var(--font-body);

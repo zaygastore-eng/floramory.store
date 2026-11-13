@@ -155,7 +155,15 @@ export default function ShopAll() {
                             loading="lazy"
                             fallback={
                               <div className="product-img-monogram" aria-label="A Chapter Botanical Atelier">
-                                <span className="product-monogram-inner">A · C</span>
+                                <img
+                                  src="/a-chapter-logo-light.png"
+                                  alt="A Chapter"
+                                  className="product-fallback-logo"
+                                  width={130}
+                                  height={39}
+                                  loading="lazy"
+                                  decoding="async"
+                                />
                               </div>
                             }
                           />
@@ -168,7 +176,19 @@ export default function ShopAll() {
                             width={600}
                             height={750}
                             loading="lazy"
-                            fallback={<div className="product-img-monogram" />}
+                            fallback={
+                              <div className="product-img-monogram" aria-hidden="true">
+                                <img
+                                  src="/a-chapter-logo-light.png"
+                                  alt=""
+                                  className="product-fallback-logo"
+                                  width={130}
+                                  height={39}
+                                  loading="lazy"
+                                  decoding="async"
+                                />
+                              </div>
+                            }
                           />
                         </div>
                         <span className="product-badge">{badge}</span>

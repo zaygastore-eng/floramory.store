@@ -116,7 +116,15 @@ function ProductCard({
             loading="lazy"
             fallback={
               <div className="product-img-monogram" aria-label="A Chapter Botanical Atelier">
-                <span className="product-monogram-inner">A · C</span>
+                <img
+                  src="/a-chapter-logo.png"
+                  alt="A Chapter"
+                  className="product-fallback-logo"
+                  width={130}
+                  height={39}
+                  loading="lazy"
+                  decoding="async"
+                />
               </div>
             }
           />
@@ -130,7 +138,19 @@ function ProductCard({
               width={480}
               height={600}
               loading="lazy"
-              fallback={<div className="product-img-monogram" />}
+              fallback={
+                <div className="product-img-monogram" aria-hidden="true">
+                  <img
+                    src="/a-chapter-logo.png"
+                    alt=""
+                    className="product-fallback-logo"
+                    width={130}
+                    height={39}
+                    loading="lazy"
+                    decoding="async"
+                  />
+                </div>
+              }
             />
           </div>
         )}
@@ -1277,7 +1297,9 @@ export default function Home() {
               <div className="lp-kolom-card">
                 {orderComplete ? (
                   <div className="commission-confirmation lp-confirmation" role="status" aria-live="polite">
-                    <div className="certificate-seal" aria-hidden="true">A · C</div>
+                    <div className="certificate-seal" aria-hidden="true">
+                      <img src="/a-chapter-logo-light.png" alt="" className="certificate-seal-logo" />
+                    </div>
                     <span className="commission-eyebrow">A CHAPTER ATELIER · OFFICIAL ARCHIVE</span>
                     <h2 className="commission-title">Your Chapter Begins Here.</h2>
                     <p className="commission-confirmation-copy">
