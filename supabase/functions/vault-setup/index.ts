@@ -53,7 +53,37 @@ const VIDEO_EXTENSIONS: Record<string, string> = {
   "video/webm": "webm",
   "video/quicktime": "mov",
   "video/x-m4v": "m4v",
+  "video/3gpp": "3gp",
 };
+
+function inferMimeType(fileName: string, mimeType: string, fileType: string): string {
+  const cleanMime = (mimeType || "").toLowerCase().trim();
+  if (cleanMime && cleanMime !== "application/octet-stream") {
+    return cleanMime;
+  }
+  const ext = fileName.slice(fileName.lastIndexOf(".") + 1).toLowerCase();
+  const map: Record<string, string> = {
+    mp4: "video/mp4",
+    mov: "video/quicktime",
+    webm: "video/webm",
+    m4v: "video/x-m4v",
+    "3gp": "video/3gpp",
+    mp3: "audio/mpeg",
+    m4a: "audio/mp4",
+    ogg: "audio/ogg",
+    wav: "audio/wav",
+    aac: "audio/aac",
+    jpg: "image/jpeg",
+    jpeg: "image/jpeg",
+    png: "image/png",
+    webp: "image/webp",
+  };
+  if (map[ext]) return map[ext];
+  if (fileType === "video") return "video/mp4";
+  if (fileType === "audio") return "audio/mpeg";
+  if (fileType === "photo") return "image/jpeg";
+  return cleanMime;
+}
 
 const EMBED_HOSTS = new Set([
   "open.spotify.com",
@@ -429,13 +459,16 @@ async function handleGetUploadUrl(
 
   const orderId = String(result.order.id);
   const fileType = body.file_type;
-  const mimeType = typeof body.mime_type === "string" ? body.mime_type.toLowerCase().trim() : "";
+  const rawMime = typeof body.mime_type === "string" ? body.mime_type.toLowerCase().trim() : "";
+  const fileName = typeof body.file_name === "string" ? body.file_name.trim() : "";
   const isPhoto = fileType === "photo";
   const isAudio = fileType === "audio";
   const isVideo = fileType === "video";
   if (!isPhoto && !isAudio && !isVideo) {
     return json(req, { ok: false, message: "Tipe file tidak didukung." }, 400);
   }
+
+  const mimeType = inferMimeType(fileName, rawMime, String(fileType));
 
   const allowed = isPhoto
     ? PHOTO_TYPES.has(mimeType)
@@ -489,7 +522,8 @@ async function handleUpload(
 
   const orderId = String(result.order.id);
   const fileType = body.file_type;
-  const mimeType = typeof body.mime_type === "string" ? body.mime_type.toLowerCase().trim() : "";
+  const rawMime = typeof body.mime_type === "string" ? body.mime_type.toLowerCase().trim() : "";
+  const fileName = typeof body.file_name === "string" ? body.file_name.trim() : "";
   const fileBase64 = typeof body.file_base64 === "string" ? body.file_base64 : "";
   const isPhoto = fileType === "photo";
   const isAudio = fileType === "audio";
@@ -497,6 +531,8 @@ async function handleUpload(
   if (!isPhoto && !isAudio && !isVideo) {
     return json(req, { ok: false, message: "Tipe file tidak didukung." }, 400);
   }
+
+  const mimeType = inferMimeType(fileName, rawMime, String(fileType));
 
   const allowed = isPhoto
     ? PHOTO_TYPES.has(mimeType)

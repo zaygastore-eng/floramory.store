@@ -269,6 +269,33 @@ export default function VaultSetup() {
     }
   };
 
+  const inferMediaMime = (file: File, type: "photo" | "audio" | "video"): string => {
+    const rawType = (file.type || "").toLowerCase().trim();
+    if (rawType && rawType !== "application/octet-stream") return rawType;
+
+    const ext = file.name.slice(file.name.lastIndexOf(".") + 1).toLowerCase();
+    const map: Record<string, string> = {
+      mp4: "video/mp4",
+      mov: "video/quicktime",
+      webm: "video/webm",
+      m4v: "video/x-m4v",
+      "3gp": "video/3gpp",
+      mp3: "audio/mpeg",
+      m4a: "audio/mp4",
+      wav: "audio/wav",
+      ogg: "audio/ogg",
+      aac: "audio/aac",
+      jpg: "image/jpeg",
+      jpeg: "image/jpeg",
+      png: "image/png",
+      webp: "image/webp",
+    };
+    if (map[ext]) return map[ext];
+    if (type === "video") return "video/mp4";
+    if (type === "audio") return "audio/mpeg";
+    return "image/jpeg";
+  };
+
   const uploadFile = async (file: File, type: "photo" | "audio" | "video", slot = 1) => {
     const isPhoto = type === "photo";
     const isAudio = type === "audio";
@@ -277,32 +304,48 @@ export default function VaultSetup() {
     const setPreview = isPhoto ? null : isAudio ? setAudioPreview : setVideoPreview;
     const setUrl = isPhoto ? null : isAudio ? setAudioUrl : setVideoUrl;
     const maxSize = isPhoto ? 10 * 1024 * 1024 : isAudio ? 25 * 1024 * 1024 : 50 * 1024 * 1024;
-    const allowedTypes = isPhoto
-      ? ["image/jpeg", "image/png", "image/webp"]
+    const resolvedType = inferMediaMime(file, type);
+    const ext = file.name.slice(file.name.lastIndexOf(".") + 1).toLowerCase();
+
+    const allowedPhotoTypes = ["image/jpeg", "image/png", "image/webp"];
+    const allowedAudioTypes = ["audio/mpeg", "audio/mp4", "audio/x-m4a", "audio/ogg", "audio/wav", "audio/webm", "audio/aac"];
+    const allowedVideoTypes = ["video/mp4", "video/webm", "video/quicktime", "video/x-m4v", "video/3gpp"];
+
+    const isFormatValid = isPhoto
+      ? allowedPhotoTypes.includes(resolvedType) || file.type.startsWith("image/") || ["jpg", "jpeg", "png", "webp"].includes(ext)
       : isAudio
-        ? ["audio/mpeg", "audio/mp4", "audio/x-m4a", "audio/ogg", "audio/wav", "audio/webm"]
-        : ["video/mp4", "video/webm", "video/quicktime", "video/x-m4v"];
+        ? allowedAudioTypes.includes(resolvedType) || file.type.startsWith("audio/") || ["mp3", "m4a", "wav", "ogg", "aac", "webm"].includes(ext)
+        : allowedVideoTypes.includes(resolvedType) || file.type.startsWith("video/") || ["mp4", "mov", "webm", "m4v", "3gp"].includes(ext);
 
     setUploadError("");
-    if (!allowedTypes.includes(file.type) && !allowedTypes.some(t => file.type.startsWith(t.split("/")[0]))) {
+    if (!isFormatValid) {
       setUploadError(
         isPhoto
           ? "Gunakan foto JPG, PNG, atau WebP."
           : isAudio
             ? "Format audio belum didukung (.mp3, .m4a, .wav, .webm)."
-            : "Format video belum didukung (.mp4, .webm, .mov)."
+            : "Format video belum didukung (.mp4, .mov, .webm, .m4v)."
       );
       return;
     }
     if (file.size > maxSize) {
-      setUploadError(`Ukuran file maksimal ${isPhoto ? "10 MB" : isAudio ? "25 MB" : "50 MB"}.`);
+      setUploadError(
+        isVideo
+          ? "Ukuran video maksimal 50 MB. Disarankan video kenangan durasi 15–60 detik atau kompres terlebih dahulu."
+          : `Ukuran file maksimal ${isPhoto ? "10 MB" : "25 MB"}.`
+      );
       return;
     }
     if (!orderId) return;
 
-    // Foto kamera ponsel diperkecil & dikompres di browser sebelum diunggah.
-    // Ini menghemat kuota pelanggan dan membuat upload jauh lebih cepat.
     let fileToUpload = file;
+    if (!file.type || file.type === "application/octet-stream") {
+      try {
+        fileToUpload = new File([file], file.name, { type: resolvedType });
+      } catch {
+        // Abaikan jika konstruktor File tidak didukung
+      }
+    }
     if (isPhoto) {
       setCompressingSlot(slot);
       try {
@@ -736,7 +779,7 @@ export default function VaultSetup() {
                               <input
                                 id={`vault-photo-input-${slot}`}
                                 type="file"
-                                accept="image/jpeg,image/png,image/webp"
+                                accept="image/*,.jpg,.jpeg,.png,.webp"
                                 onChange={handlePhotoChange(slot)}
                                 disabled={isUploading || isCompressing}
                                 style={{ position: "absolute", width: 1, height: 1, opacity: 0 }}
@@ -886,7 +929,7 @@ export default function VaultSetup() {
                     <input
                       id="vault-audio-input"
                       type="file"
-                      accept="audio/mpeg,audio/mp4,audio/x-m4a,audio/ogg,audio/wav,audio/webm"
+                      accept="audio/*,.mp3,.m4a,.wav,.ogg,.aac,.webm"
                       onChange={handleAudioChange}
                       disabled={uploadingAudio}
                       className="form-input"
@@ -1036,7 +1079,7 @@ export default function VaultSetup() {
                     <input
                       id="vault-video-input"
                       type="file"
-                      accept="video/mp4,video/webm,video/quicktime,video/x-m4v"
+                      accept="video/*,.mp4,.mov,.webm,.m4v,.3gp"
                       onChange={handleVideoChange}
                       disabled={uploadingVideo}
                       className="form-input"

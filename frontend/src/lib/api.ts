@@ -620,6 +620,30 @@ export interface UploadProgressInfo {
 
 const DIRECT_UPLOAD_FALLBACK_LIMIT = 3.5 * 1024 * 1024; // Vercel body limit ~4.5 MB
 
+function inferMediaMimeType(fileName: string, fileType: "photo" | "audio" | "video"): string {
+  const ext = fileName.slice(fileName.lastIndexOf(".") + 1).toLowerCase();
+  const map: Record<string, string> = {
+    mp4: "video/mp4",
+    mov: "video/quicktime",
+    webm: "video/webm",
+    m4v: "video/x-m4v",
+    "3gp": "video/3gpp",
+    mp3: "audio/mpeg",
+    m4a: "audio/mp4",
+    ogg: "audio/ogg",
+    wav: "audio/wav",
+    aac: "audio/aac",
+    jpg: "image/jpeg",
+    jpeg: "image/jpeg",
+    png: "image/png",
+    webp: "image/webp",
+  };
+  if (map[ext]) return map[ext];
+  if (fileType === "video") return "video/mp4";
+  if (fileType === "audio") return "audio/mpeg";
+  return "image/jpeg";
+}
+
 export async function uploadVaultMedia(
   orderId: string,
   fileType: "photo" | "audio" | "video",
@@ -629,6 +653,9 @@ export async function uploadVaultMedia(
 ): Promise<string> {
   const safeSlot = Number.isInteger(slot) && slot >= 1 && slot <= 4 ? slot : 1;
   let directError: Error | null = null;
+  const effectiveMimeType = file.type && file.type !== "application/octet-stream"
+    ? file.type
+    : inferMediaMimeType(file.name, fileType);
 
   // 1. Direct Binary Upload via Signed Upload URL.
   //    Bypass limit body Vercel 4.5 MB dan memberi progress event asli dari XHR.
@@ -637,7 +664,7 @@ export async function uploadVaultMedia(
       action: "get-upload-url",
       order_id: orderId,
       file_type: fileType,
-      mime_type: file.type,
+      mime_type: effectiveMimeType,
       file_name: file.name,
       slot: safeSlot,
     });
@@ -657,7 +684,7 @@ export async function uploadVaultMedia(
     await new Promise<void>((resolve, reject) => {
       const xhr = new XMLHttpRequest();
       xhr.open("PUT", uploadUrl, true);
-      xhr.setRequestHeader("Content-Type", file.type || "application/octet-stream");
+      xhr.setRequestHeader("Content-Type", effectiveMimeType);
       xhr.setRequestHeader("x-upsert", "true");
       xhr.timeout = 10 * 60 * 1000;
 
