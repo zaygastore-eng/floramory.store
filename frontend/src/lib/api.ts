@@ -1077,10 +1077,11 @@ function normalizeCatalogProduct(obj: Record<string, unknown>): CatalogProduct {
   };
 }
 
-// Public catalog query — only the 6 columns needed for the card grid.
+// Public catalog query — only the columns needed for the card grid.
 // Heavy detail fields (pesan_personal, foto_qr, nama_pembeli, etc.) are
 // excluded here and only fetched on demand via fetchProductById.
-const CATALOG_SELECT = "id,nama_produk,tier,harga,bunga,deskripsi,foto_produk,is_catalog";
+const CATALOG_SELECT =
+  "id,nama_produk,tier,harga,bunga,kategori,deskripsi,foto_produk,is_catalog";
 
 async function fetchCatalogFromSupabase(category?: CatalogCategory): Promise<CatalogProduct[] | null> {
   if (!isSupabaseConfigured()) return null;
@@ -1097,7 +1098,6 @@ async function fetchCatalogFromSupabase(category?: CatalogCategory): Promise<Cat
         limit: String(PUBLIC_PRODUCTS_PAGE_SIZE),
         offset: String(offset),
       });
-      // Note: products table does not have a separate kategori column; all active catalog items are curated chapters
       const res = await fetch(
         `${SUPABASE_URL}/rest/v1/products?${query}`,
         { headers: supabaseHeaders() }

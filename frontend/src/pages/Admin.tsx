@@ -950,7 +950,32 @@ export default function Admin() {
     if (!order.id) return;
     const previousStatus = getOrderStatus(order.status);
     const nextStatus = getOrderStatus(status);
+    const isGroupDpVerification = Boolean(order.group_id) && nextStatus === "dp_verified";
     try {
+      // Satu grup = satu reservasi. Verifikasi DP dari dropdown item mana pun
+      // harus membuka gate vault semua karya, bukan hanya item yang dipilih.
+      if (isGroupDpVerification && order.group_id) {
+        await updatePreOrderGroupStatus(order.group_id, status);
+        setPreOrders(orders =>
+          orders.map(item =>
+            item.group_id === order.group_id ? { ...item, status } : item
+          )
+        );
+        const counts = await fetchPreOrderStatusCounts();
+        setOperationalCounts(counts);
+        void notifyDpConfirmed(order.id).catch(error => {
+          console.warn("[DP_NOTIFICATION_AUDIT_ERROR]", error);
+        });
+        const itemCount =
+          order.group_item_count ||
+          preOrders.filter(item => item.group_id === order.group_id).length;
+        showToast(
+          `DP grup ${order.group_number || order.group_id} diverifikasi untuk ${itemCount} karya.`,
+          "success"
+        );
+        return;
+      }
+
       await updatePreOrderStatus(order.id, status);
       setPreOrders(orders => orders.map(item => item.id === order.id ? { ...item, status } : item));
       if (previousStatus !== nextStatus) {
@@ -1866,6 +1891,11 @@ export default function Admin() {
                   >
                     {ORDER_STATUSES.map(status => <option value={status.value} key={status.value}>{status.label}</option>)}
                   </select>
+                  {order.group_id && (
+                    <span className="admin-order-meta admin-order-group-detail">
+                      Pilih “DP Diterima” untuk memverifikasi seluruh karya dalam grup ini.
+                    </span>
+                  )}
                   {order.group_id && (
                     <button
                       type="button"
