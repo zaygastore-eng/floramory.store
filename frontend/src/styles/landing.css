@@ -515,6 +515,18 @@
   color: var(--lp-wine, #531B21);
 }
 
+.landing-v2 .lp-products-empty {
+  margin: 0 auto;
+  padding: 2.5rem 1rem;
+  max-width: 34rem;
+  text-align: center;
+  font-family: var(--lp-display);
+  font-size: 1.15rem;
+  font-style: italic;
+  color: var(--lp-wine, #531B21);
+  opacity: 0.75;
+}
+
 .landing-v2 .lp-products-head {
   display: none;
 }

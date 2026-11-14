@@ -12,7 +12,6 @@ import {
   fetchProductCategories,
   fetchProductDetailById,
   fetchWhatsAppNumber,
-  getHomeContentCatalogProducts,
   tierLabel,
   type CatalogProduct,
   type HeroConfig,
@@ -30,10 +29,6 @@ import {
 import { PHOTOBOOTH_THEMES, type PhotoboothThemeId } from "@/lib/vaultDesign";
 import useToast from "@/hooks/useToast";
 import { useAudioPlayback } from "@/hooks/useAudioPlayback";
-
-// Editorial fallbacks keep the landing showcase full even when the live
-// catalog only has a couple of active pieces.
-const editorialChapters = getHomeContentCatalogProducts("framed");
 
 type PhotoboothBorderId = PhotoboothThemeId;
 
@@ -320,9 +315,7 @@ export default function Home() {
   const [heroConfig, setHeroConfig] = useState<HeroConfig>(defaultHeroConfig);
   const [products, setProducts] = useState<CatalogProduct[]>([]);
   const [categories, setCategories] = useState<ProductCategoryItem[]>([]);
-  const [chapterProducts, setChapterProducts] = useState<CatalogProduct[]>(
-    () => getHomeContentCatalogProducts("framed")
-  );
+  const [chapterProducts, setChapterProducts] = useState<CatalogProduct[]>([]);
   const [activeFaq, setActiveFaq] = useState<number | null>(null);
   const toggleFaq = (index: number) => {
     setActiveFaq(current => current === index ? null : index);
@@ -423,7 +416,7 @@ export default function Home() {
       })
       .catch(() => {
         setProducts([]);
-        setChapterProducts(getHomeContentCatalogProducts("framed"));
+        setChapterProducts([]);
       });
     fetchWhatsAppNumber().then(number => {
       setWhatsappNumber(normalizeWhatsApp(number) || "6285235242425");
@@ -607,17 +600,8 @@ export default function Home() {
     return result.length > 0 ? result : ATELIER_COLLECTION_GROUPS;
   }, [products]);
 
-  const showcaseProducts = (() => {
-    const items = [...chapterProducts];
-    for (const editorial of editorialChapters) {
-      if (items.length >= 4) break;
-      const exists = items.some(
-        product => product.nama_produk.toLowerCase() === editorial.nama_produk.toLowerCase()
-      );
-      if (!exists) items.push(editorial);
-    }
-    return items;
-  })();
+  // Showcase beranda hanya berisi produk riil dari Supabase.
+  const showcaseProducts = chapterProducts;
 
   const submitOrder = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -776,28 +760,36 @@ export default function Home() {
             </div>
 
             <div className="lp-products-body">
-              {renderProductGrid(showcaseProducts)}
+              {showcaseProducts.length > 0 ? (
+                renderProductGrid(showcaseProducts)
+              ) : (
+                <p className="lp-products-empty">
+                  Belum ada karya di katalog. Koleksi baru sedang disiapkan.
+                </p>
+              )}
               <div className="lp-products-actions">
-                <div className="slider-nav-btns" aria-label="Navigasi geser produk">
-                  <button
-                    type="button"
-                    className="slider-nav-btn prev"
-                    onClick={() => scrollSlider("left")}
-                    aria-label="Geser produk ke kiri"
-                    title="Geser ke kiri"
-                  >
-                    ←
-                  </button>
-                  <button
-                    type="button"
-                    className="slider-nav-btn next"
-                    onClick={() => scrollSlider("right")}
-                    aria-label="Geser produk ke kanan"
-                    title="Geser ke kanan"
-                  >
-                    →
-                  </button>
-                </div>
+                {showcaseProducts.length > 1 && (
+                  <div className="slider-nav-btns" aria-label="Navigasi geser produk">
+                    <button
+                      type="button"
+                      className="slider-nav-btn prev"
+                      onClick={() => scrollSlider("left")}
+                      aria-label="Geser produk ke kiri"
+                      title="Geser ke kiri"
+                    >
+                      ←
+                    </button>
+                    <button
+                      type="button"
+                      className="slider-nav-btn next"
+                      onClick={() => scrollSlider("right")}
+                      aria-label="Geser produk ke kanan"
+                      title="Geser ke kanan"
+                    >
+                      →
+                    </button>
+                  </div>
+                )}
                 <Link href="/shop" className="lp-btn lp-btn--outline">
                   Lihat Detail Katalog →
                 </Link>

@@ -1,5 +1,4 @@
 import { normalizeWhatsApp } from "@/lib/site";
-import { homeContent, type ProductSpecimen } from "@/content/homeContent";
 
 const SUPABASE_URL = String(import.meta.env.VITE_SUPABASE_URL || "").replace(/\/$/, "");
 const SUPABASE_ANON_KEY = String(import.meta.env.VITE_SUPABASE_ANON_KEY || "");
@@ -1044,25 +1043,6 @@ function normalizeCatalogProduct(obj: Record<string, unknown>): CatalogProduct {
 // excluded here and only fetched on demand via fetchProductById.
 const CATALOG_SELECT = "id,nama_produk,tier,harga,bunga,deskripsi,foto_produk,is_catalog";
 
-export function getHomeContentCatalogProducts(category: CatalogCategory = "framed"): CatalogProduct[] {
-  const items: ProductSpecimen[] = category === "stem"
-    ? homeContent.singleStems.items
-    : homeContent.chapters.items;
-  return items.map((item, index) => ({
-    id: `home-content-${item.id}`,
-    nama_produk: item.name,
-    tier: category === "stem" ? "classic" : ["classic", "signature", "masterpiece", "signature"][index] || "classic",
-    harga: item.price,
-    bunga: item.latinName,
-    deskripsi: item.description,
-    foto_produk: item.frontImageUrl,
-    hoverImageUrl: item.hoverImageUrl,
-    editionTag: item.editionTag,
-    isFallback: true,
-    is_catalog: true,
-  }));
-}
-
 async function fetchCatalogFromSupabase(category?: CatalogCategory): Promise<CatalogProduct[] | null> {
   if (!isSupabaseConfigured()) return null;
 
@@ -1105,7 +1085,7 @@ async function fetchCatalogFromSupabase(category?: CatalogCategory): Promise<Cat
 export async function fetchCatalogProducts(category?: CatalogCategory): Promise<CatalogProduct[]> {
   if (category) {
     const categoryRows = await fetchCatalogFromSupabase(category);
-    return categoryRows?.length ? categoryRows : getHomeContentCatalogProducts(category);
+    return categoryRows ?? [];
   }
 
   const cached = cachedCatalog;
@@ -1115,11 +1095,9 @@ export async function fetchCatalogProducts(category?: CatalogCategory): Promise<
   }
 
   const rows = await fetchCatalogFromSupabase();
-  const resolvedRows = rows?.length
-    ? rows
-    : cachedCatalog?.some(product => !product.isFallback)
-      ? cachedCatalog
-      : getHomeContentCatalogProducts("framed");
+  // Hanya produk riil dari Supabase. Tidak ada lagi fallback dummy:
+  // jika katalog kosong, halaman menampilkan empty state.
+  const resolvedRows = rows ?? cachedCatalog ?? [];
   cachedCatalog = resolvedRows;
   cacheTime = Date.now();
   return resolvedRows;
