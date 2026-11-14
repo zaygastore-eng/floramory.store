@@ -53,7 +53,6 @@ import {
 import BrandLogo from "@/components/BrandLogo";
 import { isSupabaseStorageUrl, productImageUrl, validateImageUrl } from "@/lib/images";
 import { formatHarga, normalizeWhatsApp, PRODUCTION_SITE_URL } from "@/lib/site";
-import { getSupabaseClient } from "@/lib/supabase";
 import { homeContent } from "@/content/homeContent";
 
 const BASE_URL_KEY = "fm_base_url";
@@ -617,34 +616,47 @@ export default function Admin() {
     if (authed) void reloadAll();
   }, [authed]);
 
-  // Supabase Realtime: subscribe ke INSERT baru di preorder_orders
-  // saat admin sudah login. Auto-refresh pesanan + notifikasi.
+  // Auto-sync: polling berkala (30s) & sinkronisasi saat tab kembali aktif
   useEffect(() => {
     if (!authed) return;
-    const supabase = getSupabaseClient();
-    if (!supabase) return;
+    setRealtimeConnected(true);
 
-    const channel = supabase
-      .channel("admin-preorder-watch")
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "preorder_orders" },
-        (payload: any) => {
-          const name = (payload.new as { customer_name?: string })?.customer_name || "Seseorang";
-          showToast(`🛎️ Pre-order baru dari ${name}!`, "alert");
-          // Reload daftar pesanan & badge counter
+    let prevWaiting = operationalCounts.waiting_dp ?? 0;
+
+    const syncOrders = async () => {
+      try {
+        const counts = await fetchPreOrderStatusCounts();
+        const currentWaiting = counts.waiting_dp ?? 0;
+        if (currentWaiting > prevWaiting) {
+          showToast("🛎️ Ada pre-order baru masuk!", "alert");
           void loadPreOrders();
         }
-      )
-      .subscribe((status: any) => {
-        setRealtimeConnected(status === "SUBSCRIBED");
-      });
+        prevWaiting = currentWaiting;
+        setOperationalCounts(counts);
+      } catch {
+        // Abaikan error background polling
+      }
+    };
+
+    const interval = setInterval(() => {
+      if (document.visibilityState === "visible") {
+        void syncOrders();
+      }
+    }, 30000);
+
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        void syncOrders();
+      }
+    };
+    document.addEventListener("visibilitychange", onVisibilityChange);
 
     return () => {
-      void supabase.removeChannel(channel);
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
       setRealtimeConnected(false);
     };
-  }, [authed, showToast]);
+  }, [authed, showToast, operationalCounts.waiting_dp]);
 
   const saveConfig = async () => {
     const clean = (baseUrl || PRODUCTION_SITE_URL).trim().replace(/\/+$/, "");
@@ -2510,7 +2522,7 @@ export default function Admin() {
           <span>Sumber data: Supabase</span>
           <div className="admin-realtime-indicator">
             <span className={`admin-realtime-dot${realtimeConnected ? " connected" : ""}`} />
-            <span>{realtimeConnected ? "Realtime aktif" : "Realtime nonaktif"}</span>
+            <span>{realtimeConnected ? "Auto-sync aktif" : "Auto-sync nonaktif"}</span>
           </div>
           <button onClick={logout}><LogOut size={16} /><span>Keluar</span></button>
         </div>

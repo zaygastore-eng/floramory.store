@@ -101,6 +101,7 @@ Migrasi terbaru (2026-11-09 s/d 2026-11-15)
 - `20261115010000_preorder_group_number.sql` -> kolom `preorder_orders.group_number` + backfill.
 - `20261115020000_product_kategori.sql` -> kolom `products.kategori` + grant anon.
 - `20261115030000_rls_cleanup.sql` -> hapus policy legacy longgar (produk personal & preorder) + cabut insert anon.
+- `20261115040000_maintenance_cleanup.sql` -> hapus tabel backup lama, bersihkan OTP kedaluwarsa, cabut insert/delete preorder authenticated, default kategori.
 
 Notes & safety
 --------------

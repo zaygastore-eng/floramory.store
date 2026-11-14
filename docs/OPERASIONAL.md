@@ -214,29 +214,14 @@ Fungsi ini satu-satunya jalur masuk pre-order (berjalan dengan
    dan diperiksa format `62xxxxxxxxxx`, serta produk harus ada dan
    berstatus `active` (nama produk diambil dari database, tidak percaya
    input client).
-5. **Konfirmasi DP WhatsApp** — setelah order tersimpan dengan status
-   `waiting_dp`, fungsi mengambil harga dari tabel `products`, menghitung DP
-   50%, membuat nomor order, lalu mengirim instruksi transfer ke pelanggan.
-   Kegagalan gateway tidak membatalkan order; kolom `wa_sent` mencatat hasilnya.
+5. **Konfirmasi Pemesanan & Notifikasi** — setelah pesanan grup dan setiap karya
+   tersimpan dengan status `waiting_dp`, frontend langsung mengarahkan pelanggan
+   ke WhatsApp concierge atelier dengan ringkasan pesanan berformat rapi
+   (nomor grup, rincian karya, inisial, palet warna, dan nominal DP 50%).
+   Secara bersamaan, Edge Function mengirim notifikasi email rincian reservasi
+   ke tim atelier melalui Resend (`sendAdminEmail`).
 
-Sebelum deploy versi ini, jalankan
-`supabase/migrations/20261102000000_preorder_payment_metadata.sql` di SQL
-Editor. Atur secrets Edge Function melalui Supabase CLI (jangan di frontend):
-
-```bash
-supabase secrets set --project-ref PROJECT_REF WA_GATEWAY_URL="https://gateway.example/send" WA_API_KEY="GANTI_DENGAN_TOKEN_GATEWAY" BANK_NAME="NAMA_BANK" BANK_ACCOUNT_NUMBER="NOMOR_REKENING" BANK_ACCOUNT_HOLDER="NAMA_PEMILIK_REKENING"
-```
-
-Ganti semua nilai contoh sebelum menjalankan perintah.
-
-`send-preorder` mengirim `POST` HTTPS dengan header Authorization Bearer dan
-JSON `{ "to": "628...", "message": "..." }`. Gateway harus
-mendukung kontrak ini; untuk Fonnte/Starsender dengan format berbeda, gunakan
-endpoint/adaptor yang menerjemahkan payload tersebut. Request gateway dibatasi
-9 detik. Status `wa_sent` menjadi `false` jika secrets belum lengkap atau
-gateway gagal merespons.
-
-Deploy:
+Deploy Edge Function:
 
 ```bash
 supabase functions deploy send-preorder
@@ -245,6 +230,9 @@ supabase functions deploy send-preorder
 Env yang dipakai runtime (otomatis tersedia di Supabase):
 `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`. Jangan pernah membagikan
 `SUPABASE_SERVICE_ROLE_KEY` ke frontend/Vercel.
+
+Notifikasi email atelier dikonfigurasi melalui secret Supabase:
+`RESEND_API_KEY`, `EMAIL_FROM`, dan `ADMIN_NOTIFICATION_EMAILS` (lihat `docs/DEPLOYMENT.md`).
 
 ## Edge Function — admin (sesi & operasi admin)
 
