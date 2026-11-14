@@ -20,3 +20,6 @@ where o.group_id = g.id
 
 comment on column public.preorder_orders.group_number is
   'Salinan nomor grup untuk tampilan admin. Kosong untuk pre-order lama.';
+
+-- Segarkan cache skema PostgREST agar kolom baru langsung dikenali API.
+notify pgrst, 'reload schema';
