@@ -157,50 +157,82 @@
 
 .public-v2 .shop-card {
   position: relative;
-  display: flex;
-  flex-direction: column;
-  background: #fffaf2;
-  border: 1px solid rgba(107, 31, 42, 0.14);
-  border-radius: 4px;
-  padding: 0.7rem 0.7rem 0.9rem;
-  box-shadow: 0 14px 30px rgba(58, 22, 27, 0.08);
-  transition: transform 260ms ease, box-shadow 260ms ease, border-color 260ms ease;
+  display: block;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+  box-shadow: none;
+  color: var(--pv-wine);
+  text-align: center;
+  transition: transform 250ms ease;
 }
 
 .public-v2 .shop-card-fallback {
   width: 100%;
   font: inherit;
   color: inherit;
-  text-align: left;
+  text-align: center;
   cursor: pointer;
   appearance: none;
 }
 
 .public-v2 .shop-card:hover {
-  transform: translateY(-6px);
-  border-color: rgba(107, 31, 42, 0.28);
-  box-shadow: 0 22px 44px rgba(58, 22, 27, 0.16);
+  transform: translateY(-4px);
+  border-color: transparent;
+  box-shadow: none;
 }
 
+/* Kartu katalog identik dengan kartu beranda: bingkai perak vintage mat. */
 .public-v2 .shop-card .product-img {
-  border-radius: 2px;
-  background: var(--pv-cream-deep);
+  aspect-ratio: 7 / 10;
+  border-radius: 6px;
+  overflow: visible;
+  background: #fdfaf5;
+  border: 1px solid #e8e2d9;
+  box-shadow: 0 16px 32px rgba(60, 30, 35, 0.1);
+  transition: box-shadow 250ms ease, border-color 250ms ease;
+}
+
+.public-v2 .shop-card:hover .product-img {
+  border-color: #d8cebf;
+  box-shadow: 0 22px 42px rgba(83, 27, 33, 0.16);
+}
+
+.public-v2 .shop-card .product-img-layer {
+  border-radius: 6px;
+  overflow: hidden;
+  background: #fdfaf5;
+}
+
+/* Katalog hanya menampilkan satu foto (tanpa layer hover duplikat). */
+.public-v2 .shop-card .product-img-secondary {
+  display: none;
 }
 
 .public-v2 .shop-card .product-img::after {
   content: "";
   position: absolute;
-  inset: -5% -6%;
+  inset: 0;
   z-index: 4;
-  background: url("/landing/ornate-frame-cut.webp") center / 100% 100% no-repeat;
-  filter: drop-shadow(0 5px 8px rgba(20, 8, 10, 0.22));
+  background: url("/landing/ornate-card-mat-warm.webp") center / 100% 100% no-repeat;
+  filter: none;
   pointer-events: none;
 }
 
+.public-v2 .shop-card .product-badge,
+.public-v2 .shop-card .product-qr-icon {
+  display: none;
+}
+
 .public-v2 .shop-card .product-img-monogram {
-  background:
-    radial-gradient(circle at 50% 42%, rgba(232, 201, 168, 0.16), transparent 62%),
-    linear-gradient(160deg, #7a2733 0%, #4a1019 100%);
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #c5d3f8;
+  background-image: radial-gradient(circle at 50% 48%, #dae5fd 0%, #b8c8f2 100%);
   padding: 1.5rem;
 }
 
@@ -209,42 +241,41 @@
   width: 70%;
   height: auto;
   object-fit: contain;
-  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.35));
+  filter: drop-shadow(0 2px 8px rgba(83, 27, 33, 0.16));
 }
 
 .public-v2 .shop-card .product-monogram-inner {
-  border-color: rgba(232, 201, 168, 0.55);
-  color: #e8c9a8;
-}
-
-.public-v2 .shop-card .product-badge {
-  top: 8px;
-  right: 8px;
-  z-index: 5;
-  background: rgba(249, 237, 222, 0.94);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  border: 1px dashed rgba(83, 27, 33, 0.45);
   color: var(--pv-wine);
-  border: 1px solid rgba(197, 168, 128, 0.7);
-  border-radius: 2px;
-  letter-spacing: 0.14em;
-}
-
-.public-v2 .shop-card .product-qr-icon {
-  z-index: 5;
-  color: var(--pv-cream);
-  background: rgba(74, 16, 25, 0.78);
-  border-radius: 2px;
+  font-family: var(--pv-display);
+  font-size: 1.15rem;
+  letter-spacing: 0.1em;
 }
 
 .public-v2 .shop-card .product-info {
-  padding: 1rem 0.35rem 0.15rem;
+  padding: 1rem 0 0;
 }
 
 .public-v2 .shop-card .product-name {
   font-family: var(--pv-display);
-  font-size: 1.12rem;
+  font-size: 1.05rem;
   font-weight: 600;
   color: var(--pv-wine);
-  letter-spacing: 0.01em;
+  letter-spacing: 0.02em;
+}
+
+.public-v2 .shop-card .product-footer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: 0.35rem;
 }
 
 .public-v2 .shop-card .product-price {
@@ -873,27 +904,27 @@
   color: var(--pv-wine);
 }
 
+/* Foto folio tampil utuh: tanpa padding, border, ornamen, atau bayangan bingkai. */
 .public-v2 .pdp-main-viewport {
   position: relative;
-  padding: 0.85rem;
+  padding: 0;
   background: #fffaf2;
-  border: 1px solid rgba(107, 31, 42, 0.16);
-  border-radius: 3px;
-  box-shadow: 0 20px 44px rgba(58, 22, 27, 0.12);
+  border: 0;
+  border-radius: 4px;
+  box-shadow: none;
+  overflow: hidden;
 }
 
 .public-v2 .pdp-main-viewport::after {
-  content: "";
-  position: absolute;
-  inset: -4% -4%;
-  z-index: 3;
-  background: url("/landing/ornate-frame-cut.webp") center / 100% 100% no-repeat;
-  filter: drop-shadow(0 8px 14px rgba(20, 8, 10, 0.24));
-  pointer-events: none;
+  content: none;
+  display: none;
 }
 
 .public-v2 .pdp-viewport-img {
-  border-radius: 2px;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  border-radius: 0;
 }
 
 .public-v2 .pdp-inspect-btn {
@@ -1353,25 +1384,21 @@
   }
 
   .public-v2 .shop-card {
-    padding: 0.55rem 0.55rem 0.75rem;
-  }
-
-  .public-v2 .shop-card .product-img::after {
-    inset: -4% -5%;
+    padding: 0;
   }
 
   .public-v2 .shop-card .product-name {
-    font-size: 0.98rem;
+    font-size: 0.95rem;
   }
 
   .public-v2 .shop-card .product-footer {
     flex-direction: column;
-    align-items: flex-start;
+    align-items: center;
     gap: 4px;
   }
 
   .public-v2 .shop-card .product-btn {
-    align-self: flex-start;
+    align-self: center;
   }
 
   .public-v2 .about-faq-section::after {
@@ -1386,12 +1413,8 @@
     font-size: 1.5rem;
   }
 
-  .public-v2 .pdp-main-viewport::after {
-    inset: -3% -3%;
-  }
-
   .public-v2 .pdp-main-viewport {
-    padding: 0.55rem;
+    padding: 0;
   }
 
   .public-v2.vault-memoir-wrapper {

@@ -10,7 +10,6 @@ import {
   fetchProductCategories,
   fetchProductDetailById,
   fetchWhatsAppNumber,
-  getHomeContentCatalogProducts,
   type CatalogProduct,
   type Product,
   type ProductCategoryItem,
@@ -93,22 +92,9 @@ export default function ShopAll() {
     });
   };
 
-  // Editorial pieces to keep catalog full if needed
-  const editorialChapters = getHomeContentCatalogProducts("framed");
-
+  // Katalog murni dari tabel `products` Supabase (tanpa produk dummy).
   const showcaseProducts = (() => {
     let items = [...products];
-
-    // Combine editorial fallbacks if list is sparse and no active search/category filter
-    if (selectedCategory === "all" && !searchQuery.trim()) {
-      for (const editorial of editorialChapters) {
-        if (items.length >= 5) break;
-        const exists = items.some(
-          product => product.nama_produk.toLowerCase() === editorial.nama_produk.toLowerCase()
-        );
-        if (!exists) items.push(editorial);
-      }
-    }
 
     // Filter by Category
     if (selectedCategory !== "all") {
@@ -132,16 +118,6 @@ export default function ShopAll() {
 
     return items;
   })();
-
-  const openEditorialConsult = (product: CatalogProduct) => {
-    const phone = normalizeWhatsApp(whatsappNumber) || "6285235242425";
-    const message = `Halo A Chapter, saya tertarik untuk memesan karya botani ${product.nama_produk}. Mohon informasi ketersediaan dan proses reservasinya.`;
-    const popup = window.open(
-      `https://wa.me/${phone}?text=${encodeURIComponent(message)}`,
-      "_blank"
-    );
-    if (popup) popup.opener = null;
-  };
 
   const whatsappModalUrl = selectedProduct
     ? `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(
@@ -335,17 +311,7 @@ export default function ShopAll() {
                     </>
                   );
 
-                  return p.isFallback ? (
-                    <button
-                      key={p.id}
-                      type="button"
-                      className="product-card shop-card shop-card-fallback"
-                      onClick={() => openEditorialConsult(p)}
-                      aria-label={`Konsultasikan ${p.nama_produk} via WhatsApp`}
-                    >
-                      {card}
-                    </button>
-                  ) : (
+                  return (
                     <Link
                       key={p.id}
                       href={`/products/${p.id}`}

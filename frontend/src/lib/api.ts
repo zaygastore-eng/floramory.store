@@ -45,6 +45,8 @@ export interface Product extends CatalogProduct {
   audio_durasi: number; // in seconds
   video_url: string;
   foto_vault: string;
+  /** Foto galeri tambahan produk (tampil di halaman detail/folio). */
+  gallery_photos?: string[];
   vault_photos?: string[];
   vault_photobooth_theme?: string;
   vault_letter_style?: Record<string, unknown>;
@@ -299,7 +301,7 @@ function blobToBase64(blob: Blob): Promise<string> {
   });
 }
 
-export type ProductImageField = "produk" | "qr";
+export type ProductImageField = "produk" | "qr" | `gallery-${string}`;
 
 // Unggah lewat edge function admin (sesi cookie, tanpa mengekspos token
 // user di browser). Mengembalikan URL public Supabase Storage yang akan
@@ -928,6 +930,7 @@ function normalizeProduct(obj: Partial<Product>): Product {
     audio_durasi: Number.isFinite(parsedDurasi) ? Math.max(0, Math.round(parsedDurasi)) : 0,
     video_url: String(obj.video_url || record.video_url || "").trim(),
     foto_vault: String(obj.foto_vault || record.foto_vault || "").trim(),
+    gallery_photos: toStringArray(obj.gallery_photos ?? record.gallery_photos),
     vault_photos: toStringArray(obj.vault_photos ?? record.vault_photos),
     vault_photobooth_theme: String(obj.vault_photobooth_theme || record.vault_photobooth_theme || "").trim(),
     vault_letter_style:
@@ -943,6 +946,10 @@ function normalizeProduct(obj: Partial<Product>): Product {
     status: String(obj.status || "active").trim(),
     deleted_at: obj.deleted_at ? String(obj.deleted_at) : null,
   };
+}
+
+function isMissingGalleryColumn(errorText: string): boolean {
+  return /gallery_photos/i.test(errorText) && /(does not exist|schema cache|column)/i.test(errorText);
 }
 
 function productPayload(product: Product, status = product.status || "active", useLegacyTier = false) {
@@ -973,6 +980,12 @@ function productPayload(product: Product, status = product.status || "active", u
 
   if (product.kategori) {
     payload.kategori = product.kategori.trim();
+  }
+
+  // Hanya kirim saat field tersedia agar update produk lama tidak
+  // mengosongkan galeri yang sudah tersimpan.
+  if (Array.isArray(product.gallery_photos)) {
+    payload.gallery_photos = toStringArray(product.gallery_photos);
   }
 
   return payload;
@@ -1115,7 +1128,7 @@ export async function fetchCatalogProducts(category?: CatalogCategory): Promise<
 // Kolom eksplisit (bukan select=*). created_at/updated_at terakhir
 // tidak diambil: tidak dipakai UI admin.
 const MANAGED_PRODUCTS_SELECT =
-  "id,nama_produk,tier,harga,bunga,deskripsi,bahan,ukuran,nama_pembeli,dari,pesan_personal,foto_produk,foto_qr,audio_url,audio_durasi,video_url,foto_vault,vault_pin,is_catalog,recipient_whatsapp,order_id,status,deleted_at";
+  "id,nama_produk,tier,harga,bunga,deskripsi,bahan,ukuran,nama_pembeli,dari,pesan_personal,foto_produk,foto_qr,gallery_photos,audio_url,audio_durasi,video_url,foto_vault,vault_pin,is_catalog,recipient_whatsapp,order_id,status,deleted_at";
 
 function invalidateProductCaches() {
   cachedCatalog = null;
@@ -1131,10 +1144,21 @@ export async function fetchManagedProducts(): Promise<Product[]> {
   const all: Product[] = [];
   for (let page = 0; page < MANAGED_PRODUCTS_MAX_PAGES; page++) {
     const offset = page * MANAGED_PRODUCTS_PAGE_SIZE;
-    const data = await adminRequest("GET", "/rest/v1/products", {
-      query:
-        `select=${MANAGED_PRODUCTS_SELECT}&order=created_at.desc&limit=${MANAGED_PRODUCTS_PAGE_SIZE}&offset=${offset}`,
-    });
+    const queryFor = (select: string) =>
+      `select=${select}&order=created_at.desc&limit=${MANAGED_PRODUCTS_PAGE_SIZE}&offset=${offset}`;
+    let data: unknown;
+    try {
+      data = await adminRequest("GET", "/rest/v1/products", {
+        query: queryFor(MANAGED_PRODUCTS_SELECT),
+      });
+    } catch (error) {
+      // Fallback sebelum migrasi `gallery_photos` diterapkan.
+      const message = error instanceof Error ? error.message : "";
+      if (!/gallery_photos/i.test(message)) throw error;
+      data = await adminRequest("GET", "/rest/v1/products", {
+        query: queryFor(MANAGED_PRODUCTS_SELECT.split(",").filter(col => col !== "gallery_photos").join(",")),
+      });
+    }
     if (!Array.isArray(data)) {
       throw new Error("Gagal memuat daftar produk");
     }
@@ -1151,14 +1175,21 @@ export async function fetchProductById(id: string): Promise<Product | null> {
   if (!id || id.length > 120 || !isSupabaseConfigured()) return null;
   const normalizedId = id.trim().toUpperCase();
 
+  const baseSelect =
+    "id,nama_produk,tier,harga,bunga,deskripsi,bahan,ukuran,foto_produk,foto_qr";
+  const urlFor = (select: string) =>
+    `${SUPABASE_URL}/rest/v1/products?id=eq.${encodeURIComponent(normalizedId)}&status=eq.active&select=${select},is_catalog,status&limit=1`;
+
   try {
     // Kolom aman untuk publik. Isi Memory Vault (surat, foto, audio,
     // video, nama penerima, nomor WA penerima) tidak lagi dapat dibaca
     // lewat PostgREST — gunakan fetchVaultPreview/openVault.
-    const res = await fetch(
-      `${SUPABASE_URL}/rest/v1/products?id=eq.${encodeURIComponent(normalizedId)}&status=eq.active&select=id,nama_produk,tier,harga,bunga,deskripsi,bahan,ukuran,foto_produk,foto_qr,is_catalog,status&limit=1`,
-      { headers: supabaseHeaders() }
-    );
+    let res = await fetch(urlFor(`${baseSelect},gallery_photos`), { headers: supabaseHeaders() });
+    // Sebelum migrasi `gallery_photos` dijalankan, fallback ke kolom lama
+    // agar halaman detail tetap tampil.
+    if (!res.ok) {
+      res = await fetch(urlFor(baseSelect), { headers: supabaseHeaders() });
+    }
     if (!res.ok) return null;
     const data = await res.json();
     const row = Array.isArray(data) ? data[0] : data;
@@ -1215,6 +1246,15 @@ export async function createProduct(product: Product): Promise<Product> {
       invalidateProductCaches();
       return normalizeProduct(Array.isArray(retry) ? retry[0] : retry);
     }
+    if (isMissingGalleryColumn(errorText)) {
+      // Kolom galeri belum ada (migrasi belum dijalankan): simpan tanpa galeri.
+      const retry = await adminRequest("POST", "/rest/v1/products", {
+        prefer: "return=representation",
+        body: productPayload({ ...product, gallery_photos: undefined }, "active"),
+      });
+      invalidateProductCaches();
+      return normalizeProduct(Array.isArray(retry) ? retry[0] : retry);
+    }
     throw error;
   }
 }
@@ -1246,6 +1286,20 @@ export async function updateProduct(id: string, product: Product): Promise<Produ
         prefer: "return=representation",
         body: {
           ...productPayload(product, product.status || "active", true),
+          id,
+          updated_at: new Date().toISOString(),
+        },
+      });
+      invalidateProductCaches();
+      return normalizeProduct(Array.isArray(retry) ? retry[0] : retry);
+    }
+    if (isMissingGalleryColumn(errorText)) {
+      // Kolom galeri belum ada (migrasi belum dijalankan): simpan tanpa galeri.
+      const retry = await adminRequest("PATCH", "/rest/v1/products", {
+        query: `id=eq.${encodeURIComponent(id)}`,
+        prefer: "return=representation",
+        body: {
+          ...productPayload({ ...product, gallery_photos: undefined }, product.status || "active"),
           id,
           updated_at: new Date().toISOString(),
         },

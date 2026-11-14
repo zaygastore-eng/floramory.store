@@ -112,6 +112,7 @@ interface FormState {
   dari: string;
   pesan: string;
   fotoProduk: string;
+  galleryPhotos: string[];
   audioUrl: string;
   audioDurasi: number;
   videoUrl: string;
@@ -119,6 +120,8 @@ interface FormState {
   vaultPin: string;
   isCatalog: boolean;
 }
+
+const MAX_GALLERY_PHOTOS = 4;
 
 const EMPTY: FormState = {
   id: "",
@@ -136,6 +139,7 @@ const EMPTY: FormState = {
   dari: "",
   pesan: "",
   fotoProduk: "",
+  galleryPhotos: [],
   audioUrl: "",
   audioDurasi: 0,
   videoUrl: "",
@@ -161,6 +165,7 @@ function productToForm(product: Product): FormState {
     dari: product.dari,
     pesan: product.pesan_personal,
     fotoProduk: product.foto_produk,
+    galleryPhotos: product.gallery_photos || [],
     audioUrl: product.audio_url || "",
     audioDurasi: product.audio_durasi || 0,
     videoUrl: product.video_url || "",
@@ -326,6 +331,7 @@ export default function Admin() {
   const [qrVisible, setQrVisible] = useState(false);
   const [savingProduct, setSavingProduct] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [uploadingGallery, setUploadingGallery] = useState(false);
   const [managedProducts, setManagedProducts] = useState<Product[]>([]);
   const [loadingProducts, setLoadingProducts] = useState(false);
   const [preOrders, setPreOrders] = useState<PreOrder[]>([]);
@@ -351,6 +357,7 @@ export default function Admin() {
   const [realtimeConnected, setRealtimeConnected] = useState(false);
   const qrRef = useRef<HTMLDivElement>(null);
   const produkUploadRef = useRef<HTMLInputElement>(null);
+  const galleryUploadRef = useRef<HTMLInputElement>(null);
   const heroUploadRef = useRef<HTMLInputElement>(null);
   const wasMobileViewport = useRef(window.innerWidth < 768);
 
@@ -694,6 +701,7 @@ export default function Admin() {
       dari: form.isCatalog ? "" : form.dari,
       pesan_personal: form.isCatalog ? "" : form.pesan,
       foto_produk: form.fotoProduk,
+      gallery_photos: form.isCatalog ? form.galleryPhotos : (existing?.gallery_photos || []),
       foto_qr: "",
       audio_url: form.isCatalog ? "" : form.audioUrl.trim(),
       audio_durasi: form.isCatalog ? 0 : (form.audioDurasi || existing?.audio_durasi || 0),
@@ -771,6 +779,47 @@ export default function Admin() {
     }
   };
 
+  const handleGalleryUpload = async (files: FileList) => {
+    if (uploadingGallery) return;
+    const trimmedId = form.id.trim();
+    if (!trimmedId) {
+      showToast("Harap isi ID Produk terlebih dahulu sebelum mengunggah foto.", "alert");
+      return;
+    }
+
+    const slotsLeft = MAX_GALLERY_PHOTOS - form.galleryPhotos.length;
+    if (slotsLeft <= 0) {
+      showToast(`Galeri sudah penuh (maks. ${MAX_GALLERY_PHOTOS} foto).`, "alert");
+      return;
+    }
+
+    const selected = Array.from(files).slice(0, slotsLeft);
+    if (selected.length === 0) return;
+
+    setUploadingGallery(true);
+    try {
+      const urls: string[] = [];
+      for (let i = 0; i < selected.length; i++) {
+        const slot = `gallery-${Date.now()}-${i}` as const;
+        const url = await uploadProductImage(trimmedId, slot, selected[i]);
+        urls.push(url);
+      }
+      setForm(f => ({
+        ...f,
+        galleryPhotos: [...f.galleryPhotos, ...urls].slice(0, MAX_GALLERY_PHOTOS),
+      }));
+      showToast(`${urls.length} foto galeri terunggah (WebP, otomatis dioptimasi)`, "success");
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "Gagal mengunggah foto galeri", "alert");
+    } finally {
+      setUploadingGallery(false);
+    }
+  };
+
+  const removeGalleryPhoto = (url: string) => {
+    setForm(f => ({ ...f, galleryPhotos: f.galleryPhotos.filter(item => item !== url) }));
+  };
+
   const handleHeroImageUpload = async (file: File) => {
     if (uploadingHeroImage) return;
     setUploadingHeroImage(true);
@@ -845,7 +894,7 @@ export default function Admin() {
     if (!ok) return;
 
     try {
-      await deleteProduct(product.id, [product.foto_produk, product.foto_qr, product.foto_vault]);
+      await deleteProduct(product.id, [product.foto_produk, product.foto_qr, product.foto_vault, ...(product.gallery_photos || [])]);
       setManagedProducts(products => products.filter(item => item.id !== product.id));
       if (editingId === product.id) resetForm();
       await loadProducts();
@@ -1450,6 +1499,55 @@ export default function Admin() {
               return null;
             })()}
             <p className="form-hint">Maks. 5 MB · otomatis dikompresi ke WebP · thumbnail 600px dibuat CDN untuk katalog.</p>
+          </div>
+
+          <div className="admin-form-group">
+            <label className="admin-form-label">Galeri Foto Produk (Multi-Gambar)</label>
+            <div className="admin-upload-row">
+              <button
+                type="button"
+                className="admin-upload-btn"
+                disabled={uploadingGallery || !form.id.trim() || form.galleryPhotos.length >= MAX_GALLERY_PHOTOS}
+                title={!form.id.trim() ? "Isi ID Produk dulu" : "Pilih beberapa foto sekaligus (maks. 5 MB per foto)"}
+                onClick={() => galleryUploadRef.current?.click()}
+              >
+                {uploadingGallery ? "Mengunggah..." : "Tambah Foto Galeri"}
+              </button>
+              <input
+                ref={galleryUploadRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/avif,image/gif"
+                multiple
+                className="admin-upload-input"
+                onChange={e => {
+                  if (e.target.files?.length) void handleGalleryUpload(e.target.files);
+                  e.target.value = "";
+                }}
+              />
+            </div>
+            {form.galleryPhotos.length > 0 ? (
+              <div className="admin-gallery-grid">
+                {form.galleryPhotos.map(url => (
+                  <div className="admin-gallery-item" key={url}>
+                    <img src={productImageUrl(url, "thumb")} alt="Foto galeri produk" />
+                    <button
+                      type="button"
+                      className="admin-gallery-remove"
+                      onClick={() => removeGalleryPhoto(url)}
+                      aria-label="Hapus foto galeri"
+                      title="Hapus foto"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="form-hint">Belum ada foto galeri. Foto tambahan akan tampil di halaman detail (View Folio).</p>
+            )}
+            <p className="form-hint">
+              Maks. {MAX_GALLERY_PHOTOS} foto tambahan · bisa pilih beberapa file sekaligus · otomatis WebP.
+            </p>
           </div>
         </div>
       )}

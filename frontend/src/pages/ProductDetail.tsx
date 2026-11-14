@@ -130,13 +130,17 @@ export default function ProductDetail() {
     );
   }
 
-  // 4 Gallery views with fallbacks
-  const galleryImages = [
-    { label: "Studio Portrait", src: product.foto_produk },
-    { label: "Petal Close-Up", src: product.foto_vault || product.foto_produk },
-    { label: "Lifestyle Placement", src: product.foto_produk },
-    { label: "Digital Vault Scan", src: product.foto_qr || product.foto_vault || product.foto_produk },
-  ];
+  // Galeri folio: gunakan foto tambahan dari Admin bila tersedia.
+  // Jika belum ada, tampilkan foto produk utama saja (tanpa duplikasi).
+  const gallerySources = (() => {
+    const extras = (product.gallery_photos || []).filter(url => Boolean(url && url.trim()));
+    const all = [product.foto_produk, ...extras].filter(url => Boolean(url && url.trim()));
+    return Array.from(new Set(all));
+  })();
+  const galleryImages = (gallerySources.length > 0 ? gallerySources : [""]).map((src, index) => ({
+    label: index === 0 ? "Studio Portrait" : `Gallery View ${index + 1}`,
+    src,
+  }));
 
   const selectedImage = galleryImages[activeImageIndex] || galleryImages[0];
   const selectedFinishLabel = FRAME_OPTIONS.find(f => f.key === frameFinish)?.label || "Solid Teak Wood";
@@ -274,30 +278,32 @@ export default function ProductDetail() {
                   <span className="pdp-view-badge">{selectedImage.label}</span>
                 </div>
 
-                {/* 4 Thumbnails */}
-                <div className="pdp-thumb-row" role="tablist" aria-label="Sudut Pandang Galeri">
-                  {galleryImages.map((img, idx) => (
-                    <button
-                      key={idx}
-                      type="button"
-                      role="tab"
-                      aria-selected={activeImageIndex === idx}
-                      className={`pdp-thumb-btn${activeImageIndex === idx ? " active" : ""}`}
-                      onClick={() => setActiveImageIndex(idx)}
-                      aria-label={img.label}
-                    >
-                      <ProductImage
-                        src={img.src}
-                        size="thumb"
-                        alt={img.label}
-                        width={120}
-                        height={150}
-                        loading="lazy"
-                        fallback={<div className="product-img-monogram" />}
-                      />
-                    </button>
-                  ))}
-                </div>
+                {/* Thumbnails (hanya jika ada lebih dari satu foto) */}
+                {galleryImages.length > 1 && (
+                  <div className="pdp-thumb-row" role="tablist" aria-label="Sudut Pandang Galeri">
+                    {galleryImages.map((img, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        role="tab"
+                        aria-selected={activeImageIndex === idx}
+                        className={`pdp-thumb-btn${activeImageIndex === idx ? " active" : ""}`}
+                        onClick={() => setActiveImageIndex(idx)}
+                        aria-label={img.label}
+                      >
+                        <ProductImage
+                          src={img.src}
+                          size="thumb"
+                          alt={img.label}
+                          width={120}
+                          height={150}
+                          loading="lazy"
+                          fallback={<div className="product-img-monogram" />}
+                        />
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
 
