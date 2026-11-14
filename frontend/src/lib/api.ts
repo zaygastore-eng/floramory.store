@@ -90,6 +90,7 @@ export interface PreOrder {
   vault_setup_token?: string;
   vault_setup_expires_at?: string;
   vault_locked_at?: string;
+  payment_proof_url?: string;
   status?: string;
   created_at?: string;
 }
@@ -113,6 +114,7 @@ export interface PreOrderGroupSubmissionResult {
   success: boolean;
   groupId: string;
   groupNumber: string;
+  paymentToken?: string;
   orderIds: string[];
   orderNumbers: string[];
   orderId: string;
@@ -895,6 +897,38 @@ export async function fetchWhatsAppNumber(): Promise<string> {
   }
 }
 
+export async function fetchQrisImageUrl(): Promise<string> {
+  if (!isSupabaseConfigured()) return "";
+
+  try {
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/app_settings?key=eq.qris_image_url&select=value&limit=1`,
+      { headers: supabaseHeaders() }
+    );
+    if (!res.ok) return "";
+    const data = await res.json();
+    const value = Array.isArray(data) ? data[0]?.value : "";
+    return String(value || "").trim();
+  } catch {
+    return "";
+  }
+}
+
+export async function updateQrisImageUrl(value: string): Promise<void> {
+  if (!isSupabaseConfigured()) return;
+
+  const clean = value.trim();
+  await adminRequest("POST", "/rest/v1/app_settings", {
+    query: "on_conflict=key",
+    prefer: "resolution=merge-duplicates",
+    body: {
+      key: "qris_image_url",
+      value: clean,
+      updated_at: new Date().toISOString(),
+    },
+  });
+}
+
 export async function updateWhatsAppNumber(value: string): Promise<void> {
   if (!isSupabaseConfigured()) return;
 
@@ -1057,6 +1091,7 @@ function normalizePreOrder(obj: Partial<PreOrder> & Record<string, unknown>): Pr
     vault_setup_token: String(obj.vault_setup_token || "").trim(),
     vault_setup_expires_at: String(obj.vault_setup_expires_at || "").trim(),
     vault_locked_at: String(obj.vault_locked_at || "").trim(),
+    payment_proof_url: String(obj.payment_proof_url || "").trim(),
     status: String(obj.status || "new").trim(),
     created_at: String(obj.created_at || "").trim(),
   };
@@ -1461,6 +1496,7 @@ export async function createGroupPreOrder(
     success: data.success === true,
     groupId: String(data.groupId || ""),
     groupNumber: String(data.groupNumber || ""),
+    paymentToken: typeof data.paymentToken === "string" ? data.paymentToken : undefined,
     orderIds: Array.isArray(data.orderIds) ? data.orderIds.map(String) : [],
     orderNumbers: Array.isArray(data.orderNumbers) ? data.orderNumbers.map(String) : [],
     orderId: String(data.orderId || data.id || ""),
@@ -1472,6 +1508,95 @@ export async function createGroupPreOrder(
   };
 }
 
+export interface PaymentInfoResult {
+  ok: boolean;
+  group: {
+    id: string;
+    group_number: string;
+    customer_name: string;
+    whatsapp: string;
+    total_amount: number;
+    dp_amount: number;
+    status: string;
+    payment_proof_url: string;
+    created_at: string;
+  };
+  items: Array<{
+    id: string;
+    order_number: string;
+    product_name: string;
+    nuansa: string;
+    inisial: string;
+    total_amount: number;
+    dp_amount: number;
+    status: string;
+  }>;
+}
+
+export async function getPaymentInfo(params: {
+  groupNumber?: string;
+  groupId?: string;
+  paymentToken?: string;
+}): Promise<PaymentInfoResult> {
+  if (!isSupabaseConfigured()) {
+    throw new Error("Supabase belum dikonfigurasi.");
+  }
+
+  const res = await fetch(PREORDER_FUNCTION, {
+    method: "POST",
+    headers: {
+      apikey: SUPABASE_ANON_KEY,
+      Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      action: "get_payment_info",
+      group_number: params.groupNumber,
+      group_id: params.groupId,
+      payment_token: params.paymentToken,
+    }),
+  });
+
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(data.message || "Gagal mengambil data tagihan pembayaran.");
+  }
+  return data as PaymentInfoResult;
+}
+
+export async function uploadPaymentProof(params: {
+  groupNumber?: string;
+  groupId?: string;
+  paymentToken: string;
+  imageBase64: string;
+}): Promise<{ ok: boolean; success: boolean; payment_proof_url: string; message: string }> {
+  if (!isSupabaseConfigured()) {
+    throw new Error("Supabase belum dikonfigurasi.");
+  }
+
+  const res = await fetch(PREORDER_FUNCTION, {
+    method: "POST",
+    headers: {
+      apikey: SUPABASE_ANON_KEY,
+      Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      action: "upload_payment_proof",
+      group_number: params.groupNumber,
+      group_id: params.groupId,
+      payment_token: params.paymentToken,
+      image: params.imageBase64,
+    }),
+  });
+
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(data.message || "Gagal mengunggah bukti pembayaran.");
+  }
+  return data;
+}
+
 function isTierConstraintError(message: string): boolean {
   const lower = String(message || "").toLowerCase();
   return /products_tier_check|check.*tier|tier.*check|invalid.*tier|constraint.*tier/.test(lower);
@@ -1479,7 +1604,7 @@ function isTierConstraintError(message: string): boolean {
 
 // Kolom eksplisit (bukan select=*). updated_at tidak dipakai UI.
 const PREORDER_SELECT =
-  "id,order_number,group_id,group_number,group_item_index,group_item_count,group_total_amount,group_dp_amount,total_amount,dp_amount,nuansa,inisial,customer_name,whatsapp,product_id,product_name,custom_request,recipient_name,sender_name,personal_message,recipient_whatsapp,foto_vault,audio_url,audio_durasi,video_url,vault_submitted_at,vault_pin,vault_setup_token,vault_setup_expires_at,vault_locked_at,status,created_at";
+  "id,order_number,group_id,group_number,group_item_index,group_item_count,group_total_amount,group_dp_amount,total_amount,dp_amount,nuansa,inisial,customer_name,whatsapp,product_id,product_name,custom_request,recipient_name,sender_name,personal_message,recipient_whatsapp,foto_vault,audio_url,audio_durasi,video_url,vault_submitted_at,vault_pin,vault_setup_token,vault_setup_expires_at,vault_locked_at,payment_proof_url,status,created_at";
 
 export interface PreOrderPage {
   orders: PreOrder[];

@@ -1459,3 +1459,208 @@
   color: #2E7D32;
   white-space: nowrap;
 }
+
+/* ============================================================
+   QRIS & Payment Proof Phase Styling
+   ============================================================ */
+.payment-stage-card {
+  padding: clamp(1.25rem, 4vw, 2.5rem);
+  text-align: center;
+}
+
+.payment-badge-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.85rem;
+  border-radius: 999px;
+  background: rgba(142, 40, 0, 0.08);
+  color: var(--brand-burgundy, #531B21);
+  font: 600 0.72rem/1 var(--font-body);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 1rem;
+}
+
+.payment-badge-status.is-uploaded {
+  background: rgba(46, 125, 50, 0.1);
+  color: #2E7D32;
+}
+
+.payment-amount-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 1.5rem auto;
+  padding: 1.25rem 1.5rem;
+  border-radius: 12px;
+  background: var(--bg-cream, #FAF7F2);
+  border: 1px solid var(--border-hairline, rgba(27, 33, 43, 0.12));
+  max-width: 440px;
+}
+
+.payment-amount-label {
+  font: 500 0.75rem/1.3 var(--font-body);
+  color: var(--text-taupe, #7A7265);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.payment-amount-val {
+  font: 600 clamp(1.5rem, 4.5vw, 2rem)/1.1 var(--font-serif);
+  color: var(--brand-burgundy, #531B21);
+}
+
+.payment-amount-total {
+  font: 400 0.8rem/1.4 var(--font-body);
+  color: var(--text-taupe, #7A7265);
+}
+
+.payment-qris-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.85rem;
+  margin: 1.5rem auto 2rem;
+  max-width: 320px;
+}
+
+.payment-qris-frame {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  max-width: 280px;
+  background: #FFFFFF;
+  padding: 1rem;
+  border-radius: 16px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.payment-qris-frame img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.payment-qris-caption {
+  font: 400 0.75rem/1.5 var(--font-body);
+  color: var(--text-taupe, #7A7265);
+  text-align: center;
+}
+
+.payment-upload-zone {
+  margin: 1.5rem auto;
+  max-width: 440px;
+  text-align: left;
+}
+
+.payment-upload-label {
+  display: block;
+  font: 600 0.82rem/1.4 var(--font-body);
+  color: var(--text-dark, #1B212B);
+  margin-bottom: 0.4rem;
+}
+
+.payment-drop-box {
+  border: 2px dashed rgba(83, 27, 33, 0.25);
+  border-radius: 12px;
+  padding: 1.5rem;
+  text-align: center;
+  cursor: pointer;
+  background: rgba(255, 255, 255, 0.6);
+  transition: border-color 0.2s ease, background 0.2s ease;
+  position: relative;
+}
+
+.payment-drop-box:hover {
+  border-color: var(--brand-burgundy, #531B21);
+  background: #FFFFFF;
+}
+
+.payment-drop-icon {
+  width: 36px;
+  height: 36px;
+  margin: 0 auto 0.65rem;
+  color: var(--brand-burgundy, #531B21);
+}
+
+.payment-drop-text {
+  font: 500 0.84rem/1.4 var(--font-body);
+  color: var(--text-dark, #1B212B);
+  margin-bottom: 0.25rem;
+}
+
+.payment-drop-hint {
+  font: 400 0.72rem/1.4 var(--font-body);
+  color: var(--text-taupe, #7A7265);
+}
+
+.payment-preview-box {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem 1rem;
+  border-radius: 10px;
+  background: #FFFFFF;
+  border: 1px solid var(--border-hairline, rgba(27, 33, 43, 0.12));
+}
+
+.payment-preview-img {
+  width: 54px;
+  height: 54px;
+  object-fit: cover;
+  border-radius: 6px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.payment-preview-meta {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+}
+
+.payment-preview-name {
+  font: 500 0.82rem/1.3 var(--font-body);
+  color: var(--text-dark, #1B212B);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.payment-preview-size {
+  font: 400 0.72rem/1.3 var(--font-body);
+  color: var(--text-taupe, #7A7265);
+}
+
+.payment-actions-col {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+}
+
+.payment-actions-col .lp-btn {
+  width: 100%;
+  justify-content: center;
+}
+
+.payment-cancel-btn {
+  background: none;
+  border: none;
+  color: var(--text-taupe, #7A7265);
+  font: 400 0.82rem/1.4 var(--font-body);
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 0.5rem;
+  transition: color 0.15s ease;
+}
+
+.payment-cancel-btn:hover {
+  color: var(--brand-burgundy, #531B21);
+}
+

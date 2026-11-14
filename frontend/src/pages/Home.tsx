@@ -6,6 +6,9 @@ import SiteHeader from "@/components/SiteHeader";
 import SiteFooter from "@/components/SiteFooter";
 import {
   createGroupPreOrder,
+  getPaymentInfo,
+  uploadPaymentProof,
+  fetchQrisImageUrl,
   fetchCatalogProducts,
   fetchHeroConfig,
   fetchWhatsAppNumber,
@@ -136,6 +139,49 @@ function productPriceAmount(raw: unknown): number {
   return Number.isSafeInteger(amount) ? amount : 0;
 }
 
+const PENDING_PAYMENT_STORAGE_KEY = "fm_pending_payment_v1";
+
+interface PendingPaymentState {
+  groupId: string;
+  groupNumber: string;
+  orderNumber: string;
+  paymentToken: string;
+  itemCount: number;
+  totalAmount: number;
+  dpAmount: number;
+  customerName: string;
+  paymentProofUrl?: string;
+  waUrl?: string;
+}
+
+function loadPendingPayment(): PendingPaymentState | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(PENDING_PAYMENT_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (parsed && typeof parsed === "object" && parsed.groupNumber && parsed.paymentToken) {
+      return parsed as PendingPaymentState;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+function savePendingPayment(state: PendingPaymentState | null): void {
+  if (typeof window === "undefined") return;
+  try {
+    if (!state) {
+      window.localStorage.removeItem(PENDING_PAYMENT_STORAGE_KEY);
+    } else {
+      window.localStorage.setItem(PENDING_PAYMENT_STORAGE_KEY, JSON.stringify(state));
+    }
+  } catch {
+    // Mode privat/storage diblokir
+  }
+}
+
 const PHOTOBOOTH_SAMPLE_PHOTOS = [
   { id: "cut-1", src: "/landing/polaroid-1.webp", alt: "Flower market morning bouquet" },
   { id: "cut-2", src: "/landing/polaroid-2.webp", alt: "Fragrance of fresh roses" },
@@ -242,21 +288,25 @@ function ProductCard({
 
 const faqItems = [
   {
-    q: "Apakah bunga ini benar-benar bunga asli?",
-    a: "Ya, 100% bunga botani asli pilihan. Setiap tangkai diekstraksi kelembapannya menggunakan teknik dehidrasi silica berstandar laboratorium hingga kadar air mencapai < 0.02%, mengunci warna dan bentuk alaminya tanpa layu atau membusuk."
+    q: "Apa itu A Chapter & Fitur Smart-QR?",
+    a: " A Chapter adalah kerajinan botani abadi (preserved artware) yang dilengkapi teknologi Smart-QR Code untuk menyimpan kenangan digital (album foto, video, atau musik) di dalam karya resin."
   },
   {
-    q: "Berapa lama bunga A Chapter bertahan?",
-    a: "Karya botani A Chapter dirancang untuk bertahan 8–10 tahun (atau seumur hidup jika terhindar dari paparan terik matahari langsung dan kelembapan ekstrem). Bunga tidak membutuhkan air, pemotongan tangkai, maupun perawatan rumit."
+    q: "Bagaimana cara kustomisasi produknya?",
+    a: " Kamu bisa memilih inisial huruf/angka, nuansa palet warna (Crimson Romance atau Bridgerton Blue), serta menyematkan tautan kenangan digital pribadi saat mengisi formulir Pre-Order."
   },
   {
-    q: "Apakah penerima butuh mengunduh aplikasi untuk scan QR?",
-    a: "Sama sekali tidak. Micro-chip QR dapat dipindai langsung menggunakan kamera bawaan ponsel pintar (iOS maupun Android) tanpa aplikasi pihak ketiga. Brankas memori digital terbuka seketika di peramban web."
+    q: "Bagaimana sistem pembayaran dan Pre-Order-nya??",
+    a: "Karena setiap karya dibuat secara khusus (bespoke), kami menerapkan sistem DP (Down Payment) 50% di awal sebagai tanda jadi slot produksi. Pelunasan dilakukan saat karya selesai dan siap dikirim."
   },
   {
-    q: "Bagaimana proses pembayaran DP 50% dan pelunasan?",
-    a: "Pembayaran uang muka (DP 50%) dilakukan setelah konfirmasi melalui WhatsApp concierge atelier untuk mengamankan slot batch mingguan dan memulai kurasi. Pelunasan sisa 50% dilakukan saat karya botani selesai dirangkai dan siap dikirim."
-  }
+    q: "Berapa lama proses pembuatan & ke mana pengirimannya?",
+    a: "Pengerjaan memakan waktu 5–7 hari kerja. Untuk fase peluncuran perdana ini, pengiriman dikirim langsung dari Surabaya dan difokuskan ke seluruh wilayah Jawa Timur."
+  },
+  {
+    q: "Apakah bunga di dalam resin bisa layu?",
+    a: "Tidak. Kami menggunakan bunga asli berkualitas tinggi yang diawetkan (preserved flowers) dan disegel rapat dengan resin bening premium agar keindahannya bertahan selamanya."
+  } 
 ];
 
 const defaultHeroConfig: HeroConfig = {
@@ -316,6 +366,15 @@ export default function Home() {
   const [submittedItemCount, setSubmittedItemCount] = useState(0);
   const [submittedTotal, setSubmittedTotal] = useState(0);
   const [submittedDp, setSubmittedDp] = useState(0);
+
+  // Fase Pembayaran QRIS & Bukti Bayar
+  const [paymentPhase, setPaymentPhase] = useState<"form" | "qris" | "confirmed">("form");
+  const [activePayment, setActivePayment] = useState<PendingPaymentState | null>(() => loadPendingPayment());
+  const [qrisImageUrl, setQrisImageUrl] = useState<string>("");
+  const [proofFile, setProofFile] = useState<File | null>(null);
+  const [proofPreviewUrl, setProofPreviewUrl] = useState<string>("");
+  const [isUploadingProof, setIsUploadingProof] = useState(false);
+  const proofInputRef = useRef<HTMLInputElement>(null);
   const [orderItems, setOrderItems] = useState<OrderDraftItem[]>(() => loadOrderDraft());
   const [whatsappNumber, setWhatsappNumber] = useState("6285235242425");
   const [vaultSimTab, setVaultSimTab] = useState<
@@ -420,9 +479,49 @@ export default function Home() {
     fetchWhatsAppNumber().then(number => {
       setWhatsappNumber(normalizeWhatsApp(number) || "6285235242425");
     });
+    fetchQrisImageUrl().then(url => {
+      setQrisImageUrl(url || "/landing/qris-atelier.png");
+    });
     return () => {
       active = false;
     };
+  }, []);
+
+  // Sinkronisasi status tagihan aktif dari pending payment jika ada di localStorage
+  useEffect(() => {
+    if (!activePayment) return;
+    setPaymentPhase("qris");
+    setSubmittedGroupNumber(activePayment.groupNumber);
+    setSubmittedOrderNumber(activePayment.orderNumber);
+    setSubmittedOrderId(activePayment.groupId);
+    setSubmittedItemCount(activePayment.itemCount);
+    setSubmittedTotal(activePayment.totalAmount);
+    setSubmittedDp(activePayment.dpAmount);
+    if (activePayment.waUrl) {
+      setLastOrderWaUrl(activePayment.waUrl);
+    }
+
+    // Refresh info dari backend untuk memastikan status teranyar
+    getPaymentInfo({
+      groupNumber: activePayment.groupNumber,
+      paymentToken: activePayment.paymentToken,
+    })
+      .then(res => {
+        if (!res.ok || !res.group) return;
+        if (res.group.status === "dp_verified" || res.group.status === "completed") {
+          setOrderComplete(true);
+          setPaymentPhase("confirmed");
+          savePendingPayment(null);
+          setActivePayment(null);
+        } else if (res.group.payment_proof_url) {
+          setActivePayment(prev =>
+            prev ? { ...prev, paymentProofUrl: res.group.payment_proof_url } : null
+          );
+        }
+      })
+      .catch(() => {
+        // Abaikan error koneksi latar belakang
+      });
   }, []);
 
   // Simpan draft daftar karya agar bisa dilanjutkan dari halaman lain.
@@ -672,10 +771,6 @@ export default function Home() {
     }));
 
     setLastOrderWaUrl(null);
-    commissionPopupRef.current = window.open("about:blank", "_blank");
-    if (commissionPopupRef.current) {
-      commissionPopupRef.current.opener = null;
-    }
     setOrderSubmitting(true);
     try {
       const result = await createGroupPreOrder(
@@ -720,18 +815,104 @@ export default function Home() {
       const waDigits = normalizeWhatsApp(whatsappNumber) || "6285235242425";
       const waUrl = `https://wa.me/${waDigits}?text=${encodeURIComponent(commissionMessage)}`;
       setLastOrderWaUrl(waUrl);
-      if (commissionPopupRef.current && !commissionPopupRef.current.closed) {
-        commissionPopupRef.current.location.href = waUrl;
-      }
-      commissionPopupRef.current = null;
-      setOrderComplete(true);
-      showToast("Reservasi berhasil disegel. Lanjutkan ke WhatsApp Concierge untuk verifikasi DP.");
+
+      const pending: PendingPaymentState = {
+        groupId: result.groupId,
+        groupNumber: result.groupNumber,
+        orderNumber: result.orderNumber,
+        paymentToken: result.paymentToken || "",
+        itemCount: result.itemCount || orderUnitCount,
+        totalAmount: result.totalAmount || orderTotal,
+        dpAmount: result.dpAmount || orderDp,
+        customerName: buyerForm.nama.trim(),
+        waUrl,
+      };
+      savePendingPayment(pending);
+      setActivePayment(pending);
+      setPaymentPhase("qris");
+      showToast("Pesanan tercatat! Silakan selesaikan pembayaran DP 50% via QRIS.");
+      document.getElementById("pesan")?.scrollIntoView({ behavior: "smooth" });
     } catch (error) {
-      commissionPopupRef.current?.close();
-      commissionPopupRef.current = null;
       showToast(error instanceof Error ? error.message : "Gagal menyegel pre-order. Silakan coba lagi.");
     } finally {
       setOrderSubmitting(false);
+    }
+  };
+
+  const handleProofFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      showToast("File harus berupa gambar (JPG, PNG, atau WEBP).");
+      return;
+    }
+    if (file.size > 8 * 1024 * 1024) {
+      showToast("Ukuran foto maksimal 8 MB.");
+      return;
+    }
+
+    setProofFile(file);
+    const objectUrl = URL.createObjectURL(file);
+    setProofPreviewUrl(objectUrl);
+  };
+
+  const fileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result || ""));
+      reader.onerror = () => reject(new Error("Gagal membaca file"));
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const handleUploadPaymentProofSubmit = async () => {
+    if (!activePayment) return;
+    if (!proofFile && !activePayment.paymentProofUrl) {
+      showToast("Pilih foto bukti transfer terlebih dahulu.");
+      return;
+    }
+
+    setIsUploadingProof(true);
+    try {
+      let finalProofUrl = activePayment.paymentProofUrl || "";
+      if (proofFile) {
+        const base64 = await fileToBase64(proofFile);
+        const res = await uploadPaymentProof({
+          groupNumber: activePayment.groupNumber,
+          paymentToken: activePayment.paymentToken,
+          imageBase64: base64,
+        });
+        finalProofUrl = res.payment_proof_url;
+      }
+
+      const updated = {
+        ...activePayment,
+        paymentProofUrl: finalProofUrl,
+      };
+      savePendingPayment(updated);
+      setActivePayment(updated);
+      showToast("Bukti pembayaran berhasil tersimpan.");
+
+      // Lanjut otomatis ke WhatsApp concierge
+      if (activePayment.waUrl) {
+        window.open(activePayment.waUrl, "_blank", "noopener,noreferrer");
+      }
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : "Gagal mengunggah bukti pembayaran.");
+    } finally {
+      setIsUploadingProof(false);
+    }
+  };
+
+  const handleCancelPaymentPhase = () => {
+    if (window.confirm("Batalkan sesi pembayaran ini dan kembali ke formulir pemesanan?")) {
+      savePendingPayment(null);
+      setActivePayment(null);
+      setPaymentPhase("form");
+      setProofFile(null);
+      setProofPreviewUrl("");
+      showToast("Sesi pembayaran dibatalkan.");
     }
   };
 
@@ -1372,7 +1553,7 @@ export default function Home() {
               
 
               <div className="lp-kolom-card">
-                {orderComplete ? (
+                {orderComplete || paymentPhase === "confirmed" ? (
                   <div className="commission-confirmation lp-confirmation" role="status" aria-live="polite">
                     <div className="certificate-seal" aria-hidden="true">
                       <img src="/a-chapter-logo-light.png" alt="" className="certificate-seal-logo" />
@@ -1420,11 +1601,143 @@ export default function Home() {
                         setSubmittedDp(0);
                         setLastOrderWaUrl(null);
                         setOrderComplete(false);
+                        setPaymentPhase("form");
+                        savePendingPayment(null);
+                        setActivePayment(null);
+                        setProofFile(null);
+                        setProofPreviewUrl("");
                         formStartRef.current = Date.now();
                       }}
                     >
                       Buat permintaan baru
                     </button>
+                  </div>
+                ) : paymentPhase === "qris" ? (
+                  <div className="payment-stage-card" role="region" aria-label="Tahap Pembayaran QRIS">
+                    <span className={`payment-badge-status ${activePayment?.paymentProofUrl ? "is-uploaded" : ""}`}>
+                      {activePayment?.paymentProofUrl ? "✓ Bukti Transfer Diunggah" : "Tahap 2: Pembayaran DP 50%"}
+                    </span>
+                    <h3 className="lp-form-title">Selesaikan Reservasi Karya</h3>
+                    <p className="lp-form-sub">
+                      Pindai QRIS atelier di bawah ini menggunakan aplikasi mobile banking atau e-wallet Anda untuk menyegel slot pengerjaan.
+                    </p>
+
+                    <p className="commission-reference" style={{ margin: "1rem auto", maxWidth: "440px" }}>
+                      NOMOR PESANAN: <strong>#{submittedGroupNumber || submittedOrderNumber || activePayment?.groupNumber}</strong>
+                    </p>
+
+                    <div className="payment-amount-box">
+                      <span className="payment-amount-label">Jumlah Uang Muka (DP 50%)</span>
+                      <strong className="payment-amount-val">{formatHarga(String(submittedDp || activePayment?.dpAmount || 0))}</strong>
+                      <span className="payment-amount-total">
+                        Total Keseluruhan ({submittedItemCount || activePayment?.itemCount || 1} karya): {formatHarga(String(submittedTotal || activePayment?.totalAmount || 0))}
+                      </span>
+                    </div>
+
+                    <div className="payment-qris-container">
+                      <div className="payment-qris-frame">
+                        <img
+                          src={qrisImageUrl || "/landing/qris-atelier.png"}
+                          alt="QRIS A Chapter Atelier"
+                          loading="eager"
+                        />
+                      </div>
+                      <p className="payment-qris-caption">
+                        NMID / Akun: <strong>A CHAPTER ATELIER</strong><br />
+                        Mendukung BCA, Mandiri, BRI, BNI, GoPay, OVO, ShopeePay & Dana.
+                      </p>
+                    </div>
+
+                    <div className="payment-upload-zone">
+                      <label className="payment-upload-label" htmlFor="proof-upload-input">
+                        Unggah Bukti Transfer
+                      </label>
+                      <input
+                        ref={proofInputRef}
+                        id="proof-upload-input"
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        style={{ display: "none" }}
+                        onChange={handleProofFileSelect}
+                      />
+
+                      {proofPreviewUrl || activePayment?.paymentProofUrl ? (
+                        <div className="payment-preview-box">
+                          <img
+                            src={proofPreviewUrl || activePayment?.paymentProofUrl}
+                            alt="Bukti Transfer"
+                            className="payment-preview-img"
+                          />
+                          <div className="payment-preview-meta">
+                            <p className="payment-preview-name">
+                              {proofFile ? proofFile.name : "Bukti transfer telah tersimpan"}
+                            </p>
+                            <span className="payment-preview-size">
+                              {proofFile
+                                ? `${(proofFile.size / 1024).toFixed(1)} KB`
+                                : "Tersimpan di Cloud Storage Atelier"}
+                            </span>
+                          </div>
+                          <button
+                            type="button"
+                            className="order-item-remove"
+                            onClick={() => proofInputRef.current?.click()}
+                          >
+                            Ganti
+                          </button>
+                        </div>
+                      ) : (
+                        <div
+                          className="payment-drop-box"
+                          onClick={() => proofInputRef.current?.click()}
+                          role="button"
+                          tabIndex={0}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" || e.key === " ") {
+                              proofInputRef.current?.click();
+                            }
+                          }}
+                        >
+                          <svg className="payment-drop-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                            <polyline points="17 8 12 3 7 8" />
+                            <line x1="12" y1="3" x2="12" y2="15" />
+                          </svg>
+                          <p className="payment-drop-text">Klik di sini untuk memilih foto screenshot bukti transfer</p>
+                          <span className="payment-drop-hint">Format JPG, PNG, atau WEBP (maks. 8 MB)</span>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="payment-actions-col">
+                      <button
+                        type="button"
+                        className="lp-btn lp-btn--wine"
+                        onClick={handleUploadPaymentProofSubmit}
+                        disabled={isUploadingProof || (!proofFile && !activePayment?.paymentProofUrl)}
+                      >
+                        {isUploadingProof ? "Mengunggah Bukti..." : "Kirim Bukti & Konfirmasi ke WhatsApp →"}
+                      </button>
+
+                      {lastOrderWaUrl && (
+                        <a
+                          href={lastOrderWaUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="lp-btn lp-btn--outline"
+                        >
+                          Buka Chat WhatsApp Concierge Langsung
+                        </a>
+                      )}
+
+                      <button
+                        type="button"
+                        className="payment-cancel-btn"
+                        onClick={handleCancelPaymentPhase}
+                      >
+                        Batalkan pembayaran & edit pesanan
+                      </button>
+                    </div>
                   </div>
                 ) : (
                   <>

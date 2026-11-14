@@ -30,6 +30,8 @@ import {
   fetchHeroConfig,
   fetchProductCategories,
   fetchWhatsAppNumber,
+  fetchQrisImageUrl,
+  updateQrisImageUrl,
   hasSupabaseConfig,
   notifyDpConfirmed,
   restoreProduct,
@@ -355,6 +357,9 @@ export default function Admin() {
   const [toastVisible, setToastVisible] = useState(false);
   const [toastLevel, setToastLevel] = useState<"info" | "success" | "alert">("info");
   const [realtimeConnected, setRealtimeConnected] = useState(false);
+  const [qrisAdminUrl, setQrisAdminUrl] = useState("");
+  const [uploadingQris, setUploadingQris] = useState(false);
+  const qrisUploadRef = useRef<HTMLInputElement>(null);
   const qrRef = useRef<HTMLDivElement>(null);
   const produkUploadRef = useRef<HTMLInputElement>(null);
   const galleryUploadRef = useRef<HTMLInputElement>(null);
@@ -521,6 +526,9 @@ export default function Admin() {
     fetchProductCategories().then((cats) => {
       setCategories(cats);
     });
+    fetchQrisImageUrl().then((url) => {
+      if (url) setQrisAdminUrl(url);
+    });
   }, [authed]);
 
   useEffect(() => {
@@ -664,11 +672,30 @@ export default function Admin() {
     localStorage.setItem(WA_KEY, waNum.trim());
     try {
       await updateWhatsAppNumber(normalizeWhatsApp(waNum) || waNum);
+      if (qrisAdminUrl) {
+        await updateQrisImageUrl(qrisAdminUrl.trim());
+      }
       setConfigSaved(true);
       setTimeout(() => setConfigSaved(false), 2000);
       showToast("Konfigurasi tersimpan");
     } catch (error) {
-      showToast(error instanceof Error ? error.message : "Nomor WA tersimpan lokal, tetapi gagal tersimpan ke Supabase");
+      showToast(error instanceof Error ? error.message : "Pengaturan tersimpan lokal, tetapi gagal sinkron ke database");
+    }
+  };
+
+  const handleQrisUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingQris(true);
+    try {
+      const url = await uploadProductImage("site-settings-qris", "produk", file);
+      setQrisAdminUrl(url);
+      await updateQrisImageUrl(url);
+      showToast("Gambar QRIS berhasil diunggah & diperbarui!", "success");
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "Gagal mengunggah gambar QRIS", "alert");
+    } finally {
+      setUploadingQris(false);
     }
   };
 
@@ -1891,6 +1918,19 @@ export default function Admin() {
                       Total grup {formatHarga(String(order.group_total_amount))} · DP 50% {formatHarga(String(order.group_dp_amount || 0))}
                     </span>
                   )}
+                  {order.payment_proof_url && (
+                    <div style={{ marginTop: "8px" }}>
+                      <a
+                        href={order.payment_proof_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="admin-outline-btn"
+                        style={{ display: "inline-flex", alignItems: "center", gap: "6px", fontSize: "0.78rem", padding: "4px 10px", borderColor: "#2E7D32", color: "#2E7D32" }}
+                      >
+                        📷 Lihat Bukti Transfer
+                      </a>
+                    </div>
+                  )}
                 </div>
                 <div className="admin-order-payment">
                   <span className="admin-status-caption">Status Pembayaran</span>
@@ -2219,6 +2259,51 @@ export default function Admin() {
           <input className="admin-form-input" type="text" placeholder="6281234567890"
             value={waNum} onChange={e => setWaNum(e.target.value)} />
         </div>
+
+        <div className="admin-form-group">
+          <label className="admin-form-label">Gambar Barcode QRIS Atelier</label>
+          <p style={{ margin: "0 0 8px", fontSize: "0.8rem", color: "#697099" }}>
+            Gambar barcode QRIS statis yang ditampilkan kepada pemesan saat menyelesaikan reservasi.
+          </p>
+          <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "8px" }}>
+            {qrisAdminUrl ? (
+              <img
+                src={qrisAdminUrl}
+                alt="Barcode QRIS"
+                style={{ width: "64px", height: "64px", objectFit: "contain", borderRadius: "6px", border: "1px solid #ddd", background: "#fff" }}
+              />
+            ) : (
+              <div style={{ width: "64px", height: "64px", background: "#eee", borderRadius: "6px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.7rem", color: "#888" }}>
+                Default
+              </div>
+            )}
+            <div>
+              <input
+                ref={qrisUploadRef}
+                type="file"
+                accept="image/*"
+                style={{ display: "none" }}
+                onChange={handleQrisUpload}
+              />
+              <button
+                type="button"
+                className="admin-outline-btn"
+                disabled={uploadingQris}
+                onClick={() => qrisUploadRef.current?.click()}
+              >
+                {uploadingQris ? "Mengunggah..." : "Unggah Gambar QRIS"}
+              </button>
+            </div>
+          </div>
+          <input
+            className="admin-form-input"
+            type="text"
+            placeholder="https://... atau path gambar /landing/qris-atelier.png"
+            value={qrisAdminUrl}
+            onChange={e => setQrisAdminUrl(e.target.value)}
+          />
+        </div>
+
         <button className="btn-generate" onClick={saveConfig}>Simpan Pengaturan</button>
       </div>
 
