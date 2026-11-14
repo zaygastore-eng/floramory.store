@@ -3,32 +3,6 @@
   scroll-margin-top: 80px;
 }
 
-.order-section {
-  padding: clamp(3.5rem, 6vw, 6rem) clamp(1rem, 4vw, 3rem);
-}
-
-.order-inner {
-  width: 100%;
-  max-width: 1000px;
-}
-
-.commission-sheet-card {
-  width: 100%;
-  max-width: 780px;
-  margin: 0 auto;
-  padding: clamp(2rem, 5vw, 3.5rem);
-  background: var(--bg-surface-tint, #F5EFE6);
-  border: 1px solid var(--accent-gold, #C5A880);
-  border-radius: 8px;
-  box-shadow: 0 12px 32px rgba(35, 43, 56, 0.06);
-  text-align: left;
-}
-
-.commission-sheet-header {
-  margin-bottom: 1.75rem;
-  text-align: center;
-}
-
 .commission-eyebrow {
   display: block;
   margin-bottom: 0.75rem;
@@ -43,13 +17,6 @@
   margin: 0 auto 0.75rem;
   color: var(--text-slate);
   font: 500 clamp(1.85rem, 3.8vw, 2.7rem)/1.12 var(--font-display);
-}
-
-.commission-subtitle {
-  max-width: 58ch;
-  margin: 0 auto;
-  color: var(--text-taupe);
-  font: 400 0.9rem/1.75 var(--font-body);
 }
 
 .commission-form {
@@ -99,22 +66,6 @@
   margin-top: 0.35rem;
   color: var(--text-taupe);
   font: 400 0.72rem/1.5 var(--font-body);
-}
-
-.btn-commission-submit {
-  width: 100%;
-  min-height: 52px;
-  margin-top: 1.35rem;
-  justify-content: center;
-  border: 0;
-  border-radius: 4px;
-  cursor: pointer;
-  text-align: center;
-}
-
-.btn-commission-submit:disabled {
-  opacity: 0.72;
-  cursor: wait;
 }
 
 .commission-spinner {
@@ -415,12 +366,6 @@
   text-align: left;
 }
 
-.cluster-controls {
-  display: flex;
-  align-items: center;
-  gap: 1.5rem;
-}
-
 .slider-nav-btns {
   display: flex;
   align-items: center;
@@ -451,12 +396,6 @@
 }
 
 @media (max-width: 768px) {
-  .cluster-controls {
-    flex-direction: column-reverse;
-    align-items: flex-start;
-    gap: 0.75rem;
-    margin-top: 1rem;
-  }
 
   .product-slider-item {
     flex: 0 0 85vw;
@@ -1287,10 +1226,6 @@
   height: 1px;
   background: linear-gradient(90deg, rgba(197, 168, 128, 0), rgba(197, 168, 128, 0.65), rgba(197, 168, 128, 0));
   pointer-events: none;
-}
-
-.vault-drop-zone {
-  transition: border-color 0.2s ease, background 0.2s ease, transform 0.2s ease;
 }
 
 .vault-drop-zone.is-dragging {

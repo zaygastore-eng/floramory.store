@@ -403,31 +403,6 @@
 }
 
 /* Parchment Letter Panel */
-.vault-parchment-sheet {
-  background: #fefcf8;
-  border: 1px solid rgba(197, 168, 128, 0.35);
-  border-radius: 4px;
-  padding: clamp(1.75rem, 5vw, 2.75rem);
-  box-shadow: 0 16px 40px rgba(35, 43, 56, 0.06);
-  position: relative;
-}
-
-.vault-parchment-seal {
-  position: absolute;
-  top: 16px;
-  right: 16px;
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
-  background: var(--chapter-burgundy);
-  color: #f7e9d8;
-  font-family: var(--font-body);
-  font-size: 0.6rem;
-  font-weight: 700;
-  display: grid;
-  place-items: center;
-  border: 1px solid var(--chapter-gold);
-}
 
 .vault-letter-salutation {
   font-family: var(--font-display);
@@ -435,32 +410,6 @@
   font-weight: 600;
   color: #6d5943;
   margin-bottom: 1rem;
-}
-
-.vault-letter-body-text {
-  font-family: var(--font-display);
-  font-size: 1.05rem;
-  font-style: italic;
-  color: #514638;
-  line-height: 1.85;
-  max-width: 55ch;
-  margin: 0 0 1.5rem;
-}
-
-.vault-drop-cap {
-  font-family: var(--font-display);
-  font-size: 3rem;
-  line-height: 0.8;
-  float: left;
-  padding-right: 8px;
-  color: var(--chapter-burgundy);
-  font-style: normal;
-}
-
-.vault-letter-signoff {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
 }
 
 .signoff-phrase {
@@ -477,86 +426,6 @@
 }
 
 /* Herbarium Botanical Certificate */
-.vault-herb-cert {
-  background: #FFFFFF;
-  border: 1px solid rgba(197, 168, 128, 0.45);
-  border-radius: 6px;
-  padding: clamp(1.75rem, 4vw, 2.5rem);
-  box-shadow: 0 12px 32px rgba(35, 43, 56, 0.06);
-}
-
-.cert-eyebrow {
-  font-family: var(--font-body);
-  font-size: 0.65rem;
-  font-weight: 700;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: var(--chapter-taupe);
-  display: block;
-  margin-bottom: 0.5rem;
-}
-
-.cert-title {
-  font-family: var(--font-display);
-  font-size: 1.6rem;
-  font-weight: 500;
-  color: var(--chapter-slate);
-  margin: 0 0 1.5rem;
-  border-bottom: 1px solid rgba(35, 43, 56, 0.08);
-  padding-bottom: 0.75rem;
-}
-
-.cert-grid {
-  display: flex;
-  flex-direction: column;
-  gap: 0.85rem;
-  margin: 0 0 2rem;
-}
-
-.cert-row {
-  display: grid;
-  grid-template-columns: 140px 1fr;
-  gap: 0.5rem;
-  align-items: baseline;
-}
-
-@media (max-width: 480px) {
-  .cert-row {
-    grid-template-columns: 1fr;
-    gap: 0.2rem;
-  }
-}
-
-.cert-row dt {
-  font-family: var(--font-body);
-  font-size: 0.68rem;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--chapter-taupe);
-}
-
-.cert-row dd {
-  font-family: var(--font-display);
-  font-size: 0.92rem;
-  color: var(--chapter-slate);
-  margin: 0;
-  line-height: 1.4;
-}
-
-.cert-seal-stamp {
-  text-align: center;
-  border-top: 1px dashed rgba(197, 168, 128, 0.5);
-  padding-top: 1rem;
-}
-
-.cert-seal-text {
-  font-family: var(--font-body);
-  font-size: 0.65rem;
-  font-weight: 700;
-  letter-spacing: 0.16em;
-  color: var(--chapter-gold);
-}
 
 /* Colophon Footer */
 .vault-memoir-footer {
@@ -700,37 +569,6 @@
   margin: 0 0 1.25rem;
 }
 
-.vault-drop-zone {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-height: 140px;
-  border: 1.5px dashed rgba(197, 168, 128, 0.6);
-  border-radius: 6px;
-  background: #fdfcf9;
-  cursor: pointer;
-  padding: 1.5rem;
-  text-align: center;
-  gap: 4px;
-  transition: border-color 150ms ease;
-}
-
-.vault-drop-zone:hover {
-  border-color: var(--chapter-burgundy);
-}
-
-.drop-icon {
-  font-size: 1.8rem;
-  margin-bottom: 4px;
-}
-
-.drop-title {
-  font-family: var(--font-body);
-  font-size: 0.88rem;
-  color: var(--chapter-slate);
-}
-
 .drop-hint {
   font-family: var(--font-body);
   font-size: 0.72rem;
@@ -806,13 +644,6 @@
   margin-bottom: 0.5rem;
 }
 
-.vault-setup-textarea {
-  font-family: var(--font-body);
-  font-size: 0.9rem;
-  line-height: 1.7;
-  width: 100%;
-}
-
 .char-counter {
   font-family: var(--font-body);
   font-size: 0.72rem;
@@ -820,39 +651,6 @@
   display: block;
   text-align: right;
   margin-top: 4px;
-}
-
-.letter-dropcap-preview {
-  background: #fdfbf7;
-  border: 1px dashed rgba(197, 168, 128, 0.4);
-  border-radius: 4px;
-  padding: 1.25rem;
-  margin-top: 1.25rem;
-}
-
-.preview-label {
-  font-family: var(--font-body);
-  font-size: 0.65rem;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  color: var(--chapter-gold);
-  display: block;
-  margin-bottom: 0.5rem;
-}
-
-.preview-body {
-  font-family: var(--font-display);
-  font-size: 1rem;
-  font-style: italic;
-  color: #514638;
-  line-height: 1.7;
-}
-
-.preview-signoff {
-  font-family: var(--font-script);
-  font-size: 1.2rem;
-  color: var(--chapter-burgundy);
-  margin-top: 0.75rem;
 }
 
 .vault-pin-config-input {
@@ -954,28 +752,6 @@
   background: var(--bg-surface);
 }
 
-.single-stems-section {
-  padding: clamp(3.5rem, 6vw, 6rem) clamp(1rem, 4vw, 3rem);
-  background: var(--bg-surface-tint, #F5EFE6);
-}
-
-.cluster-inner {
-  max-width: 1200px;
-  margin: 0 auto;
-}
-
-.cluster-heading {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 2rem;
-  margin-bottom: 2.5rem;
-}
-
-.cluster-heading--single {
-  margin-bottom: 2rem;
-}
-
 .cluster-title {
   margin: 0 0 0.75rem;
   color: var(--text-slate);
@@ -983,30 +759,6 @@
   font-size: clamp(1.6rem, 3vw, 2.4rem);
   font-weight: 500;
   line-height: 1.15;
-}
-
-.cluster-description {
-  max-width: 680px;
-  margin: 0;
-  color: var(--text-taupe);
-  font-family: var(--font-body);
-  font-size: 0.95rem;
-  line-height: 1.7;
-}
-
-.cluster-heading .catalog-explore-all-link {
-  flex: 0 0 auto;
-  margin-bottom: 0.25rem;
-}
-
-.showcase-products-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 1.5rem;
-}
-
-.single-stems-section .showcase-products-grid {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
 .editorial-product-card {
@@ -1140,145 +892,12 @@
   text-transform: none;
 }
 
-.packaging-showcase-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 2rem;
-  margin-top: 2.5rem;
-}
-
-.packaging-showcase-card {
-  min-width: 0;
-  overflow: hidden;
-  border: 1px solid var(--border-hairline);
-  background: var(--bg-ivory);
-}
-
-.packaging-showcase-image {
-  position: relative;
-  aspect-ratio: 16 / 10;
-  overflow: hidden;
-  background: var(--bg-surface-tint);
-}
-
-.packaging-showcase-image > img {
-  display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  transition: transform 500ms cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.packaging-showcase-card:hover .packaging-showcase-image > img {
-  transform: scale(1.03);
-}
-
-.packaging-image-placeholder {
-  display: grid;
-  width: 100%;
-  height: 100%;
-  place-items: center;
-  background: var(--bg-surface-tint);
-  color: var(--text-taupe);
-  font-family: var(--font-display);
-  font-size: 1.5rem;
-}
-
-.packaging-showcase-tag {
-  position: absolute;
-  bottom: 1rem;
-  left: 1rem;
-  max-width: calc(100% - 2rem);
-  padding: 0.45rem 0.7rem;
-  background: rgba(255, 255, 255, 0.88);
-  color: var(--text-slate);
-  font-family: var(--font-body);
-  font-size: 0.7rem;
-  font-weight: 600;
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
-}
-
-.packaging-showcase-copy {
-  padding: clamp(1.25rem, 3vw, 2rem);
-}
-
 .packaging-showcase-copy .section-eyebrow {
   margin-bottom: 0.5rem;
   font-size: 0.65rem;
 }
 
-.packaging-showcase-copy h3 {
-  margin: 0 0 0.75rem;
-  color: var(--text-slate);
-  font-family: var(--font-display);
-  font-size: clamp(1.4rem, 2.5vw, 1.8rem);
-  font-weight: 600;
-  line-height: 1.15;
-}
-
-.packaging-showcase-copy p {
-  margin: 0 0 1.25rem;
-  color: var(--text-taupe);
-  font-family: var(--font-body);
-  font-size: 0.9rem;
-  line-height: 1.7;
-}
-
-.packaging-showcase-included {
-  color: var(--brand-burgundy);
-  font-family: var(--font-body);
-  font-size: 0.78rem;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-
-.packaging-showcase-cta {
-  display: inline-flex;
-  min-height: 46px;
-  align-items: center;
-  justify-content: center;
-  padding: 0.75rem 1.1rem;
-  background: var(--brand-burgundy);
-  color: var(--bg-ivory);
-  font-family: var(--font-body);
-  font-size: 0.75rem;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-decoration: none;
-  transition: background 180ms ease;
-}
-
-.packaging-showcase-cta:hover {
-  background: var(--brand-burgundy-hover);
-}
-
-@media (max-width: 1023px) {
-  .showcase-products-grid,
-  .single-stems-section .showcase-products-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 1.25rem;
-  }
-}
-
 @media (max-width: 767px) {
-  .cluster-heading {
-    align-items: flex-start;
-    flex-direction: column;
-    gap: 1rem;
-    margin-bottom: 1.75rem;
-  }
-
-  .cluster-heading .catalog-explore-all-link {
-    margin: 0;
-  }
-
-  .showcase-products-grid,
-  .single-stems-section .showcase-products-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 0.75rem;
-  }
 
   .editorial-product-card .product-info {
     padding: 0.75rem 0.65rem 0.85rem;
@@ -1313,12 +932,6 @@
     top: 0.45rem;
     left: 0.45rem;
     font-size: 0.62rem;
-  }
-
-  .packaging-showcase-grid {
-    grid-template-columns: 1fr;
-    gap: 1.5rem;
-    margin-top: 1.5rem;
   }
 }
 
@@ -1617,14 +1230,6 @@
   animation-delay: calc(var(--wave-index, 0) * -27ms);
 }
 
-.folio-audio-controls {
-  margin-bottom: 1.25rem;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-}
-
 .folio-play-btn {
   min-height: 40px;
   padding: 0.5rem 0.75rem;
@@ -1672,59 +1277,10 @@
   font: 400 0.68rem/1.5 var(--font-body);
 }
 
-.folio-letter-card {
-  position: relative;
-  width: 100%;
-  max-width: 440px;
-  margin: 0 auto;
-  padding: clamp(1.5rem, 4vw, 2.5rem);
-  background-color: #fefcf8;
-  background-image: repeating-linear-gradient(
-    0deg,
-    rgba(113, 91, 63, 0.025) 0,
-    rgba(113, 91, 63, 0.025) 1px,
-    transparent 1px,
-    transparent 4px
-  );
-  border: 1px solid rgba(93, 77, 50, 0.14);
-  box-shadow: 0 12px 32px rgba(35, 43, 56, 0.1);
-}
-
-.folio-wax-seal {
-  position: absolute;
-  top: 16px;
-  right: 16px;
-  width: 42px;
-  height: 42px;
-  display: grid;
-  place-items: center;
-  border: 1px solid var(--accent-gold);
-  border-radius: 50%;
-  color: #f7e9d8;
-  background: var(--brand-burgundy);
-  box-shadow: 0 3px 10px rgba(83, 27, 33, 0.22);
-  font: 700 0.6rem/1 var(--font-body);
-  letter-spacing: 0.04em;
-}
-
-.folio-letter-head {
-  max-width: calc(100% - 3rem);
-  margin-bottom: 1rem;
-  color: #6d5943;
-  font: 600 1.3rem/1.3 var(--font-display);
-}
-
 .folio-letter-body {
   margin: 0;
   color: #2b2b2b;
   font: italic 0.95rem/1.8 var(--font-display);
-}
-
-.folio-drop-cap {
-  float: left;
-  padding: 0 8px 0 0;
-  color: var(--brand-burgundy);
-  font: 600 3rem/0.85 var(--font-display);
 }
 
 .folio-letter-sign {
@@ -1737,52 +1293,6 @@
   display: inline-block;
   color: var(--brand-burgundy);
   font: 400 1.5rem/1.2 var(--font-script);
-}
-
-.folio-herb-eyebrow {
-  margin-bottom: 0.6rem;
-}
-
-.folio-herb-name {
-  margin: 0 0 0.7rem;
-  padding-bottom: 0.75rem;
-  border-bottom: 1px solid var(--border-hairline);
-  color: var(--text-slate);
-  font: italic 1.25rem/1.3 var(--font-display);
-}
-
-.folio-herb-certificate {
-  margin-bottom: 1rem;
-  color: var(--text-taupe);
-  font: 400 0.78rem/1.55 var(--font-body);
-}
-
-.folio-herb-meta {
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.65rem;
-}
-
-.folio-herb-row {
-  display: grid;
-  grid-template-columns: minmax(6.5rem, 0.8fr) minmax(0, 1.6fr);
-  gap: 0.65rem;
-  align-items: baseline;
-}
-
-.folio-herb-row dt {
-  color: var(--text-taupe);
-  font: 600 0.63rem/1.4 var(--font-body);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-
-.folio-herb-row dd {
-  margin: 0;
-  color: var(--text-slate);
-  font: 400 0.78rem/1.5 var(--font-body);
-  overflow-wrap: anywhere;
 }
 
 .vault-copy {
@@ -1838,55 +1348,6 @@
   gap: 1rem;
 }
 
-.vault-privacy-card {
-  min-width: 0;
-  padding: 1.25rem;
-  background: rgba(255, 255, 255, 0.68);
-  border: 1px solid var(--border-hairline);
-}
-
-.vault-card-index {
-  display: block;
-  margin-bottom: 0.7rem;
-  color: var(--accent-gold);
-  font: italic 1.15rem/1 var(--font-display);
-}
-
-.vault-privacy-card h4,
-.vault-workflow-card h4 {
-  margin-bottom: 0.55rem;
-  color: var(--text-slate);
-  font: 600 1rem/1.35 var(--font-display);
-}
-
-.vault-privacy-card p,
-.vault-workflow-card p {
-  color: var(--text-taupe);
-  font: 400 0.78rem/1.65 var(--font-body);
-}
-
-.vault-workflow-grid {
-  padding: 0;
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 2rem;
-  list-style: none;
-}
-
-.vault-workflow-card {
-  position: relative;
-  min-width: 0;
-  padding: 1.25rem;
-  border-top: 1px solid rgba(83, 27, 33, 0.24);
-}
-
-.vault-workflow-number {
-  display: block;
-  margin-bottom: 0.75rem;
-  color: var(--brand-burgundy);
-  font: italic 1.3rem/1 var(--font-display);
-}
-
 @keyframes folioWave {
   from { transform: scaleY(0.55); opacity: 0.55; }
   to { transform: scaleY(1); opacity: 1; }
@@ -1921,15 +1382,6 @@
   .vault-workflow {
     margin-top: 2.75rem;
   }
-
-  .vault-workflow-grid {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 0.75rem;
-  }
-
-  .vault-workflow-card {
-    padding: 1rem 1.1rem;
-  }
 }
 
 @media (max-width: 520px) {
@@ -1960,10 +1412,6 @@
 
   .vault-section .vault-sim-body {
     min-height: 480px;
-  }
-
-  .folio-herb-row {
-    grid-template-columns: minmax(5.5rem, 0.75fr) minmax(0, 1.5fr);
   }
 }
 

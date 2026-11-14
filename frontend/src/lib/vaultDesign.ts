@@ -175,20 +175,6 @@ export function letterStyleToCss(
 
 /* ── DP 50% gate ── */
 
-/** Status pesanan yang sudah lolos verifikasi DP 50% dan boleh mengisi vault. */
-export const DP_VERIFIED_STATUSES = [
-  "dp_verified",
-  "in_production",
-  "in_progress",
-  "completed",
-  "paid",
-] as const;
-
-export function isDpVerifiedStatus(status: unknown): boolean {
-  const normalized = String(status || "").trim().toLowerCase();
-  return (DP_VERIFIED_STATUSES as readonly string[]).includes(normalized);
-}
-
 export const DP_ORDER_STATUS_LABEL: Record<string, string> = {
   waiting_dp: "Menunggu verifikasi DP 50%",
   new: "Menunggu verifikasi DP 50%",

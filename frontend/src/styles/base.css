@@ -86,7 +86,6 @@ body {
   align-items: center;
   height: 70px;
 }
-.form-submit:disabled { opacity: 0.7; cursor: not-allowed; transform: none; }
 .nav-logo {
   font-family: var(--font-display, 'Cormorant Garamond', serif);
   font-size: 1.6rem; font-weight: 600; letter-spacing: 0.04em;
