@@ -87,6 +87,21 @@ ALTER TABLE public.products DROP CONSTRAINT IF EXISTS products_tier_check;
 ALTER TABLE public.products ADD CONSTRAINT products_tier_check CHECK (tier IN ('lite','signature','home'));
 COMMIT;
 
+Migrasi terbaru (2026-11-09 s/d 2026-11-15)
+------------------------------------------
+- `20261109010000_vault_media_50mb_and_video.sql` -> bucket `vault-media` 50 MB + MIME audio/video.
+- `20261110000000_product_images_10mb.sql` -> bucket `product-images` 10 MB + MIME gambar.
+- `20261111000000_vault_security_hardening.sql` -> token vault, PIN hash, grant kolom publik, RLS produk.
+- `20261112000000_database_integrity.sql` -> index, trigger `updated_at`, constraint, `audit_log`, `save_vault_setup`.
+- `20261113000000_rate_limit_and_operations.sql` -> tabel `rate_limits` + RPC `check_rate_limit`.
+- `20261113000001_vault_dp_gate_photobooth_letter.sql` -> gate DP 50%, foto photobooth, gaya surat.
+- `20261114000000_product_categories.sql` -> policy baca `app_settings.product_categories` + seed kategori.
+- `20261114010000_product_gallery_photos.sql` -> kolom `products.gallery_photos` + grant anon.
+- `20261115000000_preorder_groups.sql` -> tabel `preorder_groups` + kolom grup di `preorder_orders`.
+- `20261115010000_preorder_group_number.sql` -> kolom `preorder_orders.group_number` + backfill.
+- `20261115020000_product_kategori.sql` -> kolom `products.kategori` + grant anon.
+- `20261115030000_rls_cleanup.sql` -> hapus policy legacy longgar (produk personal & preorder) + cabut insert anon.
+
 Notes & safety
 --------------
 - The migration updates existing rows in-place; the backup table is a snapshot of `public.products` before changes.
