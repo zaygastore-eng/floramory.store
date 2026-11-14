@@ -549,6 +549,17 @@ export default function Home() {
     productSliderRef.current.scrollLeft = dragScrollLeft - walk;
   };
 
+  const addProductToDraft = (productId: string, productName: string) => {
+    setOrderItems(items => {
+      if (items.length === 1 && !items[0].productId) {
+        return [{ ...items[0], productId }];
+      }
+      return [...items, createOrderDraftItem(productId)];
+    });
+    setOrderComplete(false);
+    showToast(`${productName} ditambahkan ke daftar karya.`);
+  };
+
   const renderProductGrid = (items: CatalogProduct[]) => (
     <div className="product-slider-wrapper">
       <div
@@ -567,6 +578,13 @@ export default function Home() {
                 if (!hasMoved) navigate(`/products/${product.id}`);
               }}
             />
+            <button
+              type="button"
+              className="product-add-draft"
+              onClick={() => addProductToDraft(product.id, product.nama_produk)}
+            >
+              + Tambah ke Daftar
+            </button>
           </div>
         ))}
       </div>
