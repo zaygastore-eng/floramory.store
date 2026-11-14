@@ -1,8 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from "react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import BrandLogo from "@/components/BrandLogo";
 import ProductImage from "@/components/ProductImage";
-import ProductSpecimen from "@/components/ProductSpecimen";
 import SiteHeader from "@/components/SiteHeader";
 import SiteFooter from "@/components/SiteFooter";
 import {
@@ -10,12 +9,10 @@ import {
   fetchCatalogProducts,
   fetchHeroConfig,
   fetchProductCategories,
-  fetchProductDetailById,
   fetchWhatsAppNumber,
   tierLabel,
   type CatalogProduct,
   type HeroConfig,
-  type Product,
   type ProductCategoryItem,
 } from "@/lib/api";
 import { homeContent } from "@/content/homeContent";
@@ -174,86 +171,6 @@ function ProductCard({
   );
 }
 
-function ProductModal({
-  product,
-  onClose,
-  onOrder,
-  whatsappNumber,
-}: {
-  product: Product;
-  onClose: () => void;
-  onOrder: (product: CatalogProduct | Product) => void;
-  whatsappNumber: string;
-}) {
-  const dialogRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    const focusFrame = window.requestAnimationFrame(() => {
-      dialogRef.current?.querySelector<HTMLElement>(".modal-close")?.focus();
-    });
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        onClose();
-        return;
-      }
-      if (event.key !== "Tab" || !dialogRef.current) return;
-      const focusable = Array.from(dialogRef.current.querySelectorAll<HTMLElement>(
-        'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])'
-      ));
-      if (!focusable.length) return;
-      const first = focusable[0];
-      const last = focusable[focusable.length - 1];
-      if (event.shiftKey && document.activeElement === first) {
-        event.preventDefault();
-        last.focus();
-      } else if (!event.shiftKey && document.activeElement === last) {
-        event.preventDefault();
-        first.focus();
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => {
-      window.cancelAnimationFrame(focusFrame);
-      document.body.style.overflow = previousOverflow;
-      window.removeEventListener("keydown", onKey);
-      previousFocus?.focus();
-    };
-  }, [onClose]);
-
-  const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(
-    `Halo A Chapter, saya ingin berkonsultasi mengenai kustomisasi untuk karya ${product.nama_produk} (ID: ${product.id}).`
-  )}`;
-
-  return (
-    <div
-      className="modal-overlay specimen-modal-overlay open"
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
-    >
-      <div
-        className="modal specimen-modal"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="product-modal-title"
-        aria-describedby="specimen-narrative"
-        ref={dialogRef}
-      >
-        <button type="button" className="modal-close" onClick={onClose} aria-label="Tutup lembar spesimen">✕</button>
-        <ProductSpecimen
-          product={product}
-          whatsappUrl={whatsappUrl}
-          onOrder={() => {
-            onClose();
-            onOrder(product);
-          }}
-        />
-      </div>
-    </div>
-  );
-}
-
 const faqItems = [
   {
     q: "Apakah bunga ini benar-benar bunga asli?",
@@ -312,6 +229,7 @@ function getCommissionProductGroups(
 }
 
 export default function Home() {
+  const [, navigate] = useLocation();
   const [heroConfig, setHeroConfig] = useState<HeroConfig>(defaultHeroConfig);
   const [products, setProducts] = useState<CatalogProduct[]>([]);
   const [categories, setCategories] = useState<ProductCategoryItem[]>([]);
@@ -320,7 +238,6 @@ export default function Home() {
   const toggleFaq = (index: number) => {
     setActiveFaq(current => current === index ? null : index);
   };
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const { toastMsg, toastVisible, showToast } = useToast(3500);
   const [orderSubmitting, setOrderSubmitting] = useState(false);
   const [lastOrderWaUrl, setLastOrderWaUrl] = useState<string | null>(null);
@@ -429,34 +346,6 @@ export default function Home() {
     };
   }, []);
 
-  const handleSelectProduct = (cardProduct: CatalogProduct) => {
-    // Immediate preview representation with available card fields
-    setSelectedProduct({
-      ...cardProduct,
-      bunga: cardProduct.bunga || "",
-      bahan: "",
-      ukuran: "",
-      nama_pembeli: "",
-      dari: "",
-      pesan_personal: "",
-      foto_qr: "",
-      audio_url: "",
-      audio_durasi: 0,
-      video_url: "",
-      foto_vault: "",
-      is_catalog: cardProduct.is_catalog ?? true,
-    });
-
-    if (cardProduct.isFallback) return;
-
-    // Fetch full product details including specimen fields
-    fetchProductDetailById(cardProduct.id).then(fullProduct => {
-      if (fullProduct) {
-        setSelectedProduct(fullProduct);
-      }
-    });
-  };
-
   const [heroFirstLine, heroSecondLine] = splitHeroHeadline(heroConfig.headline);
   const commissionProductGroups = getCommissionProductGroups(products);
 
@@ -480,33 +369,6 @@ export default function Home() {
     const nextTab = tabs[nextIndex];
     setVaultSimTab(nextTab);
     window.requestAnimationFrame(() => document.getElementById(tabIds[nextTab])?.focus());
-  };
-
-  const orderProduct = (product: CatalogProduct | Product) => {
-    if (product.isFallback) {
-      const phone = normalizeWhatsApp(whatsappNumber) || "6285235242425";
-      const message = `Halo A Chapter, saya tertarik untuk memesan karya botani ${product.nama_produk}. Mohon informasi ketersediaan dan proses reservasinya.`;
-      const popup = window.open(
-        `https://wa.me/${phone}?text=${encodeURIComponent(message)}`,
-        "_blank"
-      );
-      if (popup) popup.opener = null;
-      if (!popup) showToast("Izinkan pop-up untuk melanjutkan konsultasi WhatsApp.");
-      return;
-    }
-
-    const matchItem = dynamicCollectionGroups.flatMap(g => g.items).find(
-      it => it.id === product.id ||
-            it.name.toLowerCase().includes(product.nama_produk.toLowerCase()) ||
-            product.nama_produk.toLowerCase().includes(it.name.toLowerCase())
-    ) || dynamicCollectionGroups[0]?.items[0];
-
-    setOrderForm(f => ({ ...f, koleksi: matchItem.id }));
-    setPrefilledProductName(product.nama_produk);
-    setOrderComplete(false);
-    window.setTimeout(() => {
-      document.getElementById("pesan")?.scrollIntoView({ behavior: "smooth" });
-    }, 50);
   };
 
   const productSliderRef = useRef<HTMLDivElement>(null);
@@ -565,7 +427,7 @@ export default function Home() {
             <ProductCard
               product={product}
               onClick={() => {
-                if (!hasMoved) handleSelectProduct(product);
+                if (!hasMoved) navigate(`/products/${product.id}`);
               }}
             />
           </div>
@@ -1636,15 +1498,6 @@ export default function Home() {
 
         <SiteFooter />
       </div>
-
-      {selectedProduct && (
-        <ProductModal
-          product={selectedProduct}
-          onClose={() => setSelectedProduct(null)}
-          onOrder={orderProduct}
-          whatsappNumber={whatsappNumber}
-        />
-      )}
 
       <div className={`fm-toast${toastVisible ? " show" : ""}`} role="status">
         {toastMsg}
