@@ -7,11 +7,13 @@ import ProductImage from "@/components/ProductImage";
 import ProductSpecimen from "@/components/ProductSpecimen";
 import {
   fetchCatalogProducts,
+  fetchProductCategories,
   fetchProductDetailById,
   fetchWhatsAppNumber,
   getHomeContentCatalogProducts,
   type CatalogProduct,
   type Product,
+  type ProductCategoryItem,
 } from "@/lib/api";
 import { normalizeWhatsApp, formatHarga } from "@/lib/site";
 
@@ -24,7 +26,11 @@ function formatTheTitle(name: string): string {
 export default function ShopAll() {
   const [products, setProducts] = useState<CatalogProduct[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filterMode, setFilterMode] = useState<"all" | "popular">("all");
+  const [categories, setCategories] = useState<ProductCategoryItem[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isCatFilterOpen, setIsCatFilterOpen] = useState(false);
+  const catFilterDropdownRef = useRef<HTMLDivElement>(null);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [whatsappNumber, setWhatsappNumber] = useState("6285235242425");
   const dialogRef = useRef<HTMLDivElement>(null);
@@ -38,6 +44,20 @@ export default function ShopAll() {
     fetchWhatsAppNumber().then(num => {
       setWhatsappNumber(normalizeWhatsApp(num) || "6285235242425");
     });
+
+    fetchProductCategories().then(cats => {
+      setCategories(cats);
+    });
+
+    const handleOutsideClick = (e: MouseEvent) => {
+      if (catFilterDropdownRef.current && !catFilterDropdownRef.current.contains(e.target as Node)) {
+        setIsCatFilterOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleOutsideClick);
+    return () => {
+      document.removeEventListener("mousedown", handleOutsideClick);
+    };
   }, []);
 
   useEffect(() => {
@@ -73,22 +93,43 @@ export default function ShopAll() {
     });
   };
 
-  const displayedProducts = filterMode === "popular"
-    ? products.slice(0, 10).reverse()
-    : products;
-
-  // Keep the catalog wall full and editorial even when the live catalog is
-  // sparse. Editorial pieces open a WhatsApp consultation instead of a PDP.
+  // Editorial pieces to keep catalog full if needed
   const editorialChapters = getHomeContentCatalogProducts("framed");
+
   const showcaseProducts = (() => {
-    const items = [...displayedProducts];
-    for (const editorial of editorialChapters) {
-      if (items.length >= 5) break;
-      const exists = items.some(
-        product => product.nama_produk.toLowerCase() === editorial.nama_produk.toLowerCase()
-      );
-      if (!exists) items.push(editorial);
+    let items = [...products];
+
+    // Combine editorial fallbacks if list is sparse and no active search/category filter
+    if (selectedCategory === "all" && !searchQuery.trim()) {
+      for (const editorial of editorialChapters) {
+        if (items.length >= 5) break;
+        const exists = items.some(
+          product => product.nama_produk.toLowerCase() === editorial.nama_produk.toLowerCase()
+        );
+        if (!exists) items.push(editorial);
+      }
     }
+
+    // Filter by Category
+    if (selectedCategory !== "all") {
+      const targetCat = selectedCategory.toLowerCase();
+      items = items.filter(p => {
+        const cat = (p.kategori || p.bunga || "").toLowerCase();
+        const name = p.nama_produk.toLowerCase();
+        return cat.includes(targetCat) || targetCat.includes(cat) || name.includes(targetCat);
+      });
+    }
+
+    // Filter by Search Query (name, bunga, deskripsi)
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      items = items.filter(p =>
+        p.nama_produk.toLowerCase().includes(q) ||
+        (p.bunga && p.bunga.toLowerCase().includes(q)) ||
+        (p.deskripsi && p.deskripsi.toLowerCase().includes(q))
+      );
+    }
+
     return items;
   })();
 
@@ -129,6 +170,87 @@ export default function ShopAll() {
         {/* 5-Column Catalog Section */}
         <section className="shop-catalog-section" aria-label="Katalog Karya Lengkap">
           <div className="shop-catalog-container">
+            {/* Filter & Search Bar */}
+            <div className="shop-controls-bar">
+              {/* Search Box */}
+              <div className="shop-search-box">
+                <span className="shop-search-icon" aria-hidden="true">🔍</span>
+                <input
+                  type="text"
+                  className="shop-search-input"
+                  placeholder="Cari nama karya atau bunga..."
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                />
+                {searchQuery && (
+                  <button
+                    type="button"
+                    className="shop-search-clear"
+                    onClick={() => setSearchQuery("")}
+                    title="Hapus pencarian"
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
+
+              {/* Compact Category Dropdown Box */}
+              <div className="shop-cat-filter-box" ref={catFilterDropdownRef}>
+                <button
+                  type="button"
+                  className={`shop-cat-filter-btn ${isCatFilterOpen ? "is-open" : ""}`}
+                  onClick={() => setIsCatFilterOpen(prev => !prev)}
+                  aria-haspopup="listbox"
+                  aria-expanded={isCatFilterOpen}
+                >
+                  <span className="shop-cat-filter-label">
+                    {selectedCategory === "all"
+                      ? "Pilih koleksi karya"
+                      : (categories.find(c => c.name.toLowerCase() === selectedCategory.toLowerCase())?.name || selectedCategory)}
+                  </span>
+                  <span className={`shop-cat-filter-arrow ${isCatFilterOpen ? "is-flipped" : ""}`}>▾</span>
+                </button>
+
+                {isCatFilterOpen && (
+                  <div className="shop-cat-dropdown-menu" role="listbox">
+                    <button
+                      type="button"
+                      role="option"
+                      aria-selected={selectedCategory === "all"}
+                      className={`shop-cat-dropdown-item ${selectedCategory === "all" ? "active" : ""}`}
+                      onClick={() => {
+                        setSelectedCategory("all");
+                        setIsCatFilterOpen(false);
+                      }}
+                    >
+                      Semua Koleksi
+                    </button>
+                    {(categories.length > 0 ? categories : [
+                      { id: "keychain", name: "Keychain" },
+                      { id: "bag_charm", name: "Bag Charm" }
+                    ]).map(cat => {
+                      const isSelected = selectedCategory.toLowerCase() === cat.name.toLowerCase();
+                      return (
+                        <button
+                          key={cat.id}
+                          type="button"
+                          role="option"
+                          aria-selected={isSelected}
+                          className={`shop-cat-dropdown-item ${isSelected ? "active" : ""}`}
+                          onClick={() => {
+                            setSelectedCategory(cat.name);
+                            setIsCatFilterOpen(false);
+                          }}
+                        >
+                          {cat.name}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+
             {loading ? (
               <div className="catalog-loading">
                 Memuat koleksi botani lengkap
@@ -136,7 +258,9 @@ export default function ShopAll() {
               </div>
             ) : showcaseProducts.length === 0 ? (
               <div className="catalog-loading">
-                Belum ada produk di katalog.
+                {searchQuery || selectedCategory !== "all"
+                  ? "Tidak ada karya yang sesuai dengan pencarian atau filter Anda."
+                  : "Belum ada produk di katalog."}
               </div>
             ) : (
               <div className="shop-5col-grid">
@@ -233,35 +357,6 @@ export default function ShopAll() {
                 })}
               </div>
             )}
-          </div>
-        </section>
-
-        {/* Quick Category Alternatives */}
-        <section className="shop-alternatives-section">
-          <div className="shop-alternatives-inner">
-            <h3 className="shop-alt-heading">Are you looking for something else?</h3>
-            <div className="shop-alt-buttons">
-              <button
-                type="button"
-                className={`shop-alt-btn${filterMode === "all" ? " active" : ""}`}
-                onClick={() => setFilterMode("all")}
-              >
-                [ FLORAL GIFTS ]
-              </button>
-              <button
-                type="button"
-                className={`shop-alt-btn${filterMode === "popular" ? " active" : ""}`}
-                onClick={() => setFilterMode("popular")}
-              >
-                [ MOST POPULAR ]
-              </button>
-              <Link href="/single-flowers" className="shop-alt-btn">
-                [ SINGLE STEMS ]
-              </Link>
-              <Link href="/gift-card" className="shop-alt-btn">
-                [ GIFT CARD ]
-              </Link>
-            </div>
           </div>
         </section>
 

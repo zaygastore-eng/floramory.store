@@ -320,9 +320,6 @@ export default function Home() {
   const [heroConfig, setHeroConfig] = useState<HeroConfig>(defaultHeroConfig);
   const [products, setProducts] = useState<CatalogProduct[]>([]);
   const [categories, setCategories] = useState<ProductCategoryItem[]>([]);
-  const [selectedCatalogCategory, setSelectedCatalogCategory] = useState<string>("all");
-  const [isCatFilterOpen, setIsCatFilterOpen] = useState(false);
-  const catFilterDropdownRef = useRef<HTMLDivElement>(null);
   const [chapterProducts, setChapterProducts] = useState<CatalogProduct[]>(
     () => getHomeContentCatalogProducts("framed")
   );
@@ -434,16 +431,8 @@ export default function Home() {
     fetchProductCategories().then(cats => {
       setCategories(cats);
     });
-
-    const handleOutsideClick = (e: MouseEvent) => {
-      if (catFilterDropdownRef.current && !catFilterDropdownRef.current.contains(e.target as Node)) {
-        setIsCatFilterOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handleOutsideClick);
     return () => {
       active = false;
-      document.removeEventListener("mousedown", handleOutsideClick);
     };
   }, []);
 
@@ -619,24 +608,13 @@ export default function Home() {
   }, [products]);
 
   const showcaseProducts = (() => {
-    let items = [...chapterProducts];
-    if (selectedCatalogCategory !== "all") {
-      const targetCat = selectedCatalogCategory.toLowerCase();
-      items = items.filter(p => {
-        const cat = (p.kategori || p.bunga || "").toLowerCase();
-        const name = p.nama_produk.toLowerCase();
-        return cat.includes(targetCat) || targetCat.includes(cat) || name.includes(targetCat);
-      });
-    }
-
-    if (selectedCatalogCategory === "all") {
-      for (const editorial of editorialChapters) {
-        if (items.length >= 4) break;
-        const exists = items.some(
-          product => product.nama_produk.toLowerCase() === editorial.nama_produk.toLowerCase()
-        );
-        if (!exists) items.push(editorial);
-      }
+    const items = [...chapterProducts];
+    for (const editorial of editorialChapters) {
+      if (items.length >= 4) break;
+      const exists = items.some(
+        product => product.nama_produk.toLowerCase() === editorial.nama_produk.toLowerCase()
+      );
+      if (!exists) items.push(editorial);
     }
     return items;
   })();
@@ -795,64 +773,6 @@ export default function Home() {
               <span className="lp-band-line" aria-hidden="true" />
               <h2 className="lp-band-title">Produk</h2>
               <span className="lp-band-line" aria-hidden="true" />
-            </div>
-
-            {/* Kotak Filter Kategori Ringkas (Kecil & Ramping) */}
-            <div className="lp-cat-filter-wrapper">
-              <div className="lp-cat-filter-box" ref={catFilterDropdownRef}>
-                <button
-                  type="button"
-                  className={`lp-cat-filter-btn ${isCatFilterOpen ? "is-open" : ""}`}
-                  onClick={() => setIsCatFilterOpen(prev => !prev)}
-                  aria-haspopup="listbox"
-                  aria-expanded={isCatFilterOpen}
-                >
-                  <span className="lp-cat-filter-label">
-                    {selectedCatalogCategory === "all"
-                      ? "Pilih koleksi karya"
-                      : (categories.find(c => c.name.toLowerCase() === selectedCatalogCategory.toLowerCase())?.name || selectedCatalogCategory)}
-                  </span>
-                  <span className={`lp-cat-filter-arrow ${isCatFilterOpen ? "is-flipped" : ""}`}>▾</span>
-                </button>
-
-                {isCatFilterOpen && (
-                  <div className="lp-cat-dropdown-menu" role="listbox">
-                    <button
-                      type="button"
-                      role="option"
-                      aria-selected={selectedCatalogCategory === "all"}
-                      className={`lp-cat-dropdown-item ${selectedCatalogCategory === "all" ? "active" : ""}`}
-                      onClick={() => {
-                        setSelectedCatalogCategory("all");
-                        setIsCatFilterOpen(false);
-                      }}
-                    >
-                      Semua Koleksi
-                    </button>
-                    {(categories.length > 0 ? categories : [
-                      { id: "keychain", name: "Keychain" },
-                      { id: "bag_charm", name: "Bag Charm" }
-                    ]).map(cat => {
-                      const isSelected = selectedCatalogCategory.toLowerCase() === cat.name.toLowerCase();
-                      return (
-                        <button
-                          key={cat.id}
-                          type="button"
-                          role="option"
-                          aria-selected={isSelected}
-                          className={`lp-cat-dropdown-item ${isSelected ? "active" : ""}`}
-                          onClick={() => {
-                            setSelectedCatalogCategory(cat.name);
-                            setIsCatFilterOpen(false);
-                          }}
-                        >
-                          {cat.name}
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
             </div>
 
             <div className="lp-products-body">
