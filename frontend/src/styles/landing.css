@@ -399,6 +399,113 @@
   color: var(--lp-wine);
 }
 
+/* ── Kotak Filter Kategori (Kecil, Ramping & Bersih) ── */
+.landing-v2 .lp-cat-filter-wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 1.25rem 1rem 0;
+  background-color: #faf5ee;
+}
+
+.landing-v2 .lp-cat-filter-box {
+  position: relative;
+  width: 100%;
+  max-width: 240px;
+}
+
+.landing-v2 .lp-cat-filter-btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  height: 38px;
+  padding: 0 14px;
+  background: #ffffff;
+  border: 1.5px solid rgba(107, 31, 42, 0.28);
+  border-radius: 6px;
+  color: var(--lp-wine);
+  font-family: var(--lp-body);
+  font-size: 0.86rem;
+  font-weight: 500;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(83, 27, 33, 0.05);
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.landing-v2 .lp-cat-filter-btn:hover {
+  border-color: var(--lp-wine);
+  background: #fffdf9;
+}
+
+.landing-v2 .lp-cat-filter-btn.is-open {
+  border-color: var(--lp-wine);
+  box-shadow: 0 0 0 3px rgba(107, 31, 42, 0.12);
+}
+
+.landing-v2 .lp-cat-filter-label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding-right: 6px;
+}
+
+.landing-v2 .lp-cat-filter-arrow {
+  font-size: 0.8rem;
+  color: var(--lp-wine);
+  opacity: 0.8;
+  transition: transform 0.2s ease;
+}
+
+.landing-v2 .lp-cat-filter-arrow.is-flipped {
+  transform: rotate(180deg);
+}
+
+.landing-v2 .lp-cat-dropdown-menu {
+  position: absolute;
+  top: calc(100% + 5px);
+  left: 0;
+  right: 0;
+  z-index: 50;
+  background: #ffffff;
+  border: 1px solid rgba(107, 31, 42, 0.2);
+  border-radius: 6px;
+  box-shadow: 0 6px 18px rgba(83, 27, 33, 0.12), 0 2px 6px rgba(0, 0, 0, 0.04);
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.landing-v2 .lp-cat-dropdown-item {
+  display: block;
+  width: 100%;
+  padding: 8px 12px;
+  text-align: left;
+  border: none;
+  background: transparent;
+  border-radius: 4px;
+  color: #3b2a2d;
+  font-family: var(--lp-body);
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.landing-v2 .lp-cat-dropdown-item:hover {
+  background: rgba(188, 200, 245, 0.22);
+  color: var(--lp-wine);
+}
+
+.landing-v2 .lp-cat-dropdown-item.active {
+  background: var(--lp-wine);
+  color: #ffffff;
+  font-weight: 500;
+}
+
 .landing-v2 .lp-products-body {
   padding: clamp(2.5rem, 5vw, 4.5rem) clamp(1rem, 5vw, 5rem);
   background-color: #faf5ee;

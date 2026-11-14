@@ -9,6 +9,7 @@ import {
   createPreOrder,
   fetchCatalogProducts,
   fetchHeroConfig,
+  fetchProductCategories,
   fetchProductDetailById,
   fetchWhatsAppNumber,
   getHomeContentCatalogProducts,
@@ -16,6 +17,7 @@ import {
   type CatalogProduct,
   type HeroConfig,
   type Product,
+  type ProductCategoryItem,
 } from "@/lib/api";
 import { homeContent } from "@/content/homeContent";
 import { applyPageMeta } from "@/lib/seo";
@@ -317,6 +319,10 @@ function getCommissionProductGroups(
 export default function Home() {
   const [heroConfig, setHeroConfig] = useState<HeroConfig>(defaultHeroConfig);
   const [products, setProducts] = useState<CatalogProduct[]>([]);
+  const [categories, setCategories] = useState<ProductCategoryItem[]>([]);
+  const [selectedCatalogCategory, setSelectedCatalogCategory] = useState<string>("all");
+  const [isCatFilterOpen, setIsCatFilterOpen] = useState(false);
+  const catFilterDropdownRef = useRef<HTMLDivElement>(null);
   const [chapterProducts, setChapterProducts] = useState<CatalogProduct[]>(
     () => getHomeContentCatalogProducts("framed")
   );
@@ -425,8 +431,19 @@ export default function Home() {
     fetchWhatsAppNumber().then(number => {
       setWhatsappNumber(normalizeWhatsApp(number) || "6285235242425");
     });
+    fetchProductCategories().then(cats => {
+      setCategories(cats);
+    });
+
+    const handleOutsideClick = (e: MouseEvent) => {
+      if (catFilterDropdownRef.current && !catFilterDropdownRef.current.contains(e.target as Node)) {
+        setIsCatFilterOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleOutsideClick);
     return () => {
       active = false;
+      document.removeEventListener("mousedown", handleOutsideClick);
     };
   }, []);
 
@@ -496,10 +513,11 @@ export default function Home() {
       return;
     }
 
-    const matchItem = ATELIER_COLLECTION_GROUPS.flatMap(g => g.items).find(
-      it => it.name.toLowerCase().includes(product.nama_produk.toLowerCase()) ||
+    const matchItem = dynamicCollectionGroups.flatMap(g => g.items).find(
+      it => it.id === product.id ||
+            it.name.toLowerCase().includes(product.nama_produk.toLowerCase()) ||
             product.nama_produk.toLowerCase().includes(it.name.toLowerCase())
-    ) || ATELIER_COLLECTION_GROUPS[0].items[0];
+    ) || dynamicCollectionGroups[0]?.items[0];
 
     setOrderForm(f => ({ ...f, koleksi: matchItem.id }));
     setPrefilledProductName(product.nama_produk);
@@ -574,14 +592,51 @@ export default function Home() {
     </div>
   );
 
+  // Dynamic collection groups: combines database products grouped by category,
+  // with fallback to ATELIER_COLLECTION_GROUPS if database products are empty.
+  const dynamicCollectionGroups = useMemo(() => {
+    const activeDbProducts = products.filter(p => !p.isFallback);
+    if (activeDbProducts.length === 0) {
+      return ATELIER_COLLECTION_GROUPS;
+    }
+
+    const groupMap = new Map<string, { id: string; name: string }[]>();
+    for (const p of activeDbProducts) {
+      const cat = p.kategori || p.bunga || "Koleksi Lainnya";
+      if (!groupMap.has(cat)) groupMap.set(cat, []);
+      groupMap.get(cat)!.push({
+        id: p.id,
+        name: p.nama_produk,
+      });
+    }
+
+    const result = Array.from(groupMap.entries()).map(([group, items]) => ({
+      group,
+      items,
+    }));
+
+    return result.length > 0 ? result : ATELIER_COLLECTION_GROUPS;
+  }, [products]);
+
   const showcaseProducts = (() => {
-    const items = [...chapterProducts];
-    for (const editorial of editorialChapters) {
-      if (items.length >= 4) break;
-      const exists = items.some(
-        product => product.nama_produk.toLowerCase() === editorial.nama_produk.toLowerCase()
-      );
-      if (!exists) items.push(editorial);
+    let items = [...chapterProducts];
+    if (selectedCatalogCategory !== "all") {
+      const targetCat = selectedCatalogCategory.toLowerCase();
+      items = items.filter(p => {
+        const cat = (p.kategori || p.bunga || "").toLowerCase();
+        const name = p.nama_produk.toLowerCase();
+        return cat.includes(targetCat) || targetCat.includes(cat) || name.includes(targetCat);
+      });
+    }
+
+    if (selectedCatalogCategory === "all") {
+      for (const editorial of editorialChapters) {
+        if (items.length >= 4) break;
+        const exists = items.some(
+          product => product.nama_produk.toLowerCase() === editorial.nama_produk.toLowerCase()
+        );
+        if (!exists) items.push(editorial);
+      }
     }
     return items;
   })();
@@ -600,7 +655,7 @@ export default function Home() {
     }
     const wa = normalizeWhatsApp(orderForm.wa);
 
-    const selectedCollection = ATELIER_COLLECTION_GROUPS.flatMap(g => g.items).find(i => i.id === orderForm.koleksi);
+    const selectedCollection = dynamicCollectionGroups.flatMap(g => g.items).find(i => i.id === orderForm.koleksi);
     const collectionLabel = selectedCollection?.name || orderForm.koleksi;
 
     const selectedNuansa = NUANSA_WARNA_OPTIONS.find(n => n.id === orderForm.nuansa);
@@ -741,6 +796,65 @@ export default function Home() {
               <h2 className="lp-band-title">Produk</h2>
               <span className="lp-band-line" aria-hidden="true" />
             </div>
+
+            {/* Kotak Filter Kategori Ringkas (Kecil & Ramping) */}
+            <div className="lp-cat-filter-wrapper">
+              <div className="lp-cat-filter-box" ref={catFilterDropdownRef}>
+                <button
+                  type="button"
+                  className={`lp-cat-filter-btn ${isCatFilterOpen ? "is-open" : ""}`}
+                  onClick={() => setIsCatFilterOpen(prev => !prev)}
+                  aria-haspopup="listbox"
+                  aria-expanded={isCatFilterOpen}
+                >
+                  <span className="lp-cat-filter-label">
+                    {selectedCatalogCategory === "all"
+                      ? "Pilih koleksi karya"
+                      : (categories.find(c => c.name.toLowerCase() === selectedCatalogCategory.toLowerCase())?.name || selectedCatalogCategory)}
+                  </span>
+                  <span className={`lp-cat-filter-arrow ${isCatFilterOpen ? "is-flipped" : ""}`}>▾</span>
+                </button>
+
+                {isCatFilterOpen && (
+                  <div className="lp-cat-dropdown-menu" role="listbox">
+                    <button
+                      type="button"
+                      role="option"
+                      aria-selected={selectedCatalogCategory === "all"}
+                      className={`lp-cat-dropdown-item ${selectedCatalogCategory === "all" ? "active" : ""}`}
+                      onClick={() => {
+                        setSelectedCatalogCategory("all");
+                        setIsCatFilterOpen(false);
+                      }}
+                    >
+                      Semua Koleksi
+                    </button>
+                    {(categories.length > 0 ? categories : [
+                      { id: "keychain", name: "Keychain" },
+                      { id: "bag_charm", name: "Bag Charm" }
+                    ]).map(cat => {
+                      const isSelected = selectedCatalogCategory.toLowerCase() === cat.name.toLowerCase();
+                      return (
+                        <button
+                          key={cat.id}
+                          type="button"
+                          role="option"
+                          aria-selected={isSelected}
+                          className={`lp-cat-dropdown-item ${isSelected ? "active" : ""}`}
+                          onClick={() => {
+                            setSelectedCatalogCategory(cat.name);
+                            setIsCatFilterOpen(false);
+                          }}
+                        >
+                          {cat.name}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+
             <div className="lp-products-body">
               {renderProductGrid(showcaseProducts)}
               <div className="lp-products-actions">
@@ -1295,10 +1409,7 @@ export default function Home() {
             <span id="kolom-pengisian" className="lp-anchor" aria-hidden="true" />
             <div className="lp-kolom-inner">
               <h2 className="lp-script lp-kolom-title">Kolom Pengisian</h2>
-              <p className="lp-kolom-lead">
-                Setiap karya dirangkai khusus berdasarkan ceritamu. Lengkapi detail di bawah ini
-                untuk mengamankan slot Pre-Order eksklusifmu sebelum pintu galeri ditutup.
-              </p>
+              
 
               <div className="lp-kolom-card">
                 {orderComplete ? (
@@ -1356,8 +1467,7 @@ export default function Home() {
                       <span className="commission-eyebrow">BESPOKE BOTANICAL COMMISSION · ATELIER RESERVATION</span>
                       <h3 className="lp-form-title">Reserve your chapter</h3>
                       <p className="lp-form-sub">
-                        Konsultasikan karya botani abadi dan konfigurasi brankas memori Anda bersama
-                        kurator atelier kami via WhatsApp resmi.
+                        Setiap karya dirangkai khusus berdasarkan ceritamu. Lengkapi detail di bawah ini untuk mengamankan slot Pre-Order eksklusifmu sebelum pintu galeri ditutup.
                       </p>
                     </header>
 
@@ -1409,7 +1519,7 @@ export default function Home() {
                             }}
                           >
                             <option value="">— Pilih koleksi karya —</option>
-                            {ATELIER_COLLECTION_GROUPS.map(group => (
+                            {dynamicCollectionGroups.map(group => (
                               <optgroup label={group.group} key={group.group}>
                                 {group.items.map(item => (
                                   <option key={item.id} value={item.id}>

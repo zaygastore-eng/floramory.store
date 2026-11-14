@@ -28,6 +28,7 @@ import {
   fetchPreOrders,
   fetchPreOrderStatusCounts,
   fetchHeroConfig,
+  fetchProductCategories,
   fetchWhatsAppNumber,
   hasSupabaseConfig,
   notifyDpConfirmed,
@@ -38,11 +39,13 @@ import {
   touchAdminSession,
   updatePreOrderStatus,
   updateHeroConfig,
+  updateProductCategories,
   updateWhatsAppNumber,
   updateProduct,
   uploadProductImage,
   type PreOrder,
   type Product,
+  type ProductCategoryItem,
   type PreOrderStatusCounts,
   type HeroConfig,
 } from "@/lib/api";
@@ -96,6 +99,7 @@ type AdminTab = "dashboard" | "produk" | "pesanan" | "keuangan" | "pengaturan";
 interface FormState {
   id: string;
   tier: string;
+  kategori: string;
   nama: string;
   harga: string;
   bunga: string;
@@ -119,6 +123,7 @@ interface FormState {
 const EMPTY: FormState = {
   id: "",
   tier: "",
+  kategori: "",
   nama: "",
   harga: "",
   bunga: "",
@@ -143,6 +148,7 @@ function productToForm(product: Product): FormState {
   return {
     id: product.id,
     tier: product.tier,
+    kategori: product.kategori || product.bunga || "",
     nama: product.nama_produk,
     harga: product.harga,
     bunga: product.bunga,
@@ -308,6 +314,9 @@ export default function Admin() {
   const [productFormOpen, setProductFormOpen] = useState(false);
   const [baseUrl, setBaseUrl] = useState("");
   const [waNum, setWaNum] = useState("");
+  const [categories, setCategories] = useState<ProductCategoryItem[]>([]);
+  const [newCatName, setNewCatName] = useState("");
+  const [savingCategories, setSavingCategories] = useState(false);
   const [configSaved, setConfigSaved] = useState(false);
   const [heroConfig, setHeroConfig] = useState<HeroConfig>(defaultHeroConfig);
   const [savingHeroConfig, setSavingHeroConfig] = useState(false);
@@ -502,6 +511,9 @@ export default function Admin() {
         localStorage.setItem(WA_KEY, value);
       }
     });
+    fetchProductCategories().then((cats) => {
+      setCategories(cats);
+    });
   }, [authed]);
 
   useEffect(() => {
@@ -665,12 +677,14 @@ export default function Admin() {
 
   const productFromForm = (): Product => {
     const existing = editingId ? managedProducts.find(p => p.id === editingId) : null;
+    const cat = form.kategori.trim();
     return {
       id: form.id.trim().toUpperCase(),
       nama_produk: form.nama,
       tier: form.tier,
+      kategori: cat,
       harga: form.harga,
-      bunga: form.bunga,
+      bunga: form.bunga || cat,
       deskripsi: form.deskripsi,
       bahan: form.bahan,
       ukuran: form.ukuran,
@@ -1241,25 +1255,40 @@ export default function Admin() {
           <p className="form-hint">{editingId ? "ID dikunci saat edit agar QR lama tetap valid." : "Kode unik per produk."}</p>
         </div>
         <div className="admin-form-group">
+          <label className="admin-form-label">Kategori Produk</label>
+          <select
+            className="admin-form-select"
+            value={form.kategori}
+            onChange={e => setForm(f => ({ ...f, kategori: e.target.value, bunga: f.bunga || e.target.value }))}
+          >
+            <option value="">— Pilih Kategori Produk —</option>
+            {categories.map(c => (
+              <option key={c.id} value={c.name}>{c.name}</option>
+            ))}
+          </select>
+          <p className="form-hint">Atur daftar kategori di tab <strong>Pengaturan</strong>.</p>
+        </div>
+      </div>
+
+      <div className="admin-form-row">
+        <div className="admin-form-group">
           <label className="admin-form-label">Lini Produk <span className="required-star">*</span></label>
           <select className="admin-form-select" value={form.tier} onChange={e => setForm(f => ({ ...f, tier: e.target.value }))}>
             <option value="">Pilih tier</option>
             {TIER_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
           </select>
         </div>
-      </div>
-
-      <div className="admin-form-row">
-        <div className="admin-form-group">
-          <label className="admin-form-label">Nama Produk <span className="required-star">*</span></label>
-          <input className="admin-form-input" type="text" placeholder="Contoh: Cincin Mawar Rosa Eternal"
-            value={form.nama} onChange={e => setForm(f => ({ ...f, nama: e.target.value }))} />
-        </div>
         <div className="admin-form-group">
           <label className="admin-form-label">Harga <span className="required-star">*</span></label>
           <input className="admin-form-input" type="text" placeholder="Contoh: Rp55.000"
             value={form.harga} onChange={e => setForm(f => ({ ...f, harga: e.target.value }))} />
         </div>
+      </div>
+
+      <div className="admin-form-group">
+        <label className="admin-form-label">Nama Produk <span className="required-star">*</span></label>
+        <input className="admin-form-input" type="text" placeholder="Contoh: Cincin Mawar Rosa Eternal"
+          value={form.nama} onChange={e => setForm(f => ({ ...f, nama: e.target.value }))} />
       </div>
 
       <div className="admin-form-group">
@@ -2001,6 +2030,128 @@ export default function Admin() {
             value={waNum} onChange={e => setWaNum(e.target.value)} />
         </div>
         <button className="btn-generate" onClick={saveConfig}>Simpan Pengaturan</button>
+      </div>
+
+      <div className="admin-panel-card">
+        <div className="admin-panel-head">
+          <div>
+            <h2>Kelola Kategori Produk</h2>
+            <p>Kategori ini akan otomatis muncul di form pemesanan dan filter katalog.</p>
+          </div>
+        </div>
+
+        <div className="admin-form-group">
+          <label className="admin-form-label">Tambah Kategori Baru</label>
+          <div style={{ display: "flex", gap: "8px" }}>
+            <input
+              className="admin-form-input"
+              type="text"
+              placeholder="Contoh: Keychain, Bag Charm, Buket"
+              value={newCatName}
+              onChange={e => setNewCatName(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  const name = newCatName.trim();
+                  if (!name) return;
+                  if (categories.some(c => c.name.toLowerCase() === name.toLowerCase())) {
+                    showToast("Kategori sudah ada", "alert");
+                    return;
+                  }
+                  const updated = [...categories, { id: name.toLowerCase().replace(/[^a-z0-9]+/g, "-"), name }];
+                  setCategories(updated);
+                  setNewCatName("");
+                  setSavingCategories(true);
+                  updateProductCategories(updated)
+                    .then(() => showToast(`Kategori "${name}" berhasil ditambahkan`, "success"))
+                    .catch(() => showToast("Gagal menyimpan kategori", "alert"))
+                    .finally(() => setSavingCategories(false));
+                }
+              }}
+            />
+            <button
+              type="button"
+              className="btn-save-config"
+              disabled={savingCategories || !newCatName.trim()}
+              onClick={() => {
+                const name = newCatName.trim();
+                if (!name) return;
+                if (categories.some(c => c.name.toLowerCase() === name.toLowerCase())) {
+                  showToast("Kategori sudah ada", "alert");
+                  return;
+                }
+                const updated = [...categories, { id: name.toLowerCase().replace(/[^a-z0-9]+/g, "-"), name }];
+                setCategories(updated);
+                setNewCatName("");
+                setSavingCategories(true);
+                updateProductCategories(updated)
+                  .then(() => showToast(`Kategori "${name}" berhasil ditambahkan`, "success"))
+                  .catch(() => showToast("Gagal menyimpan kategori", "alert"))
+                  .finally(() => setSavingCategories(false));
+              }}
+            >
+              + Tambah
+            </button>
+          </div>
+          <p className="form-hint" style={{ marginTop: "6px" }}>
+            Tekan Enter atau klik tombol Tambah untuk menyimpan.
+          </p>
+        </div>
+
+        <div className="admin-form-group">
+          <label className="admin-form-label">Daftar Kategori Aktif ({categories.length})</label>
+          {categories.length === 0 ? (
+            <p className="form-hint">Belum ada kategori. Tambahkan di atas.</p>
+          ) : (
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginTop: "6px" }}>
+              {categories.map(cat => (
+                <div
+                  key={cat.id}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "6px",
+                    padding: "6px 12px",
+                    background: "#f0f2fa",
+                    border: "1px solid #d4daf0",
+                    borderRadius: "6px",
+                    fontSize: "0.85rem",
+                    fontWeight: 500,
+                    color: "#283049",
+                  }}
+                >
+                  <span>{cat.name}</span>
+                  <button
+                    type="button"
+                    title={`Hapus kategori ${cat.name}`}
+                    style={{
+                      border: "none",
+                      background: "transparent",
+                      color: "#b03a2e",
+                      cursor: "pointer",
+                      fontWeight: "bold",
+                      fontSize: "1rem",
+                      lineHeight: 1,
+                      padding: "0 2px",
+                    }}
+                    onClick={() => {
+                      if (!window.confirm(`Hapus kategori "${cat.name}"?`)) return;
+                      const updated = categories.filter(c => c.id !== cat.id);
+                      setCategories(updated);
+                      setSavingCategories(true);
+                      updateProductCategories(updated)
+                        .then(() => showToast(`Kategori "${cat.name}" dihapus`, "success"))
+                        .catch(() => showToast("Gagal memperbarui kategori", "alert"))
+                        .finally(() => setSavingCategories(false));
+                    }}
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
       <div className="admin-panel-card" style={{ gridColumn: "1 / -1" }}>
         <div className="admin-panel-head">

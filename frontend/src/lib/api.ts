@@ -17,6 +17,7 @@ const ADMIN_FUNCTION = `${FUNCTIONS_BASE}/admin`;
 export interface CatalogProduct {
   id: string;
   nama_produk: string;
+  kategori?: string;
   tier: string;
   harga: string;
   deskripsi: string;
@@ -32,6 +33,7 @@ export type CatalogCategory = "framed" | "stem";
 
 /** Full product type used by detail views (Produk page, modal) and Admin panel. */
 export interface Product extends CatalogProduct {
+  kategori: string;
   bunga: string;
   bahan: string;
   ukuran: string;
@@ -790,6 +792,62 @@ export async function saveVaultSetup(
   };
 }
 
+export interface ProductCategoryItem {
+  id: string;
+  name: string;
+}
+
+export const DEFAULT_PRODUCT_CATEGORIES: ProductCategoryItem[] = [
+  { id: "keychain", name: "Keychain" },
+  { id: "bag_charm", name: "Bag Charm" },
+];
+
+export async function fetchProductCategories(): Promise<ProductCategoryItem[]> {
+  if (!isSupabaseConfigured()) return DEFAULT_PRODUCT_CATEGORIES;
+
+  try {
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/app_settings?key=eq.product_categories&select=value&limit=1`,
+      { headers: supabaseHeaders() }
+    );
+    if (!res.ok) return DEFAULT_PRODUCT_CATEGORIES;
+    const data = await res.json();
+    const rawValue = Array.isArray(data) ? data[0]?.value : "";
+    if (!rawValue) return DEFAULT_PRODUCT_CATEGORIES;
+    const parsed = typeof rawValue === "string" ? JSON.parse(rawValue) : rawValue;
+    if (Array.isArray(parsed) && parsed.length > 0) {
+      return parsed
+        .filter((item: any) => item && typeof item.name === "string" && item.name.trim())
+        .map((item: any) => ({
+          id: String(item.id || item.name).toLowerCase().replace(/[^a-z0-9]+/g, "-"),
+          name: String(item.name).trim(),
+        }));
+    }
+    return DEFAULT_PRODUCT_CATEGORIES;
+  } catch {
+    return DEFAULT_PRODUCT_CATEGORIES;
+  }
+}
+
+export async function updateProductCategories(categories: ProductCategoryItem[]): Promise<void> {
+  if (!isSupabaseConfigured()) return;
+
+  const clean = categories.map(c => ({
+    id: c.id.trim() || c.name.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
+    name: c.name.trim(),
+  })).filter(c => c.name);
+
+  await adminRequest("POST", "/rest/v1/app_settings", {
+    query: "on_conflict=key",
+    prefer: "resolution=merge-duplicates",
+    body: {
+      key: "product_categories",
+      value: JSON.stringify(clean),
+      updated_at: new Date().toISOString(),
+    },
+  });
+}
+
 export async function fetchWhatsAppNumber(): Promise<string> {
   if (!isSupabaseConfigured()) return FALLBACK_WA_NUMBER;
 
@@ -854,6 +912,7 @@ function normalizeProduct(obj: Partial<Product>): Product {
   return {
     id: String(obj.id || "").trim(),
     nama_produk: String(obj.nama_produk || "").trim(),
+    kategori: String(obj.kategori ?? record.kategori ?? "").trim(),
     tier: normalizeTierValue(String(obj.tier || "classic")),
     harga: String(obj.harga || "").trim(),
     bunga: String(obj.bunga || "").trim(),
@@ -887,7 +946,7 @@ function normalizeProduct(obj: Partial<Product>): Product {
 }
 
 function productPayload(product: Product, status = product.status || "active", useLegacyTier = false) {
-  return {
+  const payload: Record<string, unknown> = {
     id: product.id.trim(),
     nama_produk: product.nama_produk.trim(),
     tier: useLegacyTier ? tierToDbValue(product.tier) : normalizeTierValue(product.tier),
@@ -911,6 +970,12 @@ function productPayload(product: Product, status = product.status || "active", u
     vault_pin: product.vault_pin || null,
     status,
   };
+
+  if (product.kategori) {
+    payload.kategori = product.kategori.trim();
+  }
+
+  return payload;
 }
 
 function normalizePreOrder(obj: Partial<PreOrder> & Record<string, unknown>): PreOrder {
@@ -946,11 +1011,12 @@ function normalizePreOrder(obj: Partial<PreOrder> & Record<string, unknown>): Pr
   };
 }
 
-// Lightweight normalizer for catalog cards — only the 6 public columns.
+// Lightweight normalizer for catalog cards — only the public columns.
 function normalizeCatalogProduct(obj: Record<string, unknown>): CatalogProduct {
   return {
     id: String(obj.id || "").trim(),
     nama_produk: String(obj.nama_produk || "").trim(),
+    kategori: String(obj.kategori ?? "").trim(),
     tier: normalizeTierValue(String(obj.tier || "classic")),
     harga: String(obj.harga || "").trim(),
     deskripsi: String(obj.deskripsi || "").trim(),
