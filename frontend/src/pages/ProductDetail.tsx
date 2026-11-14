@@ -22,7 +22,6 @@ export default function ProductDetail() {
   const [catalog, setCatalog] = useState<CatalogProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
-  const [activeAccordion, setActiveAccordion] = useState<number | null>(0);
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
   const [showFloatingBar, setShowFloatingBar] = useState(false);
 
@@ -165,67 +164,6 @@ export default function ProductDetail() {
     setIsLightboxOpen(true);
   };
 
-  const accordions = [
-    {
-      title: "Botanical Ingredients & Symbolism",
-      content: (
-        <div>
-          <p>
-            <strong>Spesimen Alami:</strong> {product.bunga || "Preserved Hydrangea macrophylla, Gypsophila paniculata, dan dedaunan botani asli."}
-          </p>
-          <p style={{ marginTop: "0.5rem" }}>
-            <strong>Bahasa &amp; Makna Bunga:</strong> Menggambarkan rasa syukur yang mendalam, ketulusan hubungan abadi, serta memori berharga yang tak lekang oleh perputaran musim.
-          </p>
-          <p style={{ marginTop: "0.5rem" }}>
-            <strong>Dimensi &amp; Material:</strong> {[product.ukuran, product.bahan].filter(Boolean).join(" · ") || "Frame kayu padat presisi & kristal bio-epoxy bebas gelembung."}
-          </p>
-        </div>
-      ),
-    },
-    {
-      title: "Preservation Science & Optical Bio-Epoxy",
-      content: (
-        <div>
-          <p>
-            <strong>Laboratorium Dehidrasi Silica:</strong> Setiap kuntum diekstraksi kelembapannya dalam inkubator vakum bertingkat hingga kadar air mencapai &lt; 0.02%, mempertahankan pigmen antosianin alami tanpa pewarna buatan.
-          </p>
-          <p style={{ marginTop: "0.5rem" }}>
-            <strong>Formula Bio-Epoxy Anti-UV:</strong> Menggunakan resin tingkat optik dengan filter UV ganda yang teruji tidak menguning di iklim tropis dan tahan kelembapan tinggi Indonesia.
-          </p>
-        </div>
-      ),
-    },
-    {
-      title: "How The Permanent Memory Vault Works",
-      content: (
-        <div>
-          <p>
-            <strong>1. Micro-Chip Terintegrasi:</strong> Sebuah micro-QR fisik tertanam permanen di dasar resin. Tahan air, tanpa baterai, dan tidak terpengaruh usia.
-          </p>
-          <p style={{ marginTop: "0.5rem" }}>
-            <strong>2. Tanpa Unduh Aplikasi:</strong> Siapa pun dapat memindai micro-QR langsung menggunakan kamera ponsel cerdas (iOS &amp; Android) untuk membuka foto resolusi tinggi, rekaman suara, atau surat personal.
-          </p>
-          <p style={{ marginTop: "0.5rem" }}>
-            <strong>3. Akses Update Seumur Hidup:</strong> Anda menerima Link Akses Privat untuk memperbarui atau menambah arsip memoar kapan saja di masa depan.
-          </p>
-        </div>
-      ),
-    },
-    {
-      title: "Delivery & Archival Care Protocol",
-      content: (
-        <div>
-          <p>
-            <strong>Pengemasan Mewah Terlindungi:</strong> Setiap karya dikemas dalam hardbox presentation box eksklusif berpita sutra dengan pelindung benturan tingkat tinggi, menjamin keamanan pengiriman ke seluruh Nusantara.
-          </p>
-          <p style={{ marginTop: "0.5rem" }}>
-            <strong>Protokol Perawatan:</strong> Bunga tidak membutuhkan air maupun penggantian vas. Cukup hindarkan dari paparan terik sinar matahari langsung dan bersihkan debu halus sesekali dengan kuas berbulu lembut.
-          </p>
-        </div>
-      ),
-    },
-  ];
-
   // Cross-sell items (excluding current product)
   const relatedProducts = catalog.filter(p => p.id !== product.id).slice(0, 4);
 
@@ -362,70 +300,6 @@ export default function ProductDetail() {
               </a>
             </div>
           </div>
-
-          {/* Detail Karya & Cerita Vault — dipindah ke bawah agar kolom kanan tetap lapang */}
-          <section className="pdp-details-section" aria-label="Detail karya dan cerita vault">
-            <div className="pdp-details-header">
-              <span className="section-eyebrow">DETAIL KARYA</span>
-              <h2 className="section-title">
-                Spesifikasi &amp; <em>Cerita Vault</em>
-              </h2>
-            </div>
-
-            <div className="pdp-details-grid">
-              <dl className="pdp-spec-grid">
-                <dt>Elemen Botani</dt>
-                <dd>{product.bunga || "Preserved Hydrangea, Gypsophila & dedaunan botani asli"}</dd>
-
-                <dt>Standar Preservasi</dt>
-                <dd>Dehidrasi silica laboratorium — kadar air di bawah 0.02%</dd>
-
-                <dt>Enkapsulasi</dt>
-                <dd>Bio-epoxy optik anti-UV, bebas gelembung</dd>
-
-                <dt>Frame &amp; Bentuk</dt>
-                <dd>{[product.bahan, product.ukuran].filter(Boolean).join(" · ") || "Frame kayu padat presisi dengan kristal bio-epoxy"}</dd>
-
-                <dt>Brankas Memori</dt>
-                <dd>Smart-QR Memory Vault tertanam permanen</dd>
-              </dl>
-
-              <aside className="specimen-vault-card pdp-vault-assurance">
-                <div className="vault-card-badge">✦ PERMANENT SMART-QR MEMORY VAULT INCLUDED</div>
-                <p className="vault-card-text">
-                  Setiap pesanan sudah termasuk 1x Micro-QR Chip fisik permanen yang tertanam di dasar karya. Cukup dekatkan kamera HP tanpa aplikasi untuk membuka foto kenangan, pesan suara, dan surat rahasia seumur hidup.
-                </p>
-              </aside>
-            </div>
-
-            {/* 4 Technical Spec Accordions */}
-            <div className="pdp-accordions" role="region" aria-label="Spesifikasi Teknis Karya">
-              {accordions.map((acc, idx) => {
-                const isOpen = activeAccordion === idx;
-                return (
-                  <div className={`faq-item pdp-accordion-item${isOpen ? " open" : ""}`} key={idx}>
-                    <button
-                      type="button"
-                      className="faq-question-btn pdp-accordion-btn"
-                      aria-expanded={isOpen}
-                      onClick={() => setActiveAccordion(curr => curr === idx ? null : idx)}
-                    >
-                      <span className="faq-question-text pdp-accordion-title">{acc.title}</span>
-                      <span className="faq-toggle-icon" aria-hidden="true">+</span>
-                    </button>
-                    <div
-                      className="faq-answer-panel"
-                      style={{ maxHeight: isOpen ? "340px" : "0" }}
-                    >
-                      <div className="faq-answer-text pdp-accordion-body">
-                        {acc.content}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </section>
 
           {/* Curated Pairings & Cross-Sell (4-card Grid) */}
           {relatedProducts.length > 0 && (

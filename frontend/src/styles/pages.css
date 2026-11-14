@@ -1260,12 +1260,15 @@
   display: flex;
   flex-direction: column;
   gap: 1rem;
+  width: min(100%, clamp(320px, 36vw, 620px));
+  margin-inline: auto;
 }
 
 @media (max-width: 900px) {
   .pdp-gallery-sticky {
     position: static;
     top: auto;
+    width: 100%;
   }
 }
 
@@ -1459,58 +1462,7 @@ button.pdp-main-viewport {
   transform: translateY(-1px);
 }
 
-/* Section detail karya di bawah split */
-.pdp-details-section {
-  margin-top: clamp(4rem, 8vw, 6.5rem);
-  padding-top: clamp(2.5rem, 5vw, 4rem);
-  border-top: 1px solid rgba(35, 43, 56, 0.08);
-}
-
-.pdp-details-header {
-  text-align: center;
-  margin-bottom: clamp(2rem, 4vw, 3rem);
-}
-
-.pdp-details-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
-  gap: clamp(2rem, 4vw, 4rem);
-  align-items: start;
-}
-
-.pdp-spec-grid {
-  display: grid;
-  grid-template-columns: minmax(140px, 0.5fr) minmax(0, 1fr);
-  column-gap: 1.75rem;
-  margin: 0;
-}
-
-.pdp-spec-grid dt,
-.pdp-spec-grid dd {
-  margin: 0;
-  padding: 0.95rem 0;
-  border-bottom: 1px solid rgba(35, 43, 56, 0.08);
-}
-
-.pdp-spec-grid dt {
-  font-family: var(--font-body);
-  font-size: 0.68rem;
-  font-weight: 600;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--chapter-taupe, #756C64);
-}
-
-.pdp-spec-grid dd {
-  font-family: var(--font-body);
-  font-size: 0.9rem;
-  line-height: 1.6;
-  color: var(--chapter-slate, #232B38);
-}
-
-.pdp-details-section .pdp-accordions {
-  margin-top: 2.5rem;
-}
+/* Section detail karya dihapus: folio hanya galeri + konsol minimal. */
 
 @media (max-width: 900px) {
   .pdp-gallery-dots {
@@ -1521,25 +1473,12 @@ button.pdp-main-viewport {
     display: none;
   }
 
-  .pdp-details-grid {
-    grid-template-columns: 1fr;
+  .pdp-main-viewport {
+    aspect-ratio: 1 / 1;
   }
 }
 
 @media (max-width: 560px) {
-  .pdp-spec-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .pdp-spec-grid dt {
-    padding-bottom: 0.2rem;
-    border-bottom: 0;
-  }
-
-  .pdp-spec-grid dd {
-    padding-top: 0;
-  }
-
   .pdp-order-link {
     width: 100%;
   }
