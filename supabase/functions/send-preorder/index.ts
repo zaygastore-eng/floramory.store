@@ -427,6 +427,7 @@ Deno.serve(async (req: Request) => {
         nuansa: item.nuansa,
         inisial: item.inisial,
         group_id: group.id,
+        group_number: groupNumber,
         group_item_index: unitIndex,
         group_item_count: totalUnits,
         group_total_amount: totalAmount,
@@ -442,10 +443,30 @@ Deno.serve(async (req: Request) => {
     }
   }
 
-  const { data: insertedRows, error: insertError } = await admin
+  let insertResult = await admin
     .from("preorder_orders")
     .insert(orderRows)
     .select("id, order_number");
+
+  // Masa transisi: jika kolom group_number belum ditambahkan, ulangi
+  // tanpa kolom itu agar pesanan tetap tersimpan. Admin tetap butuh
+  // migrasi untuk menampilkan nomor grup.
+  if (
+    insertResult.error?.code === "42703" &&
+    /group_number/i.test(insertResult.error.message || "")
+  ) {
+    const fallbackRows = orderRows.map((row) => {
+      const { group_number: _omit, ...rest } = row;
+      return rest;
+    });
+    insertResult = await admin
+      .from("preorder_orders")
+      .insert(fallbackRows)
+      .select("id, order_number");
+  }
+
+  const insertedRows = insertResult.data;
+  const insertError = insertResult.error;
   if (insertError || !insertedRows || insertedRows.length === 0) {
     console.error("[PREORDER_INSERT_ERROR]", insertError?.message || "no rows");
     // Bersihkan grup agar tidak menyisakan transaksi tanpa item.
