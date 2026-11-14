@@ -1575,11 +1575,13 @@ export async function updatePreOrderStatus(id: string, status: string): Promise<
     throw new Error("Supabase belum dikonfigurasi");
   }
 
+  const now = new Date().toISOString();
   await adminRequest("PATCH", "/rest/v1/preorder_orders", {
     query: `id=eq.${encodeURIComponent(id)}`,
     body: {
       status,
-      updated_at: new Date().toISOString(),
+      updated_at: now,
+      ...(status === "dp_verified" ? { dp_verified_at: now } : {}),
     },
   });
 }
@@ -1600,6 +1602,7 @@ export async function updatePreOrderGroupStatus(groupId: string, status: string)
     body: {
       status,
       updated_at: now,
+      ...(status === "dp_verified" ? { dp_verified_at: now } : {}),
     },
   });
 

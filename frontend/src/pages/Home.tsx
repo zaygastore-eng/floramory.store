@@ -8,13 +8,11 @@ import {
   createGroupPreOrder,
   fetchCatalogProducts,
   fetchHeroConfig,
-  fetchProductCategories,
   fetchWhatsAppNumber,
   tierLabel,
   type CatalogProduct,
   type HeroConfig,
   type PreOrderItemInput,
-  type ProductCategoryItem,
 } from "@/lib/api";
 import { homeContent } from "@/content/homeContent";
 import { applyPageMeta } from "@/lib/seo";
@@ -303,7 +301,6 @@ export default function Home() {
   const [, navigate] = useLocation();
   const [heroConfig, setHeroConfig] = useState<HeroConfig>(defaultHeroConfig);
   const [products, setProducts] = useState<CatalogProduct[]>([]);
-  const [categories, setCategories] = useState<ProductCategoryItem[]>([]);
   const [chapterProducts, setChapterProducts] = useState<CatalogProduct[]>([]);
   const [activeFaq, setActiveFaq] = useState<number | null>(null);
   const toggleFaq = (index: number) => {
@@ -422,9 +419,6 @@ export default function Home() {
       });
     fetchWhatsAppNumber().then(number => {
       setWhatsappNumber(normalizeWhatsApp(number) || "6285235242425");
-    });
-    fetchProductCategories().then(cats => {
-      setCategories(cats);
     });
     return () => {
       active = false;
