@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, type TouchEvent } from "react";
 import { Link, useRoute } from "wouter";
 import SiteHeader from "@/components/SiteHeader";
 import SiteFooter from "@/components/SiteFooter";
@@ -6,27 +6,12 @@ import ProductImage from "@/components/ProductImage";
 import {
   fetchCatalogProducts,
   fetchProductDetailById,
-  fetchWhatsAppNumber,
   tierLabel,
   type CatalogProduct,
   type Product,
 } from "@/lib/api";
-import { normalizeWhatsApp, formatHarga } from "@/lib/site";
+import { formatHarga } from "@/lib/site";
 import { applyProductMeta } from "@/lib/seo";
-
-type FrameFinish = "teak" | "black-oak" | "crystal";
-
-interface FrameOption {
-  key: FrameFinish;
-  label: string;
-  sub: string;
-}
-
-const FRAME_OPTIONS: FrameOption[] = [
-  { key: "teak", label: "Solid Teak Wood", sub: "Kayu Jati Alami" },
-  { key: "black-oak", label: "Matte Black Oak", sub: "Kayu Oak Hitam" },
-  { key: "crystal", label: "Full Crystal Block", sub: "Blok Kristal Penuh" },
-];
 
 export default function ProductDetail() {
   const [, matchProducts] = useRoute("/products/:id");
@@ -37,13 +22,13 @@ export default function ProductDetail() {
   const [catalog, setCatalog] = useState<CatalogProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
-  const [frameFinish, setFrameFinish] = useState<FrameFinish>("teak");
   const [activeAccordion, setActiveAccordion] = useState<number | null>(0);
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
   const [showFloatingBar, setShowFloatingBar] = useState(false);
-  const [whatsappNumber, setWhatsappNumber] = useState("6285235242425");
 
   const mainCtaRef = useRef<HTMLAnchorElement>(null);
+  const touchStartX = useRef<number | null>(null);
+  const didSwipeRef = useRef(false);
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -51,10 +36,6 @@ export default function ProductDetail() {
   }, [productId]);
 
   useEffect(() => {
-    fetchWhatsAppNumber().then(num => {
-      setWhatsappNumber(normalizeWhatsApp(num) || "6285235242425");
-    });
-
     fetchCatalogProducts()
       .then(items => setCatalog(items))
       .catch(() => setCatalog([]));
@@ -143,16 +124,46 @@ export default function ProductDetail() {
   }));
 
   const selectedImage = galleryImages[activeImageIndex] || galleryImages[0];
-  const selectedFinishLabel = FRAME_OPTIONS.find(f => f.key === frameFinish)?.label || "Solid Teak Wood";
+  const hasMultipleImages = galleryImages.length > 1;
 
-  const commissionUrl = `/?product=${encodeURIComponent(product.id)}&finish=${encodeURIComponent(frameFinish)}#pesan`;
+  // Tombol pesan mengarah ke form reservasi di beranda (produk otomatis terpilih).
+  const commissionUrl = `/?product=${encodeURIComponent(product.id)}#pesan`;
 
-  const whatsappInquiryUrl = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(
-    `Halo A Chapter Concierge,\n\nSaya tertarik mengonfirmasi pemesanan karya botani:\n` +
-    `• Karya: ${product.nama_produk} (ID: ${product.id})\n` +
-    `• Pilihan Frame: ${selectedFinishLabel}\n` +
-    `• Harga: ${formatHarga(product.harga)}\n\nMohon info ketersediaan slot batch penuangan minggu ini.`
-  )}`;
+  const storyText = product.deskripsi ||
+    "Karya seni botani asli yang dipreservasi abadi melalui standar presisi laboratorium, dituangkan dalam kristal epoxy anti-UV bersama brankas kenangan digital untuk menyimpan suara, surat, dan foto orang tersayang selamanya.";
+
+  const handleGalleryTouchStart = (event: TouchEvent<HTMLDivElement>) => {
+    if (!hasMultipleImages) return;
+    touchStartX.current = event.touches[0]?.clientX ?? null;
+    didSwipeRef.current = false;
+  };
+
+  const handleGalleryTouchEnd = (event: TouchEvent<HTMLDivElement>) => {
+    const startX = touchStartX.current;
+    touchStartX.current = null;
+    if (startX === null || !hasMultipleImages) return;
+
+    const endX = event.changedTouches[0]?.clientX ?? startX;
+    const delta = endX - startX;
+    if (Math.abs(delta) < 45) return;
+
+    didSwipeRef.current = true;
+    setActiveImageIndex(current => {
+      const next = delta < 0 ? current + 1 : current - 1;
+      if (next < 0) return galleryImages.length - 1;
+      if (next >= galleryImages.length) return 0;
+      return next;
+    });
+  };
+
+  const handleViewportClick = () => {
+    // Abaikan klik yang sebenarnya adalah akhir dari swipe di mobile.
+    if (didSwipeRef.current) {
+      didSwipeRef.current = false;
+      return;
+    }
+    setIsLightboxOpen(true);
+  };
 
   const accordions = [
     {
@@ -240,46 +251,62 @@ export default function ProductDetail() {
             {/* Left Column: Sticky Gallery */}
             <div className="pdp-gallery-column">
               <div className="pdp-gallery-sticky">
-                {/* Main Viewport */}
-                <div className="pdp-main-viewport">
-                  <ProductImage
-                    src={selectedImage.src}
-                    size="large"
-                    alt={`${product.nama_produk} — ${selectedImage.label}`}
-                    className="pdp-viewport-img"
-                    width={1000}
-                    height={1250}
-                    loading="eager"
-                    fallback={
-                      <div className="product-img-monogram" aria-label="A Chapter Atelier">
-                        <img
-                          src="/a-chapter-logo.png"
-                          alt="A Chapter"
-                          className="product-fallback-logo"
-                          width={150}
-                          height={45}
-                          loading="lazy"
-                          decoding="async"
-                        />
-                      </div>
-                    }
-                  />
-
-                  {/* High-Res Inspect Button */}
+                <div
+                  className="pdp-gallery-stage"
+                  onTouchStart={handleGalleryTouchStart}
+                  onTouchEnd={handleGalleryTouchEnd}
+                >
+                  {/* Main Viewport — klik untuk lightbox, geser untuk carousel di mobile */}
                   <button
                     type="button"
-                    className="pdp-inspect-btn"
-                    onClick={() => setIsLightboxOpen(true)}
-                    aria-label="Perbesar detail foto spesimen"
+                    className="pdp-main-viewport"
+                    onClick={handleViewportClick}
+                    aria-label={`Perbesar foto ${product.nama_produk}`}
                   >
-                    <span>⚲</span> Inspect Petal Details
+                    <ProductImage
+                      src={selectedImage.src}
+                      size="large"
+                      alt={`${product.nama_produk} — ${selectedImage.label}`}
+                      className="pdp-viewport-img"
+                      width={1000}
+                      height={1250}
+                      loading="eager"
+                      fallback={
+                        <div className="product-img-monogram" aria-label="A Chapter Atelier">
+                          <img
+                            src="/a-chapter-logo.png"
+                            alt="A Chapter"
+                            className="product-fallback-logo"
+                            width={150}
+                            height={45}
+                            loading="lazy"
+                            decoding="async"
+                          />
+                        </div>
+                      }
+                    />
                   </button>
 
-                  <span className="pdp-view-badge">{selectedImage.label}</span>
+                  {/* Dots indikator (mobile) */}
+                  {hasMultipleImages && (
+                    <div className="pdp-gallery-dots" role="tablist" aria-label="Navigasi foto galeri">
+                      {galleryImages.map((img, idx) => (
+                        <button
+                          key={idx}
+                          type="button"
+                          role="tab"
+                          aria-selected={activeImageIndex === idx}
+                          aria-label={`Tampilkan ${img.label}`}
+                          className={`pdp-gallery-dot${activeImageIndex === idx ? " active" : ""}`}
+                          onClick={() => setActiveImageIndex(idx)}
+                        />
+                      ))}
+                    </div>
+                  )}
                 </div>
 
-                {/* Thumbnails (hanya jika ada lebih dari satu foto) */}
-                {galleryImages.length > 1 && (
+                {/* Thumbnails (desktop, hanya jika ada lebih dari satu foto) */}
+                {hasMultipleImages && (
                   <div className="pdp-thumb-row" role="tablist" aria-label="Sudut Pandang Galeri">
                     {galleryImages.map((img, idx) => (
                       <button
@@ -307,116 +334,98 @@ export default function ProductDetail() {
               </div>
             </div>
 
-            {/* Right Column: Console & Purchasing */}
-            <div className="pdp-console-column">
-              <div className="pdp-header">
-                <span className="pdp-folio-tag">
-                  FOLIO ARCHIVE SPECIMEN NO. {String(product.id).slice(0, 8).toUpperCase()}
-                </span>
-                <h1 className="pdp-title">{product.nama_produk}</h1>
+            {/* Right Column: Minimal Console — judul, harga, cerita, link pesan */}
+            <div className="pdp-console-minimal">
+              <span className="pdp-folio-tag">
+                FOLIO ARCHIVE · {tierLabel(product.tier)}
+              </span>
+
+              <h1 className="pdp-title">{product.nama_produk}</h1>
+
+              {product.bunga && (
                 <p className="pdp-taxonomy">
-                  <em>{product.bunga || "Hydrangea macrophylla × Gypsophila paniculata"}</em>
+                  <em>{product.bunga}</em>
                 </p>
-                <div className="pdp-price-row">
-                  <span className="pdp-price">{formatHarga(product.harga)}</span>
-                  <span className="pdp-price-badge">PRE-ORDER 50% DEPOSIT</span>
-                </div>
-              </div>
+              )}
 
-              {/* Batch Availability Indicator */}
-              <div className="pdp-batch-schedule">
-                <span className="batch-pulse-dot" aria-hidden="true" />
-                <span>
-                  <strong>Open for Surabaya Weekly Batch No. 12</strong> · Hand-poured in 3–5 days in East Java Studio
-                </span>
-              </div>
+              <p className="pdp-price pdp-price-minimal">{formatHarga(product.harga)}</p>
 
-              {/* Narrative Story */}
-              <p className="pdp-narrative">
-                {product.deskripsi || "Karya seni botani asli yang dipreservasi abadi melalui standar presisi laboratorium, dituangkan dalam kristal epoxy anti-UV bersama brankas kenangan digital untuk menyimpan suara, surat, dan foto orang tersayang selamanya."}
-              </p>
+              <p className="pdp-narrative pdp-story">{storyText}</p>
 
-              {/* Interactive Frame Finish Selector */}
-              <div className="pdp-config-group">
-                <label className="pdp-config-label">
-                  Pilih Material Frame Finishing: <strong>{selectedFinishLabel}</strong>
-                </label>
-                <div className="frame-finish-selector" role="radiogroup" aria-label="Pilihan Frame Finishing">
-                  {FRAME_OPTIONS.map(opt => {
-                    const isSelected = frameFinish === opt.key;
-                    return (
-                      <button
-                        key={opt.key}
-                        type="button"
-                        role="radio"
-                        aria-checked={isSelected}
-                        className={`frame-finish-btn${isSelected ? " active" : ""}`}
-                        onClick={() => setFrameFinish(opt.key)}
-                      >
-                        <span className="finish-name">{opt.label}</span>
-                        <span className="finish-sub">{opt.sub}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
+              <a
+                ref={mainCtaRef}
+                href={commissionUrl}
+                className="pdp-order-link"
+              >
+                <span>Pesan Karya Ini</span>
+                <span aria-hidden="true">→</span>
+              </a>
+            </div>
+          </div>
 
-              {/* Smart QR Memory Vault Included Assurance Card */}
-              <div className="specimen-vault-card pdp-vault-assurance">
+          {/* Detail Karya & Cerita Vault — dipindah ke bawah agar kolom kanan tetap lapang */}
+          <section className="pdp-details-section" aria-label="Detail karya dan cerita vault">
+            <div className="pdp-details-header">
+              <span className="section-eyebrow">DETAIL KARYA</span>
+              <h2 className="section-title">
+                Spesifikasi &amp; <em>Cerita Vault</em>
+              </h2>
+            </div>
+
+            <div className="pdp-details-grid">
+              <dl className="pdp-spec-grid">
+                <dt>Elemen Botani</dt>
+                <dd>{product.bunga || "Preserved Hydrangea, Gypsophila & dedaunan botani asli"}</dd>
+
+                <dt>Standar Preservasi</dt>
+                <dd>Dehidrasi silica laboratorium — kadar air di bawah 0.02%</dd>
+
+                <dt>Enkapsulasi</dt>
+                <dd>Bio-epoxy optik anti-UV, bebas gelembung</dd>
+
+                <dt>Frame &amp; Bentuk</dt>
+                <dd>{[product.bahan, product.ukuran].filter(Boolean).join(" · ") || "Frame kayu padat presisi dengan kristal bio-epoxy"}</dd>
+
+                <dt>Brankas Memori</dt>
+                <dd>Smart-QR Memory Vault tertanam permanen</dd>
+              </dl>
+
+              <aside className="specimen-vault-card pdp-vault-assurance">
                 <div className="vault-card-badge">✦ PERMANENT SMART-QR MEMORY VAULT INCLUDED</div>
                 <p className="vault-card-text">
                   Setiap pesanan sudah termasuk 1x Micro-QR Chip fisik permanen yang tertanam di dasar karya. Cukup dekatkan kamera HP tanpa aplikasi untuk membuka foto kenangan, pesan suara, dan surat rahasia seumur hidup.
                 </p>
-              </div>
+              </aside>
+            </div>
 
-              {/* Dual Action CTAs */}
-              <div className="pdp-actions">
-                <a
-                  ref={mainCtaRef}
-                  href={commissionUrl}
-                  className="hero-cta hero-cta-primary pdp-order-btn"
-                >
-                  COMMISSION THIS CHAPTER (PRE-ORDER DP 50%) →
-                </a>
-                <a
-                  href={whatsappInquiryUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="pdp-whatsapp-btn"
-                >
-                  Konsultasi Kustomisasi Bunga via WhatsApp
-                </a>
-              </div>
-
-              {/* 4 Technical Spec Accordions */}
-              <div className="pdp-accordions" role="region" aria-label="Spesifikasi Teknis Karya">
-                {accordions.map((acc, idx) => {
-                  const isOpen = activeAccordion === idx;
-                  return (
-                    <div className={`faq-item pdp-accordion-item${isOpen ? " open" : ""}`} key={idx}>
-                      <button
-                        type="button"
-                        className="faq-question-btn pdp-accordion-btn"
-                        aria-expanded={isOpen}
-                        onClick={() => setActiveAccordion(curr => curr === idx ? null : idx)}
-                      >
-                        <span className="faq-question-text pdp-accordion-title">{acc.title}</span>
-                        <span className="faq-toggle-icon" aria-hidden="true">+</span>
-                      </button>
-                      <div
-                        className="faq-answer-panel"
-                        style={{ maxHeight: isOpen ? "340px" : "0" }}
-                      >
-                        <div className="faq-answer-text pdp-accordion-body">
-                          {acc.content}
-                        </div>
+            {/* 4 Technical Spec Accordions */}
+            <div className="pdp-accordions" role="region" aria-label="Spesifikasi Teknis Karya">
+              {accordions.map((acc, idx) => {
+                const isOpen = activeAccordion === idx;
+                return (
+                  <div className={`faq-item pdp-accordion-item${isOpen ? " open" : ""}`} key={idx}>
+                    <button
+                      type="button"
+                      className="faq-question-btn pdp-accordion-btn"
+                      aria-expanded={isOpen}
+                      onClick={() => setActiveAccordion(curr => curr === idx ? null : idx)}
+                    >
+                      <span className="faq-question-text pdp-accordion-title">{acc.title}</span>
+                      <span className="faq-toggle-icon" aria-hidden="true">+</span>
+                    </button>
+                    <div
+                      className="faq-answer-panel"
+                      style={{ maxHeight: isOpen ? "340px" : "0" }}
+                    >
+                      <div className="faq-answer-text pdp-accordion-body">
+                        {acc.content}
                       </div>
                     </div>
-                  );
-                })}
-              </div>
+                  </div>
+                );
+              })}
             </div>
-          </div>
+          </section>
 
           {/* Curated Pairings & Cross-Sell (4-card Grid) */}
           {relatedProducts.length > 0 && (
@@ -480,7 +489,7 @@ export default function ProductDetail() {
             <span className="floating-price">{formatHarga(product.harga)}</span>
           </div>
           <a href={commissionUrl} className="floating-order-btn">
-            ORDER NOW →
+            Pesan Karya Ini →
           </a>
         </div>
       )}

@@ -999,6 +999,55 @@
   color: var(--pv-muted);
 }
 
+/* Konsol minimal & section detail karya */
+.public-v2 .pdp-price-minimal {
+  color: var(--pv-wine);
+}
+
+.public-v2 .pdp-story {
+  color: var(--pv-muted);
+}
+
+.public-v2 .pdp-order-link {
+  background: var(--pv-wine);
+  color: #fdf5e9;
+  border-radius: 2px;
+  letter-spacing: 0.14em;
+}
+
+.public-v2 .pdp-order-link:hover {
+  background: var(--pv-wine-soft);
+}
+
+.public-v2 .pdp-gallery-dot {
+  background: rgba(107, 31, 42, 0.2);
+}
+
+.public-v2 .pdp-gallery-dot.active {
+  background: var(--pv-wine);
+}
+
+.public-v2 .pdp-details-section {
+  border-top-color: rgba(107, 31, 42, 0.12);
+}
+
+.public-v2 .pdp-details-section .section-title {
+  color: var(--pv-wine);
+}
+
+.public-v2 .pdp-spec-grid dt,
+.public-v2 .pdp-spec-grid dd {
+  border-bottom-color: rgba(107, 31, 42, 0.12);
+}
+
+.public-v2 .pdp-spec-grid dt {
+  color: var(--pv-muted);
+}
+
+.public-v2 .pdp-spec-grid dd {
+  color: var(--pv-ink);
+}
+
 .public-v2 .pdp-config-label {
   color: var(--pv-ink);
 }

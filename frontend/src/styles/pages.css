@@ -1335,6 +1335,48 @@
   z-index: 3;
 }
 
+/* Galeri: foto utama kini sebuah tombol (klik = lightbox) */
+button.pdp-main-viewport {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: zoom-in;
+  text-align: inherit;
+}
+
+.pdp-gallery-stage {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  touch-action: pan-y;
+}
+
+/* Dots indikator carousel — hanya tampil di mobile */
+.pdp-gallery-dots {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.pdp-gallery-dot {
+  width: 6px;
+  height: 6px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(35, 43, 56, 0.22);
+  cursor: pointer;
+  transition: width 200ms ease, background 200ms ease;
+}
+
+.pdp-gallery-dot.active {
+  width: 20px;
+  background: var(--chapter-burgundy, #531B21);
+}
+
 .pdp-thumb-row {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -1368,6 +1410,139 @@
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
+}
+
+/* Konsol minimal ala Bloom This: judul, harga, cerita, lalu link pesan */
+.pdp-console-minimal {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1rem;
+  padding-top: 0.25rem;
+}
+
+.pdp-price-minimal {
+  font-family: var(--font-display, 'Cormorant Garamond', serif);
+  font-size: clamp(1.6rem, 2.4vw, 2rem);
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  margin: 0.25rem 0 0;
+}
+
+.pdp-story {
+  max-width: 44ch;
+  font-size: 0.95rem;
+}
+
+.pdp-order-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2rem;
+  min-width: 240px;
+  margin-top: 1rem;
+  padding: 1rem 1.5rem;
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  text-decoration: none;
+  color: #FFFFFF;
+  background: var(--chapter-burgundy, #531B21);
+  border-radius: 2px;
+  transition: background 150ms ease, transform 150ms ease;
+}
+
+.pdp-order-link:hover {
+  background: var(--chapter-burgundy-hover, #6b1f2a);
+  transform: translateY(-1px);
+}
+
+/* Section detail karya di bawah split */
+.pdp-details-section {
+  margin-top: clamp(4rem, 8vw, 6.5rem);
+  padding-top: clamp(2.5rem, 5vw, 4rem);
+  border-top: 1px solid rgba(35, 43, 56, 0.08);
+}
+
+.pdp-details-header {
+  text-align: center;
+  margin-bottom: clamp(2rem, 4vw, 3rem);
+}
+
+.pdp-details-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+  gap: clamp(2rem, 4vw, 4rem);
+  align-items: start;
+}
+
+.pdp-spec-grid {
+  display: grid;
+  grid-template-columns: minmax(140px, 0.5fr) minmax(0, 1fr);
+  column-gap: 1.75rem;
+  margin: 0;
+}
+
+.pdp-spec-grid dt,
+.pdp-spec-grid dd {
+  margin: 0;
+  padding: 0.95rem 0;
+  border-bottom: 1px solid rgba(35, 43, 56, 0.08);
+}
+
+.pdp-spec-grid dt {
+  font-family: var(--font-body);
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--chapter-taupe, #756C64);
+}
+
+.pdp-spec-grid dd {
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  line-height: 1.6;
+  color: var(--chapter-slate, #232B38);
+}
+
+.pdp-details-section .pdp-accordions {
+  margin-top: 2.5rem;
+}
+
+@media (max-width: 900px) {
+  .pdp-gallery-dots {
+    display: flex;
+  }
+
+  .pdp-thumb-row {
+    display: none;
+  }
+
+  .pdp-details-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 560px) {
+  .pdp-spec-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .pdp-spec-grid dt {
+    padding-bottom: 0.2rem;
+    border-bottom: 0;
+  }
+
+  .pdp-spec-grid dd {
+    padding-top: 0;
+  }
+
+  .pdp-order-link {
+    width: 100%;
+  }
 }
 
 .pdp-header {
