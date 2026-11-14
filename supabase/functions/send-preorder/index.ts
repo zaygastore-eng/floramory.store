@@ -5,10 +5,18 @@
 // service_role sehingga MELEWATI RLS — karena itu kunci jalur
 // insert publik ke tabel preorder_orders (migrasi 0004).
 //
+// Sejak fitur multi-karya, satu permintaan berisi `items[]`
+// (produk + qty + nuansa + inisial). Fungsi ini:
+//   1. Membuat satu baris `preorder_groups` (satu transaksi).
+//   2. Mengekspansi qty menjadi baris `preorder_orders`
+//      (1 baris = 1 karya fisik = 1 QR / 1 Memory Vault).
+//   3. Menghitung total & DP 50% di level grup.
+//   4. Mengirim satu email ringkasan ke atelier.
+//
 // Melindungi dari spam dengan, berlapis:
 //   1. Proteksi bot: user-agent + field honeypot + time-trap
 //      (form yang diisi < MIN_FILL_MS dianggap bot).
-//   2. Rate limit: per-IP (in-memory) dan per-nomor WA (DB, 24 jam).
+//   2. Rate limit: per-IP (in-memory + DB) dan per-nomor WA (DB, 24 jam).
 //   3. Validasi server: panjang input, normalisasi no. WA, dan
 //      produk harus ada + berstatus active.
 //
@@ -32,24 +40,28 @@ const CORS_HEADERS: Record<string, string> = {
 };
 
 // ---- Aturan anti-spam --------------------------------------------------
-const MAX_ORDERS_PER_PHONE = 3; // per 24 jam (DB, lintas-IP)
+const MAX_GROUPS_PER_PHONE = 3; // per 24 jam (DB, lintas-IP)
 const MAX_REQUESTS_PER_IP = 6; // per 10 menit (in-memory)
 const IP_WINDOW_MS = 10 * 60 * 1000;
 const PHONE_WINDOW_MS = 24 * 60 * 60 * 1000;
 const MIN_FILL_MS = 1200; // waktu minimal mengisi form (time-trap)
-const MAX_BODY_BYTES = 50_000;
+const MAX_BODY_BYTES = 80_000;
+
+// Batas teknis (bukan batas UI): melindungi server dari payload ekstrem.
+const MAX_GROUP_ITEMS = 50; // baris karya dalam satu daftar
+const MAX_ITEM_QTY = 20; // jumlah per baris
+const MAX_GROUP_UNITS = 80; // total karya fisik setelah qty diekspansi
 
 const MAX_LENGTH: Record<string, number> = {
   customer_name: 120,
   whatsapp: 20,
-  recipient_whatsapp: 20,
   product_id: 120,
   product_name: 160,
-  custom_request: 2000,
-  recipient_name: 120,
-  sender_name: 120,
-  personal_message: 2000,
+  nuansa: 40,
+  inisial: 10,
 };
+
+const ALLOWED_NUANSA = new Set(["crimson-romance", "bridgerton-blue", "classic-ivory"]);
 
 const BOT_USER_AGENTS =
   /bot|crawler|spider|curl|wget|libwww|python|node|axios|go-http|java\/|okhttp|postman|http-client|phantomjs|headless|selenium|puppeteer|scrapy|nuclei/i;
@@ -57,6 +69,14 @@ const BOT_USER_AGENTS =
 const WA_REGEX = /^62\d{8,13}$/;
 
 const ipLimiters = new Map<string, number[]>();
+
+interface ItemInput {
+  product_id: string;
+  qty: number;
+  nuansa: string;
+  inisial: string;
+  personal_message: string;
+}
 
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -106,6 +126,10 @@ function createOrderNumber(): string {
   return `ORD-${crypto.randomUUID().replace(/-/g, "").slice(0, 12).toUpperCase()}`;
 }
 
+function createGroupNumber(): string {
+  return `GRP-${crypto.randomUUID().replace(/-/g, "").slice(0, 10).toUpperCase()}`;
+}
+
 // Token privat untuk konsol pengirim (/vault-setup). Dipisahkan dari
 // order id agar tautan yang bocor tidak otomatis memberi akses tulis
 // ke pesanan lain, dan agar bisa kedaluwarsa.
@@ -119,33 +143,108 @@ function getStr(payload: Record<string, unknown>, key: string): string {
   return typeof payload[key] === "string" ? String(payload[key]) : "";
 }
 
-function validatePayload(payload: Record<string, unknown>): string[] {
+function toQty(raw: unknown): number {
+  const qty = Math.floor(Number(raw));
+  return Number.isFinite(qty) && qty > 0 ? qty : 1;
+}
+
+/** Mengambil inisial dari teks lama seperti "Inisial: R | Nuansa: ...". */
+function parseLegacyInisial(text: string): string {
+  const match = /inisial\s*:\s*([^\s|]+)/i.exec(text);
+  return match ? match[1].trim().slice(0, 10) : "";
+}
+
+/**
+ * Menormalkan payload lama (satu produk) maupun payload baru (`items[]`)
+ * menjadi daftar item yang seragam.
+ */
+function parseItems(body: Record<string, unknown>): ItemInput[] {
+  const rawItems = Array.isArray(body.items) ? body.items : null;
+
+  if (!rawItems) {
+    // Kompatibilitas mundur: request single-product lama tidak mengirim
+    // nuansa/inisial terstruktur, jadi ambil dari kolom lama bila ada.
+    const legacyNuansa = getStr(body, "nuansa").trim();
+    const legacyInisial =
+      getStr(body, "inisial").trim() ||
+      parseLegacyInisial(getStr(body, "recipient_name")) ||
+      parseLegacyInisial(getStr(body, "custom_request"));
+
+    return [{
+      product_id: getStr(body, "product_id").trim(),
+      qty: 1,
+      nuansa: ALLOWED_NUANSA.has(legacyNuansa) ? legacyNuansa : "crimson-romance",
+      inisial: legacyInisial,
+      personal_message: getStr(body, "personal_message").trim(),
+    }];
+  }
+
+  return rawItems.map((entry) => {
+    const item = (entry && typeof entry === "object" ? entry : {}) as Record<string, unknown>;
+    return {
+      product_id: getStr(item, "product_id").trim(),
+      qty: toQty(item.qty),
+      nuansa: getStr(item, "nuansa").trim(),
+      inisial: getStr(item, "inisial").trim(),
+      personal_message: getStr(item, "personal_message").trim(),
+    };
+  });
+}
+
+function validatePayload(body: Record<string, unknown>, items: ItemInput[]): string[] {
   const errors: string[] = [];
 
-  const customerName = getStr(payload, "customer_name").trim();
+  const customerName = getStr(body, "customer_name").trim();
   if (!customerName) {
     errors.push("Nama lengkap wajib diisi.");
   }
 
-  const whatsapp = normalizeWhatsApp(getStr(payload, "whatsapp"));
+  const whatsapp = normalizeWhatsApp(getStr(body, "whatsapp"));
   if (!WA_REGEX.test(whatsapp)) {
     errors.push("Nomor WhatsApp tidak valid. Gunakan format 08xx atau 62xx.");
   }
 
-  const recipientWhatsapp = normalizeWhatsApp(getStr(payload, "recipient_whatsapp"));
-  if (recipientWhatsapp && !WA_REGEX.test(recipientWhatsapp)) {
-    errors.push('Kolom "recipient_whatsapp" tidak valid. Gunakan format 08xx atau 62xx.');
+  if (items.length === 0) {
+    errors.push("Silakan pilih minimal satu karya.");
+  }
+  if (items.length > MAX_GROUP_ITEMS) {
+    errors.push(`Terlalu banyak baris karya (maksimal ${MAX_GROUP_ITEMS}).`);
   }
 
-  const productId = getStr(payload, "product_id").trim();
-  if (!productId) {
-    errors.push("Silakan pilih produk terlebih dahulu.");
+  let totalUnits = 0;
+  items.forEach((item, index) => {
+    const label = `Karya ${index + 1}`;
+
+    if (!item.product_id) {
+      errors.push(`${label}: silakan pilih produk.`);
+    }
+    if (item.qty < 1 || item.qty > MAX_ITEM_QTY) {
+      errors.push(`${label}: jumlah harus antara 1 dan ${MAX_ITEM_QTY}.`);
+    }
+    if (!item.nuansa || !ALLOWED_NUANSA.has(item.nuansa)) {
+      errors.push(`${label}: nuansa warna tidak valid.`);
+    }
+    if (!item.inisial) {
+      errors.push(`${label}: inisial wajib diisi.`);
+    }
+    totalUnits += item.qty;
+  });
+
+  if (totalUnits > MAX_GROUP_UNITS) {
+    errors.push(`Total karya melebihi batas ${MAX_GROUP_UNITS} dalam satu reservasi.`);
   }
 
   for (const [key, max] of Object.entries(MAX_LENGTH)) {
-    const value = getStr(payload, key).trim();
+    const value = getStr(body, key).trim();
     if (value.length > max) {
       errors.push(`Kolom "${key}" terlalu panjang (maksimal ${max} karakter).`);
+    }
+  }
+
+  for (const item of items) {
+    if (item.inisial.length > MAX_LENGTH.inisial) {
+      errors.push(`Inisial terlalu panjang (maksimal ${MAX_LENGTH.inisial} karakter).`);
+      break;
     }
   }
 
@@ -205,13 +304,15 @@ Deno.serve(async (req: Request) => {
   }
 
   // 6) Validasi server.
-  const errors = validatePayload(body);
+  const items = parseItems(body);
+  const errors = validatePayload(body, items);
   if (errors.length > 0) {
     return json({ ok: false, errors: errors.map((message) => ({ message })) }, 422);
   }
 
   const whatsapp = normalizeWhatsApp(getStr(body, "whatsapp"));
-  const productId = getStr(body, "product_id").trim();
+  const customerName = getStr(body, "customer_name").trim();
+  const isVip = body.is_vip === true;
 
   const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
     auth: { persistSession: false, autoRefreshToken: false },
@@ -223,97 +324,180 @@ Deno.serve(async (req: Request) => {
     return json({ message: "Terlalu banyak permintaan. Silakan coba lagi nanti." }, 429);
   }
 
-  // 7) Validasi produk: harus ada dan berstatus active (tidak percaya client).
-  const { data: product, error: productError } = await admin
+  // 7) Validasi produk: semua harus ada dan berstatus active (tidak percaya client).
+  const productIds = Array.from(new Set(items.map((item) => item.product_id)));
+  const { data: productRows, error: productError } = await admin
     .from("products")
     .select("id, nama_produk, harga")
-    .eq("id", productId)
-    .eq("status", "active")
-    .maybeSingle();
+    .in("id", productIds)
+    .eq("status", "active");
   if (productError) {
     return json({ message: "Produk tidak ditemukan." }, 400);
   }
-  if (!product) {
-    return json({ message: "Produk tidak valid atau sudah tidak tersedia." }, 400);
+
+  const productMap = new Map<string, { id: string; nama_produk: string; harga: string }>();
+  for (const row of productRows || []) {
+    productMap.set(String(row.id), row);
   }
-  const totalAmount = getPriceAmount(product.harga);
-  if (totalAmount <= 0) {
+
+  for (const item of items) {
+    if (!productMap.has(item.product_id)) {
+      return json({ message: "Ada produk yang tidak valid atau sudah tidak tersedia." }, 400);
+    }
+  }
+
+  // 8) Hitung total & DP 50% di level grup.
+  const pricedItems = items.map((item) => {
+    const product = productMap.get(item.product_id)!;
+    const unitAmount = getPriceAmount(product.harga);
+    return {
+      ...item,
+      product_name: String(product.nama_produk || "").trim(),
+      unitAmount,
+      lineAmount: unitAmount * item.qty,
+    };
+  });
+
+  if (pricedItems.some((item) => item.unitAmount <= 0)) {
     return json({ message: "Harga produk belum dikonfigurasi dengan benar." }, 400);
   }
-  const dpAmount = Math.ceil(totalAmount * 0.5);
-  const orderNumber = createOrderNumber();
 
-  // 8) Rate limit per nomor WhatsApp (24 jam, lintas-IP) via DB.
+  const totalAmount = pricedItems.reduce((sum, item) => sum + item.lineAmount, 0);
+  const dpAmount = Math.ceil(totalAmount * 0.5);
+  const totalUnits = pricedItems.reduce((sum, item) => sum + item.qty, 0);
+  const groupNumber = createGroupNumber();
+
+  // 9) Rate limit per nomor WhatsApp (24 jam, lintas-IP) via DB.
+  //    Dihitung per grup, bukan per karya, agar satu reservasi 3 karya
+  //    tidak langsung menghabiskan kuota.
   const since = new Date(Date.now() - PHONE_WINDOW_MS).toISOString();
   const { count, error: countError } = await admin
-    .from("preorder_orders")
+    .from("preorder_groups")
     .select("id", { count: "exact", head: true })
     .eq("whatsapp", whatsapp)
     .gte("created_at", since);
-  if (!countError && (count ?? 0) >= MAX_ORDERS_PER_PHONE) {
+  if (!countError && (count ?? 0) >= MAX_GROUPS_PER_PHONE) {
     return json(
       { message: "Terlalu banyak pre-order dari nomor ini. Hubungi kami via WhatsApp langsung." },
       429
     );
   }
 
-  // 9) Simpan (service_role melewati RLS).
-  const setupToken = createSetupToken();
-  const { data: row, error: insertError } = await admin
-    .from("preorder_orders")
+  // 10) Simpan grup (service_role melewati RLS).
+  const { data: group, error: groupError } = await admin
+    .from("preorder_groups")
     .insert({
-      customer_name: getStr(body, "customer_name").trim(),
+      group_number: groupNumber,
+      customer_name: customerName,
       whatsapp,
-      recipient_whatsapp: normalizeWhatsApp(getStr(body, "recipient_whatsapp")),
-      product_id: productId,
-      product_name: String(product.nama_produk || "").trim(),
-      custom_request: getStr(body, "custom_request").trim(),
-      recipient_name: getStr(body, "recipient_name").trim(),
-      sender_name: getStr(body, "sender_name").trim(),
-      personal_message: getStr(body, "personal_message").trim(),
-      status: "waiting_dp",
-      order_number: orderNumber,
+      is_vip: isVip,
       total_amount: totalAmount,
       dp_amount: dpAmount,
-      wa_sent: false,
-      vault_setup_token: setupToken,
-      vault_setup_expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+      status: "waiting_dp",
     })
     .select("id")
     .single();
-  if (insertError) {
-    console.error("[PREORDER_INSERT_ERROR]", insertError.message);
+  if (groupError || !group) {
+    console.error("[PREORDER_GROUP_INSERT_ERROR]", groupError?.message || "no row");
     return json({ message: "Gagal menyimpan pre-order." }, 500);
   }
 
+  // 11) Ekspansi qty -> satu baris order per karya fisik (1 QR / 1 vault).
+  const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+  const orderRows: Record<string, unknown>[] = [];
+  let unitIndex = 0;
+
+  for (const item of pricedItems) {
+    const nuansaLabel = item.nuansa;
+    const customRequestSummary =
+      `Inisial: ${item.inisial} | Nuansa: ${nuansaLabel} | VIP Waiting List: ${isVip ? "Ya (Klaim Early-Bird Privilege)" : "Belum Terdaftar"}`;
+
+    for (let copy = 0; copy < item.qty; copy += 1) {
+      unitIndex += 1;
+      orderRows.push({
+        customer_name: customerName,
+        whatsapp,
+        recipient_whatsapp: "",
+        product_id: item.product_id,
+        product_name: item.product_name,
+        custom_request: customRequestSummary,
+        recipient_name: "",
+        sender_name: customerName,
+        personal_message: item.personal_message || "",
+        nuansa: item.nuansa,
+        inisial: item.inisial,
+        group_id: group.id,
+        group_item_index: unitIndex,
+        group_item_count: totalUnits,
+        group_total_amount: totalAmount,
+        group_dp_amount: dpAmount,
+        status: "waiting_dp",
+        order_number: createOrderNumber(),
+        total_amount: item.unitAmount,
+        dp_amount: Math.ceil(item.unitAmount * 0.5),
+        wa_sent: false,
+        vault_setup_token: createSetupToken(),
+        vault_setup_expires_at: expiresAt,
+      });
+    }
+  }
+
+  const { data: insertedRows, error: insertError } = await admin
+    .from("preorder_orders")
+    .insert(orderRows)
+    .select("id, order_number");
+  if (insertError || !insertedRows || insertedRows.length === 0) {
+    console.error("[PREORDER_INSERT_ERROR]", insertError?.message || "no rows");
+    // Bersihkan grup agar tidak menyisakan transaksi tanpa item.
+    await admin.from("preorder_groups").delete().eq("id", group.id);
+    return json({ message: "Gagal menyimpan pre-order." }, 500);
+  }
+
+  const orderIds = insertedRows.map((row) => String(row.id));
+  const orderNumbers = insertedRows.map((row) => String(row.order_number));
+
   // Notifikasi email ke atelier. Tidak pernah menggagalkan pemesanan.
+  const itemLines = pricedItems
+    .map((item, index) => {
+      const label = item.qty > 1 ? `${item.qty}× ${item.product_name}` : item.product_name;
+      return `${index + 1}. ${label} — ${item.nuansa} (${item.inisial}) = Rp ${item.lineAmount.toLocaleString("id-ID")}`;
+    })
+    .join("\n");
+
   await sendAdminEmail(
-    `Pre-order baru #${orderNumber} — ${String(product.nama_produk || "").trim()}`,
-    emailLayout("Pre-order baru masuk", [
-      ["Nomor", escapeHtml(orderNumber)],
-      ["Pelanggan", escapeHtml(getStr(body, "customer_name").trim())],
+    `Pre-order grup #${groupNumber} — ${totalUnits} karya`,
+    emailLayout("Pre-order grup baru masuk", [
+      ["Nomor Grup", escapeHtml(groupNumber)],
+      ["Pelanggan", escapeHtml(customerName)],
       ["WhatsApp", `<a href="https://wa.me/${escapeHtml(whatsapp)}">${escapeHtml(whatsapp)}</a>`],
-      ["Produk", escapeHtml(String(product.nama_produk || ""))],
-      ["Penerima", escapeHtml(getStr(body, "recipient_name").trim())],
+      ["Jumlah Karya", escapeHtml(String(totalUnits))],
+      ["Rincian", escapeHtml(itemLines).replace(/\n/g, "<br />")],
       ["Total", `Rp ${totalAmount.toLocaleString("id-ID")}`],
       ["DP 50%", `Rp ${dpAmount.toLocaleString("id-ID")}`],
-    ], "Buka panel Admin untuk memverifikasi pembayaran dan memproses pesanan.")
+    ], "Buka panel Admin untuk memverifikasi pembayaran grup dan memproses semua karya.")
   );
 
   console.log(
-    "[PREORDER_CREATED] Order " +
-      orderNumber +
-      " created. Redirecting customer to manual WhatsApp confirmation."
+    "[PREORDER_GROUP_CREATED] Group " +
+      groupNumber +
+      " with " +
+      totalUnits +
+      " item(s). Redirecting customer to manual WhatsApp confirmation."
   );
 
   return json({
     success: true,
     ok: true,
-    id: row.id,
-    orderId: row.id,
-    orderNumber,
+    groupId: group.id,
+    groupNumber,
+    id: orderIds[0],
+    orderId: orderIds[0],
+    orderIds,
+    orderNumber: orderNumbers[0],
+    orderNumbers,
+    totalAmount,
     dpAmount,
-    setupToken,
+    itemCount: totalUnits,
     waStatus: "manual_redirect",
   }, 201);
 });

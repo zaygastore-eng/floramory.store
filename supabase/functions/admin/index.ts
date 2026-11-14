@@ -60,6 +60,7 @@ const IDLE_TTL = (() => {
 const PROXY_PATHS = new Set([
   "/rest/v1/products",
   "/rest/v1/preorder_orders",
+  "/rest/v1/preorder_groups",
   "/rest/v1/app_settings",
   "/functions/v1/notify-dp-confirmed",
 ]);

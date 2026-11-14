@@ -931,6 +931,22 @@
   display: block;
 }
 
+.admin-order-group-detail {
+  display: block;
+  color: var(--admin-burgundy);
+  font-size: 0.78rem;
+}
+
+.admin-order-group-detail strong {
+  font-weight: 600;
+}
+
+.admin-group-verify {
+  width: 100%;
+  margin-top: 8px;
+  justify-content: center;
+}
+
 .admin-status-caption {
   display: block;
   margin-bottom: 5px;

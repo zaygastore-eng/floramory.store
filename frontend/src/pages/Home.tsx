@@ -5,7 +5,7 @@ import ProductImage from "@/components/ProductImage";
 import SiteHeader from "@/components/SiteHeader";
 import SiteFooter from "@/components/SiteFooter";
 import {
-  createPreOrder,
+  createGroupPreOrder,
   fetchCatalogProducts,
   fetchHeroConfig,
   fetchProductCategories,
@@ -13,6 +13,7 @@ import {
   tierLabel,
   type CatalogProduct,
   type HeroConfig,
+  type PreOrderItemInput,
   type ProductCategoryItem,
 } from "@/lib/api";
 import { homeContent } from "@/content/homeContent";
@@ -21,7 +22,7 @@ import {
   pageUrl,
   normalizeWhatsApp,
   formatHarga,
-  formatBespokeCommissionWhatsApp,
+  formatGroupCommissionWhatsApp,
 } from "@/lib/site";
 import { PHOTOBOOTH_THEMES, type PhotoboothThemeId } from "@/lib/vaultDesign";
 import useToast from "@/hooks/useToast";
@@ -66,6 +67,76 @@ export const NUANSA_WARNA_OPTIONS = [
     swatch: "#FAF5EE",
   },
 ] as const;
+
+const ORDER_DRAFT_KEY = "fm_preorder_draft_v1";
+
+interface OrderDraftItem {
+  uid: string;
+  productId: string;
+  qty: number;
+  nuansa: string;
+  inisial: string;
+}
+
+function createOrderDraftItem(productId = "", nuansa = NUANSA_WARNA_OPTIONS[0].id): OrderDraftItem {
+  const uid =
+    typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+      ? crypto.randomUUID()
+      : `item-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  return { uid, productId, qty: 1, nuansa, inisial: "" };
+}
+
+function loadOrderDraft(): OrderDraftItem[] {
+  if (typeof window === "undefined") return [createOrderDraftItem()];
+  try {
+    const raw = window.localStorage.getItem(ORDER_DRAFT_KEY);
+    if (!raw) return [createOrderDraftItem()];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [createOrderDraftItem()];
+    const items = parsed
+      .filter(entry => entry && typeof entry === "object")
+      .map(entry => {
+        const record = entry as Record<string, unknown>;
+        const nuansa = String(record.nuansa || "");
+        return {
+          uid: createOrderDraftItem().uid,
+          productId: String(record.productId || ""),
+          qty: Math.min(20, Math.max(1, Math.floor(Number(record.qty) || 1))),
+          nuansa: NUANSA_WARNA_OPTIONS.some(option => option.id === nuansa)
+            ? nuansa
+            : NUANSA_WARNA_OPTIONS[0].id,
+          inisial: String(record.inisial || "").slice(0, 10),
+        };
+      });
+    return items.length > 0 ? items : [createOrderDraftItem()];
+  } catch {
+    return [createOrderDraftItem()];
+  }
+}
+
+function saveOrderDraft(items: OrderDraftItem[]): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(
+      ORDER_DRAFT_KEY,
+      JSON.stringify(
+        items.map(item => ({
+          productId: item.productId,
+          qty: item.qty,
+          nuansa: item.nuansa,
+          inisial: item.inisial,
+        }))
+      )
+    );
+  } catch {
+    // localStorage bisa diblokir (mode privat); draft cukup hilang.
+  }
+}
+
+function productPriceAmount(raw: unknown): number {
+  const amount = Number(String(raw || "").replace(/\D/g, ""));
+  return Number.isSafeInteger(amount) ? amount : 0;
+}
 
 const PHOTOBOOTH_SAMPLE_PHOTOS = [
   { id: "cut-1", src: "/landing/polaroid-1.webp", alt: "Flower market morning bouquet" },
@@ -244,7 +315,11 @@ export default function Home() {
   const [orderComplete, setOrderComplete] = useState(false);
   const [submittedOrderId, setSubmittedOrderId] = useState("");
   const [submittedOrderNumber, setSubmittedOrderNumber] = useState("");
-  const [prefilledProductName, setPrefilledProductName] = useState("");
+  const [submittedGroupNumber, setSubmittedGroupNumber] = useState("");
+  const [submittedItemCount, setSubmittedItemCount] = useState(0);
+  const [submittedTotal, setSubmittedTotal] = useState(0);
+  const [submittedDp, setSubmittedDp] = useState(0);
+  const [orderItems, setOrderItems] = useState<OrderDraftItem[]>(() => loadOrderDraft());
   const [whatsappNumber, setWhatsappNumber] = useState("6285235242425");
   const [vaultSimTab, setVaultSimTab] = useState<
     "photograph" | "voice-record" | "letter" | "video"
@@ -274,13 +349,9 @@ export default function Home() {
     seekStart: handleAudioSeekStart,
     seekEnd: handleAudioSeekEnd,
   } = useAudioPlayback(131);
-  const [orderForm, setOrderForm] = useState({
+  const [buyerForm, setBuyerForm] = useState({
     nama: "",
     wa: "",
-    koleksi: "",
-    inisial: "",
-    nuansa: "crimson-romance",
-    pesan: "",
     isVip: false,
     website: "",
   });
@@ -314,18 +385,32 @@ export default function Home() {
       .then(([loadedProducts, framedProducts]) => {
         setProducts(loadedProducts);
         setChapterProducts(framedProducts);
+        const validProductIds = new Set(
+          loadedProducts.filter(product => !product.isFallback).map(product => product.id)
+        );
+        setOrderItems(items =>
+          items.map(item =>
+            item.productId && !validProductIds.has(item.productId)
+              ? { ...item, productId: "" }
+              : item
+          )
+        );
         const preselectedId = new URLSearchParams(window.location.search).get("product");
         const preselectedProduct = loadedProducts.find(product => (
           !product.isFallback && product.id === preselectedId
         ));
         if (preselectedProduct) {
-          const matchItem = ATELIER_COLLECTION_GROUPS.flatMap(g => g.items).find(
-            it => it.name.toLowerCase().includes(preselectedProduct.nama_produk.toLowerCase()) ||
-                  preselectedProduct.nama_produk.toLowerCase().includes(it.name.toLowerCase())
-          ) || ATELIER_COLLECTION_GROUPS[0].items[0];
-          setOrderForm(form => ({ ...form, koleksi: matchItem.id }));
-          setPrefilledProductName(preselectedProduct.nama_produk);
+          setOrderItems(items => {
+            if (items.length === 1 && !items[0].productId) {
+              return [{ ...items[0], productId: preselectedProduct.id }];
+            }
+            return [...items, createOrderDraftItem(preselectedProduct.id)];
+          });
           setOrderComplete(false);
+          showToast(`${preselectedProduct.nama_produk} ditambahkan ke daftar karya.`);
+          const url = new URL(window.location.href);
+          url.searchParams.delete("product");
+          window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash || "#pesan"}`);
           window.setTimeout(() => {
             document.getElementById("pesan")?.scrollIntoView({ behavior: "smooth" });
           }, 100);
@@ -345,6 +430,58 @@ export default function Home() {
       active = false;
     };
   }, []);
+
+  // Simpan draft daftar karya agar bisa dilanjutkan dari halaman lain.
+  useEffect(() => {
+    saveOrderDraft(orderItems);
+  }, [orderItems]);
+
+  const selectableProducts = useMemo(
+    () => products.filter(product => !product.isFallback),
+    [products]
+  );
+
+  const productById = useMemo(() => {
+    const map = new Map<string, CatalogProduct>();
+    for (const product of selectableProducts) map.set(product.id, product);
+    return map;
+  }, [selectableProducts]);
+
+  const orderUnitCount = useMemo(
+    () => orderItems.reduce((sum, item) => sum + Math.max(1, item.qty), 0),
+    [orderItems]
+  );
+
+  const orderTotal = useMemo(
+    () =>
+      orderItems.reduce((sum, item) => {
+        const product = productById.get(item.productId);
+        return sum + productPriceAmount(product?.harga) * Math.max(1, item.qty);
+      }, 0),
+    [orderItems, productById]
+  );
+
+  const orderDp = Math.ceil(orderTotal * 0.5);
+
+  const updateOrderItem = (uid: string, patch: Partial<OrderDraftItem>) => {
+    setOrderItems(items => items.map(item => (item.uid === uid ? { ...item, ...patch } : item)));
+  };
+
+  const addOrderItem = () => {
+    setOrderItems(items => [...items, createOrderDraftItem()]);
+  };
+
+  const removeOrderItem = (uid: string) => {
+    setOrderItems(items => {
+      const next = items.filter(item => item.uid !== uid);
+      return next.length > 0 ? next : [createOrderDraftItem()];
+    });
+  };
+
+  const resetOrderDraft = () => {
+    setOrderItems([createOrderDraftItem()]);
+    saveOrderDraft([]);
+  };
 
   const [heroFirstLine, heroSecondLine] = splitHeroHeadline(heroConfig.headline);
   const commissionProductGroups = getCommissionProductGroups(products);
@@ -438,10 +575,13 @@ export default function Home() {
 
   // Dynamic collection groups: combines database products grouped by category,
   // with fallback to ATELIER_COLLECTION_GROUPS if database products are empty.
-  const dynamicCollectionGroups = useMemo(() => {
+  const dynamicCollectionGroups = useMemo<{ group: string; items: { id: string; name: string }[] }[]>(() => {
     const activeDbProducts = products.filter(p => !p.isFallback);
     if (activeDbProducts.length === 0) {
-      return ATELIER_COLLECTION_GROUPS;
+      return ATELIER_COLLECTION_GROUPS.map(group => ({
+        group: group.group,
+        items: group.items.map(item => ({ id: item.id, name: item.name })),
+      }));
     }
 
     const groupMap = new Map<string, { id: string; name: string }[]>();
@@ -459,7 +599,12 @@ export default function Home() {
       items,
     }));
 
-    return result.length > 0 ? result : ATELIER_COLLECTION_GROUPS;
+    return result.length > 0
+      ? result
+      : ATELIER_COLLECTION_GROUPS.map(group => ({
+          group: group.group,
+          items: group.items.map(item => ({ id: item.id, name: item.name })),
+        }));
   }, [products]);
 
   // Showcase beranda hanya berisi produk riil dari Supabase.
@@ -467,27 +612,52 @@ export default function Home() {
 
   const submitOrder = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!orderForm.nama.trim() || !orderForm.wa.trim() || !orderForm.koleksi || !orderForm.inisial.trim() || !orderForm.nuansa) {
-      showToast("Periksa kembali nama, nomor WhatsApp, pilihan koleksi, inisial, dan nuansa warna.");
+
+    if (!buyerForm.nama.trim() || !buyerForm.wa.trim()) {
+      showToast("Isi nama lengkap dan nomor WhatsApp pemesan.");
       return;
     }
 
-    const phoneDigits = orderForm.wa.replace(/\D/g, "");
+    const phoneDigits = buyerForm.wa.replace(/\D/g, "");
     if (!/^(?:08\d{8,11}|628\d{8,11})$/.test(phoneDigits)) {
       showToast("Nomor WhatsApp tidak valid. Gunakan format 08xx atau 62xx.");
       return;
     }
-    const wa = normalizeWhatsApp(orderForm.wa);
 
-    const selectedCollection = dynamicCollectionGroups.flatMap(g => g.items).find(i => i.id === orderForm.koleksi);
-    const collectionLabel = selectedCollection?.name || orderForm.koleksi;
+    const missingItem = orderItems.findIndex(item => !item.productId || !item.inisial.trim());
+    if (missingItem !== -1) {
+      showToast(`Karya ${missingItem + 1}: pilih produk dan isi inisial terlebih dahulu.`);
+      return;
+    }
 
-    const selectedNuansa = NUANSA_WARNA_OPTIONS.find(n => n.id === orderForm.nuansa);
-    const nuansaLabel = selectedNuansa ? `${selectedNuansa.label} (${selectedNuansa.detail})` : orderForm.nuansa;
+    const wa = normalizeWhatsApp(buyerForm.wa);
 
-    // Matching product ID dari database jika ada, atau fallback ke koleksi ID
-    const matchedDbProduct = products.find(p => p.nama_produk.toLowerCase() === collectionLabel.toLowerCase()) || products[0];
-    const productIdForDb = matchedDbProduct?.id || orderForm.koleksi;
+    const pricedItems = orderItems.map(item => {
+      const product = productById.get(item.productId);
+      const nuansa = NUANSA_WARNA_OPTIONS.find(option => option.id === item.nuansa)
+        || NUANSA_WARNA_OPTIONS[0];
+      return {
+        productId: item.productId,
+        productName: product?.nama_produk || "",
+        qty: Math.max(1, item.qty),
+        nuansaId: nuansa.id,
+        nuansaLabel: `${nuansa.label} (${nuansa.detail})`,
+        inisial: item.inisial.trim(),
+      };
+    });
+
+    if (pricedItems.some(item => !item.productName)) {
+      showToast("Ada produk yang belum termuat. Muat ulang halaman lalu coba lagi.");
+      return;
+    }
+
+    const payloadItems: PreOrderItemInput[] = pricedItems.map(item => ({
+      product_id: item.productId,
+      product_name: item.productName,
+      qty: item.qty,
+      nuansa: item.nuansaId,
+      inisial: item.inisial,
+    }));
 
     setLastOrderWaUrl(null);
     commissionPopupRef.current = window.open("about:blank", "_blank");
@@ -496,40 +666,44 @@ export default function Home() {
     }
     setOrderSubmitting(true);
     try {
-      const customRequestSummary = `Inisial: ${orderForm.inisial.trim()} | Nuansa: ${nuansaLabel} | VIP Waiting List: ${orderForm.isVip ? "Ya (Klaim Early-Bird Privilege)" : "Belum Terdaftar"}`;
-
-      const result = await createPreOrder(
+      const result = await createGroupPreOrder(
         {
-          customer_name: orderForm.nama.trim(),
+          customer_name: buyerForm.nama.trim(),
           whatsapp: wa,
-          recipient_whatsapp: "",
-          product_id: productIdForDb,
-          product_name: collectionLabel,
-          custom_request: customRequestSummary,
-          recipient_name: `Inisial: ${orderForm.inisial.trim()}`,
-          sender_name: orderForm.nama.trim(),
-          personal_message: orderForm.pesan.trim(),
+          is_vip: buyerForm.isVip,
+          items: payloadItems,
         },
         {
-          honeypot: orderForm.website,
+          honeypot: buyerForm.website,
           fillMs: Date.now() - formStartRef.current,
         }
       );
       formStartRef.current = Date.now();
-      const orderNum = result.orderNumber || result.order_number || result.orderId || result.id || "";
-      if (!result.success || !result.orderId) {
+
+      if (!result.success || !result.groupId) {
         throw new Error("Permintaan belum tercatat. Silakan coba kembali atau hubungi concierge.");
       }
-      setSubmittedOrderId(result.orderId || result.id || "");
-      setSubmittedOrderNumber(orderNum);
 
-      const commissionMessage = formatBespokeCommissionWhatsApp({
-        customerName: orderForm.nama,
-        collection: collectionLabel,
-        initial: orderForm.inisial,
-        colorPalette: nuansaLabel,
-        notes: orderForm.pesan,
-        isVip: orderForm.isVip,
+      setSubmittedGroupNumber(result.groupNumber);
+      setSubmittedOrderNumber(result.orderNumber);
+      setSubmittedOrderId(result.groupId);
+      setSubmittedItemCount(result.itemCount || orderUnitCount);
+      setSubmittedTotal(result.totalAmount || orderTotal);
+      setSubmittedDp(result.dpAmount || orderDp);
+      saveOrderDraft([]);
+
+      const commissionMessage = formatGroupCommissionWhatsApp({
+        customerName: buyerForm.nama,
+        groupNumber: result.groupNumber,
+        items: pricedItems.map(item => ({
+          productName: item.productName,
+          qty: item.qty,
+          colorPalette: item.nuansaLabel,
+          initial: item.inisial,
+        })),
+        totalAmount: result.totalAmount || orderTotal,
+        dpAmount: result.dpAmount || orderDp,
+        isVip: buyerForm.isVip,
       });
       const waDigits = normalizeWhatsApp(whatsappNumber) || "6285235242425";
       const waUrl = `https://wa.me/${waDigits}?text=${encodeURIComponent(commissionMessage)}`;
@@ -539,7 +713,7 @@ export default function Home() {
       }
       commissionPopupRef.current = null;
       setOrderComplete(true);
-      showToast("Pre-order berhasil disegel. Lanjutkan ke WhatsApp Concierge untuk verifikasi.");
+      showToast("Reservasi berhasil disegel. Lanjutkan ke WhatsApp Concierge untuk verifikasi DP.");
     } catch (error) {
       commissionPopupRef.current?.close();
       commissionPopupRef.current = null;
@@ -1198,8 +1372,13 @@ export default function Home() {
                       ketersediaan dan tahap pengunggahan Memory Vault.
                     </p>
                     <p className="commission-reference">
-                      REFERENCE NO. <strong>#{submittedOrderNumber || submittedOrderId}</strong>
+                      REFERENCE NO. <strong>#{submittedGroupNumber || submittedOrderNumber || submittedOrderId}</strong>
                     </p>
+                    <div className="commission-summary" role="group" aria-label="Ringkasan reservasi">
+                      <span>{submittedItemCount} karya</span>
+                      <span>Total {formatHarga(String(submittedTotal)) || "—"}</span>
+                      <span>DP 50% {formatHarga(String(submittedDp)) || "—"}</span>
+                    </div>
                     {lastOrderWaUrl && (
                       <a
                         href={lastOrderWaUrl}
@@ -1214,19 +1393,19 @@ export default function Home() {
                       type="button"
                       className="order-reset-link commission-reset"
                       onClick={() => {
-                        setOrderForm({
+                        setBuyerForm({
                           nama: "",
                           wa: "",
-                          koleksi: "",
-                          inisial: "",
-                          nuansa: "crimson-romance",
-                          pesan: "",
                           isVip: false,
                           website: "",
                         });
-                        setPrefilledProductName("");
+                        resetOrderDraft();
                         setSubmittedOrderId("");
                         setSubmittedOrderNumber("");
+                        setSubmittedGroupNumber("");
+                        setSubmittedItemCount(0);
+                        setSubmittedTotal(0);
+                        setSubmittedDp(0);
                         setLastOrderWaUrl(null);
                         setOrderComplete(false);
                         formStartRef.current = Date.now();
@@ -1241,12 +1420,154 @@ export default function Home() {
                       <span className="commission-eyebrow">BESPOKE BOTANICAL COMMISSION · ATELIER RESERVATION</span>
                       <h3 className="lp-form-title">Reserve your chapter</h3>
                       <p className="lp-form-sub">
-                        Setiap karya dirangkai khusus berdasarkan ceritamu. Lengkapi detail di bawah ini untuk mengamankan slot Pre-Order eksklusifmu sebelum pintu galeri ditutup.
+                        Setiap karya dirangkai khusus berdasarkan ceritamu. Tambahkan satu atau beberapa
+                        karya sekaligus — masing-masing dengan warna dan inisialnya sendiri.
                       </p>
                     </header>
 
                     <form className="commission-form lp-form" onSubmit={submitOrder}>
                       <div className="commission-form-grid lp-form-grid">
+                        <div className="order-items commission-col-span-2">
+                          <div className="order-items-head">
+                            <div>
+                              <span className="order-items-kicker">Daftar Karya</span>
+                              <p className="order-items-sub">
+                                Tambahkan satu baris untuk setiap karya. Produk yang sama boleh dipakai
+                                lebih dari sekali dengan warna berbeda.
+                              </p>
+                            </div>
+                            <span className="order-items-count">{orderUnitCount} karya</span>
+                          </div>
+
+                          {orderItems.map((item, index) => (
+                            <div className="order-item-card" key={item.uid}>
+                              <div className="order-item-head">
+                                <span className="order-item-index">Karya {index + 1}</span>
+                                <button
+                                  type="button"
+                                  className="order-item-remove"
+                                  onClick={() => removeOrderItem(item.uid)}
+                                  aria-label={`Hapus karya ${index + 1}`}
+                                >
+                                  Hapus
+                                </button>
+                              </div>
+
+                              <div className="order-item-product-row">
+                                <div className="form-group order-item-product">
+                                  <label className="form-label" htmlFor={`order-product-${item.uid}`}>
+                                    Produk
+                                  </label>
+                                  <select
+                                    id={`order-product-${item.uid}`}
+                                    className="form-select"
+                                    value={item.productId}
+                                    onChange={event => updateOrderItem(item.uid, { productId: event.target.value })}
+                                  >
+                                    <option value="">— Pilih karya —</option>
+                                    {dynamicCollectionGroups.map(group => (
+                                      <optgroup label={group.group} key={group.group}>
+                                        {group.items.map(option => (
+                                          <option key={option.id} value={option.id}>
+                                            {option.name}
+                                          </option>
+                                        ))}
+                                      </optgroup>
+                                    ))}
+                                  </select>
+                                </div>
+
+                                <div className="order-item-qty">
+                                  <span className="form-label" id={`order-qty-${item.uid}`}>Jumlah</span>
+                                  <div className="qty-stepper" role="group" aria-labelledby={`order-qty-${item.uid}`}>
+                                    <button
+                                      type="button"
+                                      onClick={() => updateOrderItem(item.uid, { qty: Math.max(1, item.qty - 1) })}
+                                      disabled={item.qty <= 1}
+                                      aria-label="Kurangi jumlah karya"
+                                    >
+                                      −
+                                    </button>
+                                    <span aria-live="polite">{item.qty}</span>
+                                    <button
+                                      type="button"
+                                      onClick={() => updateOrderItem(item.uid, { qty: Math.min(20, item.qty + 1) })}
+                                      disabled={item.qty >= 20}
+                                      aria-label="Tambah jumlah karya"
+                                    >
+                                      +
+                                    </button>
+                                  </div>
+                                  <span className="form-field-hint">
+                                    Jumlah 2 = 2 karya fisik &amp; 2 QR vault.
+                                  </span>
+                                </div>
+                              </div>
+
+                              <div className="form-group">
+                                <span className="form-label">Nuansa Warna</span>
+                                <div
+                                  className="order-item-nuansa"
+                                  role="radiogroup"
+                                  aria-label={`Nuansa warna karya ${index + 1}`}
+                                >
+                                  {NUANSA_WARNA_OPTIONS.map(nuansa => {
+                                    const isChecked = item.nuansa === nuansa.id;
+                                    return (
+                                      <label
+                                        key={nuansa.id}
+                                        className={`order-nuansa-option ${isChecked ? "active" : ""}`}
+                                      >
+                                        <input
+                                          type="radio"
+                                          name={`nuansa-${item.uid}`}
+                                          value={nuansa.id}
+                                          checked={isChecked}
+                                          onChange={() => updateOrderItem(item.uid, { nuansa: nuansa.id })}
+                                          className="form-nuansa-input"
+                                        />
+                                        <span
+                                          className="form-nuansa-color-pip"
+                                          style={{ backgroundColor: nuansa.swatch }}
+                                          aria-hidden="true"
+                                        />
+                                        <span className="order-nuansa-label">{nuansa.label}</span>
+                                      </label>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+
+                              <div className="form-group">
+                                <label className="form-label" htmlFor={`order-inisial-${item.uid}`}>
+                                  Inisial
+                                </label>
+                                <input
+                                  id={`order-inisial-${item.uid}`}
+                                  className="form-input"
+                                  type="text"
+                                  placeholder="Contoh: A, R, atau 5"
+                                  maxLength={10}
+                                  value={item.inisial}
+                                  onChange={event => updateOrderItem(item.uid, { inisial: event.target.value })}
+                                />
+                              </div>
+                            </div>
+                          ))}
+
+                          <button type="button" className="order-add-item" onClick={addOrderItem}>
+                            + Tambah Karya Lain
+                          </button>
+
+                          <div className="order-total" role="status" aria-live="polite">
+                            <span>Total {orderUnitCount} karya</span>
+                            <strong>{orderTotal > 0 ? formatHarga(String(orderTotal)) : "—"}</strong>
+                            <span>
+                              DP 50% <strong>{orderDp > 0 ? formatHarga(String(orderDp)) : "—"}</strong>
+                            </span>
+                          </div>
+                        </div>
+
                         <div className="form-group">
                           <label className="form-label" htmlFor="order-nama">Nama Lengkap</label>
                           <input
@@ -1257,8 +1578,8 @@ export default function Home() {
                             maxLength={120}
                             autoComplete="name"
                             required
-                            value={orderForm.nama}
-                            onChange={event => setOrderForm(form => ({ ...form, nama: event.target.value }))}
+                            value={buyerForm.nama}
+                            onChange={event => setBuyerForm(form => ({ ...form, nama: event.target.value }))}
                           />
                         </div>
                         <div className="form-group">
@@ -1273,106 +1594,12 @@ export default function Home() {
                             autoComplete="tel"
                             aria-describedby="order-wa-hint"
                             required
-                            value={orderForm.wa}
-                            onChange={event => setOrderForm(form => ({ ...form, wa: event.target.value }))}
+                            value={buyerForm.wa}
+                            onChange={event => setBuyerForm(form => ({ ...form, wa: event.target.value }))}
                           />
                           <span className="form-field-hint" id="order-wa-hint">
                             Nomor WhatsApp aktif pemesan (contoh: 08xx atau 62xx).
                           </span>
-                        </div>
-                        <div className="form-group commission-col-span-2">
-                          <label className="form-label" htmlFor="order-koleksi">Pilihan Koleksi</label>
-                          <select
-                            id="order-koleksi"
-                            className="form-select"
-                            required
-                            value={orderForm.koleksi}
-                            onChange={event => {
-                              setOrderForm(form => ({ ...form, koleksi: event.target.value }));
-                              setPrefilledProductName("");
-                            }}
-                          >
-                            <option value="">— Pilih koleksi karya —</option>
-                            {dynamicCollectionGroups.map(group => (
-                              <optgroup label={group.group} key={group.group}>
-                                {group.items.map(item => (
-                                  <option key={item.id} value={item.id}>
-                                    {item.name}
-                                  </option>
-                                ))}
-                              </optgroup>
-                            ))}
-                          </select>
-                          {prefilledProductName && (
-                            <span className="form-prefill-indicator" role="status">
-                              Terpilih: {prefilledProductName}
-                            </span>
-                          )}
-                        </div>
-
-                        <div className="form-group commission-col-span-2">
-                          <label className="form-label" htmlFor="order-inisial">Inisial Huruf / Angka</label>
-                          <input
-                            id="order-inisial"
-                            className="form-input"
-                            type="text"
-                            placeholder="Tuliskan 1 huruf atau angka pilihanmu (contoh: A, R, atau 5)"
-                            maxLength={10}
-                            required
-                            value={orderForm.inisial}
-                            onChange={event => setOrderForm(form => ({ ...form, inisial: event.target.value }))}
-                          />
-                          <span className="form-field-hint">
-                            Tuliskan 1 huruf atau angka pilihanmu (contoh: A, R, atau 5).
-                          </span>
-                        </div>
-
-                        <div className="form-group commission-col-span-2">
-                          <label className="form-label">Nuansa Warna</label>
-                          <div className="form-nuansa-grid" role="radiogroup" aria-label="Pilihan Nuansa Warna">
-                            {NUANSA_WARNA_OPTIONS.map(nuansa => {
-                              const isChecked = orderForm.nuansa === nuansa.id;
-                              return (
-                                <label
-                                  key={nuansa.id}
-                                  className={`form-nuansa-card ${isChecked ? "active" : ""}`}
-                                >
-                                  <input
-                                    type="radio"
-                                    name="nuansa_warna"
-                                    value={nuansa.id}
-                                    checked={isChecked}
-                                    onChange={() => setOrderForm(form => ({ ...form, nuansa: nuansa.id }))}
-                                    className="form-nuansa-input"
-                                  />
-                                  <span
-                                    className="form-nuansa-color-pip"
-                                    style={{ backgroundColor: nuansa.swatch }}
-                                    aria-hidden="true"
-                                  />
-                                  <div className="form-nuansa-text">
-                                    <strong className="form-nuansa-name">{nuansa.label}</strong>
-                                    <span className="form-nuansa-desc">{nuansa.detail}</span>
-                                  </div>
-                                </label>
-                              );
-                            })}
-                          </div>
-                        </div>
-
-                        <div className="form-group commission-col-span-2">
-                          <label className="form-label" htmlFor="order-pesan">
-                            Catatan Khusus / Ucapan (Special Notes &amp; Gift Message)
-                          </label>
-                          <textarea
-                            id="order-pesan"
-                            className="form-textarea"
-                            rows={3}
-                            maxLength={1000}
-                            placeholder="Tuliskan pesan singkat untuk kartu ucapan jika karya ini ditujukan sebagai hadiah."
-                            value={orderForm.pesan}
-                            onChange={event => setOrderForm(form => ({ ...form, pesan: event.target.value }))}
-                          />
                         </div>
 
                         <div className="form-group commission-col-span-2 form-vip-wrap">
@@ -1381,8 +1608,8 @@ export default function Home() {
                               id="order-vip"
                               type="checkbox"
                               className="form-checkbox-input"
-                              checked={orderForm.isVip}
-                              onChange={event => setOrderForm(form => ({ ...form, isVip: event.target.checked }))}
+                              checked={buyerForm.isVip}
+                              onChange={event => setBuyerForm(form => ({ ...form, isVip: event.target.checked }))}
                             />
                             <span className="form-checkbox-box" aria-hidden="true" />
                             <span className="form-checkbox-caption">
@@ -1415,8 +1642,8 @@ export default function Home() {
                           type="text"
                           tabIndex={-1}
                           autoComplete="off"
-                          value={orderForm.website}
-                          onChange={event => setOrderForm(form => ({ ...form, website: event.target.value }))}
+                          value={buyerForm.website}
+                          onChange={event => setBuyerForm(form => ({ ...form, website: event.target.value }))}
                         />
                       </div>
                       <button type="submit" className="lp-btn lp-btn--wine lp-submit" disabled={orderSubmitting}>
@@ -1437,12 +1664,13 @@ export default function Home() {
                             >
                               <path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.82 9.82 0 0 0 12.04 2m.01 1.67c2.2 0 4.26.86 5.82 2.42a8.23 8.23 0 0 1 2.41 5.83c0 4.54-3.7 8.24-8.24 8.24-1.48 0-2.93-.4-4.2-1.15l-.3-.18-3.12.82.83-3.04-.2-.31a8.19 8.19 0 0 1-1.26-4.38c0-4.54 3.7-8.24 8.24-8.24m4.52 11.66c-.25-.13-1.47-.72-1.7-.81-.23-.08-.4-.13-.56.13-.17.25-.65.81-.79.98-.15.17-.3.19-.55.06-.25-.13-1.06-.39-2.02-1.24-.75-.67-1.25-1.5-1.4-1.75-.15-.25-.02-.39.11-.51.11-.11.25-.29.38-.44.13-.15.17-.25.25-.42.08-.17.04-.32-.02-.44-.06-.13-.56-1.36-.77-1.86-.2-.49-.41-.42-.56-.43h-.48c-.17 0-.44.06-.67.32-.23.25-.88.86-.88 2.1 0 1.24.9 2.44 1.03 2.61.13.17 1.77 2.7 4.29 3.79.6.26 1.07.41 1.44.53.6.19 1.15.16 1.58.1.48-.07 1.47-.6 1.68-1.18.21-.58.21-1.07.15-1.18-.06-.1-.23-.17-.48-.29" />
                             </svg>
-                            Seal My Pre-Order (send)
+                            Kirim Reservasi via WhatsApp
                           </>
                         )}
                       </button>
                       <p className="commission-form-note">
-                        Pre-order Anda akan langsung diproses dan diteruskan ke WhatsApp Concierge untuk konfirmasi ketersediaan slot &amp; verifikasi DP 50%.
+                        Satu reservasi dapat berisi beberapa karya. DP 50% dihitung dari total seluruh
+                        karya dan dibayar sekali melalui verifikasi WhatsApp Concierge.
                       </p>
                     </form>
                   </>

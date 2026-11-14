@@ -34,22 +34,52 @@ export function formatHarga(raw: string): string {
   return `Rp${normalized.replace(/\B(?=(\d{3})+(?!\d))/g, ".")}`;
 }
 
-export function formatBespokeCommissionWhatsApp(params: {
-  customerName: string;
-  collection: string;
-  initial: string;
+export interface GroupCommissionWhatsAppItem {
+  productName: string;
+  qty: number;
   colorPalette: string;
-  notes?: string;
+  initial: string;
+}
+
+export function formatGroupCommissionWhatsApp(params: {
+  customerName: string;
+  groupNumber?: string;
+  items: GroupCommissionWhatsAppItem[];
+  totalAmount?: number;
+  dpAmount?: number;
   isVip?: boolean;
 }): string {
-  return `Halo Concierge A Chapter, saya ingin menyegel pre-order:
+  const lines = params.items.map((item, index) => {
+    const qtyLabel = item.qty > 1 ? `${item.qty}× ` : "";
+    const initial = item.initial.trim() ? ` (Inisial: ${item.initial.trim()})` : "";
+    return `${index + 1}. ${qtyLabel}${item.productName.trim()} — ${item.colorPalette.trim()}${initial}`;
+  });
 
-• Nama Pemesan: ${params.customerName.trim()}
-• Pilihan Koleksi: ${params.collection.trim()}
-• Inisial Pilihan: ${params.initial.trim()}
-• Nuansa Warna: ${params.colorPalette.trim()}
-• Catatan Khusus / Ucapan: ${params.notes?.trim() || "-"}
-• Status VIP Waiting List: ${params.isVip ? "Ya (Klaim Early-Bird Privilege)" : "Belum Terdaftar"}
+  const totalKarya = params.items.reduce((sum, item) => sum + Math.max(1, item.qty), 0);
+  const summary: string[] = [
+    `Halo Concierge A Chapter, saya ingin menyegel pre-order:`,
+    "",
+    `• Nama Pemesan: ${params.customerName.trim()}`,
+  ];
 
-Mohon verifikasi ketersediaan slot, nomor registrasi arsip, dan langkah pengisian brankas memori saya. Terima kasih.`;
+  if (params.groupNumber) {
+    summary.push(`• Nomor Reservasi: ${params.groupNumber}`);
+  }
+
+  summary.push(`• Jumlah Karya: ${totalKarya}`, "", "RINCIAN KARYA", ...lines, "");
+
+  if (typeof params.totalAmount === "number" && params.totalAmount > 0) {
+    summary.push(`• Total: Rp ${params.totalAmount.toLocaleString("id-ID")}`);
+  }
+  if (typeof params.dpAmount === "number" && params.dpAmount > 0) {
+    summary.push(`• DP 50%: Rp ${params.dpAmount.toLocaleString("id-ID")}`);
+  }
+
+  summary.push(
+    `• Status VIP Waiting List: ${params.isVip ? "Ya (Klaim Early-Bird Privilege)" : "Belum Terdaftar"}`,
+    "",
+    "Mohon verifikasi ketersediaan slot, nomor registrasi arsip, dan langkah pengisian brankas memori saya. Terima kasih."
+  );
+
+  return summary.join("\n");
 }

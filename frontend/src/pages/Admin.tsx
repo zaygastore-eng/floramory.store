@@ -38,6 +38,7 @@ import {
   statusAdminSession,
   touchAdminSession,
   updatePreOrderStatus,
+  updatePreOrderGroupStatus,
   updateHeroConfig,
   updateProductCategories,
   updateWhatsAppNumber,
@@ -974,6 +975,31 @@ export default function Admin() {
     }
   };
 
+  const verifyGroupDp = async (order: PreOrder) => {
+    if (!order.group_id) return;
+    const groupOrders = preOrders.filter(item => item.group_id === order.group_id);
+    try {
+      await updatePreOrderGroupStatus(order.group_id, "dp_verified");
+      setPreOrders(orders =>
+        orders.map(item =>
+          item.group_id === order.group_id ? { ...item, status: "dp_verified" } : item
+        )
+      );
+      const firstOrder = groupOrders.find(item => item.id);
+      if (firstOrder?.id) {
+        void notifyDpConfirmed(firstOrder.id).catch(error => {
+          console.warn("[DP_NOTIFICATION_AUDIT_ERROR]", error);
+        });
+      }
+      showToast(
+        `DP grup ${order.group_number || order.group_id} diverifikasi untuk ${groupOrders.length} karya.`,
+        "success"
+      );
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "Gagal memverifikasi DP grup");
+    }
+  };
+
   const logout = async () => {
     await signOutAdmin();
     setSessionNotice("");
@@ -1813,6 +1839,21 @@ export default function Admin() {
                   <span className="admin-order-meta admin-order-product">
                     {order.product_name || order.product_id || "Produk belum dipilih"}
                   </span>
+                  {order.nuansa && (
+                    <span className="admin-order-meta admin-order-group-detail">
+                      Nuansa: {order.nuansa}{order.inisial ? ` · Inisial: ${order.inisial}` : ""}
+                    </span>
+                  )}
+                  {order.group_number && (
+                    <span className="admin-order-meta admin-order-group-detail">
+                      Grup <strong>{order.group_number}</strong> · Karya {order.group_item_index || 1} dari {order.group_item_count || 1}
+                    </span>
+                  )}
+                  {Boolean(order.group_total_amount) && (
+                    <span className="admin-order-meta admin-order-group-detail">
+                      Total grup {formatHarga(String(order.group_total_amount))} · DP 50% {formatHarga(String(order.group_dp_amount || 0))}
+                    </span>
+                  )}
                 </div>
                 <div className="admin-order-payment">
                   <span className="admin-status-caption">Status Pembayaran</span>
@@ -1825,6 +1866,15 @@ export default function Admin() {
                   >
                     {ORDER_STATUSES.map(status => <option value={status.value} key={status.value}>{status.label}</option>)}
                   </select>
+                  {order.group_id && (
+                    <button
+                      type="button"
+                      className="admin-outline-btn admin-group-verify"
+                      onClick={() => void verifyGroupDp(order)}
+                    >
+                      Verifikasi DP Semua Item
+                    </button>
+                  )}
                 </div>
                 <div className="admin-order-memory">
                   <span className="admin-status-caption">Status Memori Vault</span>

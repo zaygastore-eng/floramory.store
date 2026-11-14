@@ -32,7 +32,6 @@ export type CatalogCategory = "framed" | "stem";
 
 /** Full product type used by detail views (Produk page, modal) and Admin panel. */
 export interface Product extends CatalogProduct {
-  kategori: string;
   bunga: string;
   bahan: string;
   ukuran: string;
@@ -60,6 +59,16 @@ export interface Product extends CatalogProduct {
 export interface PreOrder {
   id?: string;
   order_number?: string;
+  group_id?: string;
+  group_number?: string;
+  group_item_index?: number;
+  group_item_count?: number;
+  group_total_amount?: number;
+  group_dp_amount?: number;
+  total_amount?: number;
+  dp_amount?: number;
+  nuansa?: string;
+  inisial?: string;
   customer_name: string;
   whatsapp: string;
   recipient_whatsapp?: string;
@@ -85,12 +94,32 @@ export interface PreOrder {
   created_at?: string;
 }
 
-export interface PreOrderSubmissionResult extends PreOrder {
+export interface PreOrderItemInput {
+  product_id: string;
+  product_name?: string;
+  qty: number;
+  nuansa: string;
+  inisial: string;
+}
+
+export interface PreOrderGroupInput {
+  customer_name: string;
+  whatsapp: string;
+  is_vip?: boolean;
+  items: PreOrderItemInput[];
+}
+
+export interface PreOrderGroupSubmissionResult {
   success: boolean;
+  groupId: string;
+  groupNumber: string;
+  orderIds: string[];
+  orderNumbers: string[];
   orderId: string;
   orderNumber: string;
+  totalAmount: number;
   dpAmount: number;
-  setupToken?: string;
+  itemCount: number;
   waStatus: "manual_redirect";
 }
 
@@ -994,6 +1023,16 @@ function normalizePreOrder(obj: Partial<PreOrder> & Record<string, unknown>): Pr
   return {
     id: String(obj.id || "").trim(),
     order_number: String(obj.order_number || "").trim(),
+    group_id: String(obj.group_id || "").trim(),
+    group_number: String(obj.group_number || "").trim(),
+    group_item_index: Number(obj.group_item_index) || 0,
+    group_item_count: Number(obj.group_item_count) || 0,
+    group_total_amount: Number(obj.group_total_amount) || 0,
+    group_dp_amount: Number(obj.group_dp_amount) || 0,
+    total_amount: Number(obj.total_amount) || 0,
+    dp_amount: Number(obj.dp_amount) || 0,
+    nuansa: String(obj.nuansa || "").trim(),
+    inisial: String(obj.inisial || "").trim(),
     customer_name: String(obj.customer_name || "").trim(),
     whatsapp: String(obj.whatsapp || "").trim(),
     recipient_whatsapp: String(obj.recipient_whatsapp || "").trim(),
@@ -1373,10 +1412,10 @@ export interface PreOrderSubmitMeta {
   fillMs?: number;
 }
 
-export async function createPreOrder(
-  order: PreOrder,
+export async function createGroupPreOrder(
+  group: PreOrderGroupInput,
   meta: PreOrderSubmitMeta = {}
-): Promise<PreOrderSubmissionResult> {
+): Promise<PreOrderGroupSubmissionResult> {
   if (!isSupabaseConfigured()) {
     throw new Error("Supabase belum dikonfigurasi untuk menerima pre-order");
   }
@@ -1389,15 +1428,16 @@ export async function createPreOrder(
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      customer_name: order.customer_name.trim(),
-      whatsapp: normalizeWhatsApp(order.whatsapp),
-      recipient_whatsapp: normalizeWhatsApp(order.recipient_whatsapp || ""),
-      product_id: order.product_id.trim(),
-      product_name: (order.product_name || "").trim(),
-      custom_request: (order.custom_request || "").trim(),
-      recipient_name: (order.recipient_name || "").trim(),
-      sender_name: (order.sender_name || "").trim(),
-      personal_message: (order.personal_message || "").trim(),
+      customer_name: group.customer_name.trim(),
+      whatsapp: normalizeWhatsApp(group.whatsapp),
+      is_vip: Boolean(group.is_vip),
+      items: group.items.map(item => ({
+        product_id: item.product_id.trim(),
+        product_name: (item.product_name || "").trim(),
+        qty: Math.max(1, Math.floor(Number(item.qty) || 1)),
+        nuansa: item.nuansa,
+        inisial: item.inisial.trim(),
+      })),
       website: meta.honeypot || "",
       fill_ms: Number.isFinite(meta.fillMs) ? meta.fillMs : 0,
     }),
@@ -1418,17 +1458,16 @@ export async function createPreOrder(
   }
 
   return {
-    ...normalizePreOrder({
-      ...order,
-      id: data.orderId || data.id || "",
-      status: "waiting_dp",
-      vault_setup_token: data.setupToken || data.vault_setup_token || "",
-    }),
     success: data.success === true,
+    groupId: String(data.groupId || ""),
+    groupNumber: String(data.groupNumber || ""),
+    orderIds: Array.isArray(data.orderIds) ? data.orderIds.map(String) : [],
+    orderNumbers: Array.isArray(data.orderNumbers) ? data.orderNumbers.map(String) : [],
     orderId: String(data.orderId || data.id || ""),
     orderNumber: String(data.orderNumber || ""),
+    totalAmount: Number(data.totalAmount || 0),
     dpAmount: Number(data.dpAmount || 0),
-    setupToken: String(data.setupToken || data.vault_setup_token || ""),
+    itemCount: Number(data.itemCount || 0),
     waStatus: "manual_redirect",
   };
 }
@@ -1440,7 +1479,7 @@ function isTierConstraintError(message: string): boolean {
 
 // Kolom eksplisit (bukan select=*). updated_at tidak dipakai UI.
 const PREORDER_SELECT =
-  "id,order_number,customer_name,whatsapp,product_id,product_name,custom_request,recipient_name,sender_name,personal_message,recipient_whatsapp,foto_vault,audio_url,audio_durasi,video_url,vault_submitted_at,vault_pin,vault_setup_token,vault_setup_expires_at,vault_locked_at,status,created_at";
+  "id,order_number,group_id,group_number,group_item_index,group_item_count,group_total_amount,group_dp_amount,total_amount,dp_amount,nuansa,inisial,customer_name,whatsapp,product_id,product_name,custom_request,recipient_name,sender_name,personal_message,recipient_whatsapp,foto_vault,audio_url,audio_durasi,video_url,vault_submitted_at,vault_pin,vault_setup_token,vault_setup_expires_at,vault_locked_at,status,created_at";
 
 export interface PreOrderPage {
   orders: PreOrder[];
@@ -1541,6 +1580,35 @@ export async function updatePreOrderStatus(id: string, status: string): Promise<
     body: {
       status,
       updated_at: new Date().toISOString(),
+    },
+  });
+}
+
+export async function updatePreOrderGroupStatus(groupId: string, status: string): Promise<void> {
+  if (!isSupabaseConfigured()) {
+    throw new Error("Supabase belum dikonfigurasi");
+  }
+  if (!groupId) {
+    throw new Error("Grup pre-order tidak ditemukan");
+  }
+
+  const now = new Date().toISOString();
+
+  // Cascade ke semua karya dalam grup agar gate DP vault ikut terbuka.
+  await adminRequest("PATCH", "/rest/v1/preorder_orders", {
+    query: `group_id=eq.${encodeURIComponent(groupId)}`,
+    body: {
+      status,
+      updated_at: now,
+    },
+  });
+
+  await adminRequest("PATCH", "/rest/v1/preorder_groups", {
+    query: `id=eq.${encodeURIComponent(groupId)}`,
+    body: {
+      status,
+      updated_at: now,
+      ...(status === "dp_verified" ? { dp_verified_at: now } : {}),
     },
   });
 }

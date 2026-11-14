@@ -942,6 +942,254 @@
   margin-top: 1px;
 }
 
+/* ── DAFTAR KARYA (multi-item pre-order) ── */
+.landing-v2 .order-items {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.landing-v2 .order-items-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.landing-v2 .order-items-kicker {
+  font-family: var(--lp-body);
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--lp-wine);
+}
+
+.landing-v2 .order-items-sub {
+  margin: 0.25rem 0 0;
+  max-width: 48ch;
+  font-family: var(--lp-body);
+  font-size: 0.74rem;
+  line-height: 1.5;
+  color: #7a665e;
+}
+
+.landing-v2 .order-items-count {
+  flex-shrink: 0;
+  padding: 0.3rem 0.7rem;
+  border-radius: 999px;
+  background: rgba(107, 31, 42, 0.08);
+  color: var(--lp-wine);
+  font-family: var(--lp-body);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.landing-v2 .order-item-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  padding: 1rem 1.1rem 1.15rem;
+  border: 1.5px solid rgba(107, 31, 42, 0.16);
+  border-radius: 10px;
+  background: #fffdf9;
+  box-shadow: 0 6px 18px rgba(83, 27, 33, 0.04);
+}
+
+.landing-v2 .order-item-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px dashed rgba(107, 31, 42, 0.15);
+}
+
+.landing-v2 .order-item-index {
+  font-family: var(--lp-body);
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--lp-wine-soft);
+}
+
+.landing-v2 .order-item-remove {
+  padding: 0;
+  border: none;
+  background: none;
+  color: #9a6b64;
+  font-family: var(--lp-body);
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.landing-v2 .order-item-remove:hover {
+  color: var(--lp-wine);
+}
+
+.landing-v2 .order-item-product-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 1rem;
+  align-items: start;
+}
+
+.landing-v2 .order-item-product {
+  min-width: 0;
+}
+
+.landing-v2 .order-item-qty {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.landing-v2 .qty-stepper {
+  display: inline-flex;
+  align-items: center;
+  overflow: hidden;
+  border: 1.5px solid rgba(107, 31, 42, 0.22);
+  border-radius: 6px;
+  background: #ffffff;
+}
+
+.landing-v2 .qty-stepper button {
+  width: 2.1rem;
+  height: 2.1rem;
+  border: none;
+  background: transparent;
+  color: var(--lp-wine);
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.18s ease;
+}
+
+.landing-v2 .qty-stepper button:hover:not(:disabled) {
+  background: rgba(107, 31, 42, 0.08);
+}
+
+.landing-v2 .qty-stepper button:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.landing-v2 .qty-stepper span {
+  min-width: 2rem;
+  text-align: center;
+  color: var(--lp-ink);
+  font-family: var(--lp-body);
+  font-size: 0.92rem;
+  font-weight: 600;
+}
+
+.landing-v2 .order-item-nuansa {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+}
+
+.landing-v2 .order-nuansa-option {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.5rem 0.6rem;
+  border: 1.5px solid rgba(107, 31, 42, 0.16);
+  border-radius: 6px;
+  background: #ffffff;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.landing-v2 .order-nuansa-option:hover {
+  border-color: rgba(107, 31, 42, 0.4);
+}
+
+.landing-v2 .order-nuansa-option.active {
+  border-color: var(--lp-wine);
+  background: rgba(180, 198, 231, 0.14);
+  box-shadow: 0 0 0 1px var(--lp-wine);
+}
+
+.landing-v2 .order-nuansa-option .form-nuansa-color-pip {
+  width: 16px;
+  height: 16px;
+}
+
+.landing-v2 .order-nuansa-label {
+  font-family: var(--lp-body);
+  font-size: 0.72rem;
+  font-weight: 500;
+  line-height: 1.2;
+  color: var(--lp-wine);
+}
+
+.landing-v2 .order-add-item {
+  align-self: flex-start;
+  padding: 0.6rem 1.1rem;
+  border: 1.5px dashed rgba(107, 31, 42, 0.4);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--lp-wine);
+  font-family: var(--lp-body);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.landing-v2 .order-add-item:hover {
+  border-style: solid;
+  background: rgba(107, 31, 42, 0.05);
+}
+
+.landing-v2 .order-total {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid rgba(107, 31, 42, 0.12);
+  border-radius: 8px;
+  background: rgba(180, 198, 231, 0.16);
+  color: #6d5a52;
+  font-family: var(--lp-body);
+  font-size: 0.78rem;
+}
+
+.landing-v2 .order-total strong {
+  color: var(--lp-wine);
+  font-size: 0.95rem;
+}
+
+.landing-v2 .commission-summary {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem 1rem;
+  margin: 0.5rem 0 1rem;
+  font-family: var(--lp-body);
+  font-size: 0.78rem;
+  color: #6d5a52;
+}
+
+.landing-v2 .commission-summary span {
+  padding: 0.3rem 0.7rem;
+  border-radius: 999px;
+  background: rgba(107, 31, 42, 0.07);
+}
+
 /* ── VIP CHECKBOX ── */
 .landing-v2 .form-vip-wrap {
   margin-top: 0.2rem;
@@ -2238,6 +2486,23 @@
 
   .landing-v2 .lp-form .commission-col-span-2 {
     grid-column: auto;
+  }
+
+  .landing-v2 .order-item-card {
+    padding: 0.85rem 0.85rem 1rem;
+  }
+
+  .landing-v2 .order-item-product-row {
+    grid-template-columns: 1fr;
+  }
+
+  .landing-v2 .order-item-nuansa {
+    grid-template-columns: 1fr;
+  }
+
+  .landing-v2 .order-total {
+    flex-direction: column;
+    align-items: flex-start;
   }
 
   .landing-v2 .lp-scene-note {
