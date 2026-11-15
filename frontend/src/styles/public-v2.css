@@ -1278,6 +1278,35 @@
   box-shadow: 0 16px 36px rgba(58, 22, 27, 0.08);
 }
 
+/* A saved setup is a short confirmation, so let it sit directly on the page. */
+.public-v2 .vault-setup-success-card {
+  width: min(100%, 680px);
+  align-self: center;
+  padding: clamp(1.25rem, 3vw, 2rem) 0;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.public-v2 .vault-setup-success-card::before {
+  display: none;
+}
+
+.public-v2 .vault-setup-success-card:hover {
+  border-color: transparent;
+  box-shadow: none;
+  transform: none;
+}
+
+.public-v2 .vault-setup-success-card .vault-success-pin {
+  background: transparent;
+  border: 0;
+  border-top: 1px solid rgba(107, 31, 42, 0.2);
+  border-bottom: 1px solid rgba(107, 31, 42, 0.2);
+  border-radius: 0;
+}
+
 .public-v2 .card-step-badge {
   background: var(--pv-periwinkle-soft);
   color: var(--pv-wine);
