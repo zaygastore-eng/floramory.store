@@ -1549,7 +1549,13 @@ export default function Home() {
           <section className="lp-kolom" id="pesan">
             <span id="kolom-pengisian" className="lp-anchor" aria-hidden="true" />
             <div className="lp-kolom-inner">
-              <h2 className="lp-script lp-kolom-title">Kolom Pengisian</h2>
+              <h2 className="lp-script lp-kolom-title">
+                {orderComplete || paymentPhase === "confirmed"
+                  ? "Official Archive"
+                  : paymentPhase === "qris"
+                  ? "Pembayaran DP 50%"
+                  : "Kolom Pengisian"}
+              </h2>
               
 
               <div
@@ -1618,129 +1624,133 @@ export default function Home() {
                   </div>
                 ) : paymentPhase === "qris" ? (
                   <div className="payment-stage-card" role="region" aria-label="Tahap Pembayaran QRIS">
-                    <span className={`payment-badge-status ${activePayment?.paymentProofUrl ? "is-uploaded" : ""}`}>
-                      {activePayment?.paymentProofUrl ? "✓ Bukti Transfer Diunggah" : "Tahap 2: Pembayaran DP 50%"}
-                    </span>
-                    <h3 className="lp-form-title">Selesaikan Reservasi Karya</h3>
-                    <p className="lp-form-sub">
-                      Pindai QRIS atelier di bawah ini menggunakan aplikasi mobile banking atau e-wallet Anda untuk menyegel slot pengerjaan.
-                    </p>
-
-                    <p className="commission-reference" style={{ margin: "1rem auto", maxWidth: "440px" }}>
-                      NOMOR PESANAN: <strong>#{submittedGroupNumber || submittedOrderNumber || activePayment?.groupNumber}</strong>
-                    </p>
-
-                    <div className="payment-amount-box">
-                      <span className="payment-amount-label">Jumlah Uang Muka (DP 50%)</span>
-                      <strong className="payment-amount-val">{formatHarga(String(submittedDp || activePayment?.dpAmount || 0))}</strong>
-                      <span className="payment-amount-total">
-                        Total Keseluruhan ({submittedItemCount || activePayment?.itemCount || 1} karya): {formatHarga(String(submittedTotal || activePayment?.totalAmount || 0))}
+                    <div className="payment-badge-row">
+                      <span className={`payment-badge-status ${activePayment?.paymentProofUrl ? "is-uploaded" : ""}`}>
+                        {activePayment?.paymentProofUrl ? "✓ Bukti Transfer Diunggah" : "Tahap 2: Pembayaran DP 50%"}
+                      </span>
+                      <span className="payment-order-pill">
+                        Order #{submittedGroupNumber || submittedOrderNumber || activePayment?.groupNumber}
                       </span>
                     </div>
 
-                    <div className="payment-qris-container">
-                      <div className="payment-qris-frame">
-                        <img
-                          src={qrisImageUrl || "/landing/qris-atelier.png"}
-                          alt="QRIS A Chapter Atelier"
-                          loading="eager"
-                        />
-                      </div>
-                      <p className="payment-qris-caption">
-                        NMID / Akun: <strong>A CHAPTER ATELIER</strong><br />
-                        Mendukung BCA, Mandiri, BRI, BNI, GoPay, OVO, ShopeePay & Dana.
-                      </p>
-                    </div>
+                    <h3 className="payment-stage-title">Selesaikan Reservasi Karya</h3>
+                    <p className="payment-stage-sub">
+                      Pindai QRIS di bawah ini menggunakan aplikasi mobile banking atau e-wallet (BCA, Mandiri, BRI, BNI, GoPay, OVO, ShopeePay, Dana) untuk menyegel slot pengerjaan.
+                    </p>
 
-                    <div className="payment-upload-zone">
-                      <label className="payment-upload-label" htmlFor="proof-upload-input">
-                        Unggah Bukti Transfer
-                      </label>
-                      <input
-                        ref={proofInputRef}
-                        id="proof-upload-input"
-                        type="file"
-                        accept="image/jpeg,image/png,image/webp"
-                        style={{ display: "none" }}
-                        onChange={handleProofFileSelect}
-                      />
-
-                      {proofPreviewUrl || activePayment?.paymentProofUrl ? (
-                        <div className="payment-preview-box">
+                    <div className="payment-grid-layout">
+                      {/* Kolom Kiri: QRIS Frame */}
+                      <div className="payment-qris-col">
+                        <div className="payment-qris-frame">
                           <img
-                            src={proofPreviewUrl || activePayment?.paymentProofUrl}
-                            alt="Bukti Transfer"
-                            className="payment-preview-img"
+                            src={qrisImageUrl || "/landing/qris-atelier.png"}
+                            alt="QRIS A Chapter Atelier"
+                            loading="eager"
                           />
-                          <div className="payment-preview-meta">
-                            <p className="payment-preview-name">
-                              {proofFile ? proofFile.name : "Bukti transfer telah tersimpan"}
-                            </p>
-                            <span className="payment-preview-size">
-                              {proofFile
-                                ? `${(proofFile.size / 1024).toFixed(1)} KB`
-                                : "Tersimpan di Cloud Storage Atelier"}
-                            </span>
-                          </div>
+                        </div>
+                        <p className="payment-qris-caption">
+                          NMID / Akun: <strong>A CHAPTER ATELIER</strong><br />
+                          PT Floramory Artware
+                        </p>
+                      </div>
+
+                      {/* Kolom Kanan: Rincian & Upload Bukti */}
+                      <div className="payment-info-col">
+                        <div className="payment-amount-strip">
+                          <span className="payment-amount-label">Jumlah Uang Muka (DP 50%)</span>
+                          <strong className="payment-amount-val">{formatHarga(String(submittedDp || activePayment?.dpAmount || 0))}</strong>
+                          <span className="payment-amount-total">
+                            Total Keseluruhan ({submittedItemCount || activePayment?.itemCount || 1} karya): {formatHarga(String(submittedTotal || activePayment?.totalAmount || 0))}
+                          </span>
+                        </div>
+
+                        <div className="payment-upload-zone">
+                          <span className="payment-upload-label">
+                            Unggah Bukti Transfer
+                          </span>
+                          <input
+                            ref={proofInputRef}
+                            id="proof-upload-input"
+                            type="file"
+                            accept="image/jpeg,image/png,image/webp"
+                            style={{ display: "none" }}
+                            onChange={handleProofFileSelect}
+                          />
+
+                          {proofPreviewUrl || activePayment?.paymentProofUrl ? (
+                            <div className="payment-preview-box">
+                              <img
+                                src={proofPreviewUrl || activePayment?.paymentProofUrl}
+                                alt="Bukti Transfer"
+                                className="payment-preview-img"
+                              />
+                              <div className="payment-preview-meta">
+                                <p className="payment-preview-name">
+                                  {proofFile ? proofFile.name : "Bukti transfer telah tersimpan"}
+                                </p>
+                                <span className="payment-preview-size">
+                                  {proofFile
+                                    ? `${(proofFile.size / 1024).toFixed(1)} KB`
+                                    : "Tersimpan di Cloud Storage Atelier"}
+                                </span>
+                              </div>
+                              <button
+                                type="button"
+                                className="order-item-remove"
+                                onClick={() => proofInputRef.current?.click()}
+                              >
+                                Ganti
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              type="button"
+                              className="payment-drop-trigger"
+                              onClick={() => proofInputRef.current?.click()}
+                            >
+                              <svg className="payment-drop-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                                <polyline points="17 8 12 3 7 8" />
+                                <line x1="12" y1="3" x2="12" y2="15" />
+                              </svg>
+                              <div className="payment-drop-trigger-texts">
+                                <span className="payment-drop-text">Pilih foto screenshot bukti transfer</span>
+                                <span className="payment-drop-hint">Format JPG, PNG, atau WEBP (maks. 8 MB)</span>
+                              </div>
+                            </button>
+                          )}
+                        </div>
+
+                        <div className="payment-actions-col">
                           <button
                             type="button"
-                            className="order-item-remove"
-                            onClick={() => proofInputRef.current?.click()}
+                            className="lp-btn lp-btn--wine"
+                            onClick={handleUploadPaymentProofSubmit}
+                            disabled={isUploadingProof || (!proofFile && !activePayment?.paymentProofUrl)}
                           >
-                            Ganti
+                            {isUploadingProof ? "Mengunggah Bukti..." : "Kirim Bukti & Konfirmasi ke WhatsApp →"}
+                          </button>
+
+                          {lastOrderWaUrl && (
+                            <a
+                              href={lastOrderWaUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="lp-btn lp-btn--outline"
+                            >
+                              Buka Chat WhatsApp Concierge Langsung
+                            </a>
+                          )}
+
+                          <button
+                            type="button"
+                            className="payment-cancel-btn"
+                            onClick={handleCancelPaymentPhase}
+                          >
+                            Batalkan pembayaran & edit pesanan
                           </button>
                         </div>
-                      ) : (
-                        <div
-                          className="payment-drop-box"
-                          onClick={() => proofInputRef.current?.click()}
-                          role="button"
-                          tabIndex={0}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter" || e.key === " ") {
-                              proofInputRef.current?.click();
-                            }
-                          }}
-                        >
-                          <svg className="payment-drop-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                            <polyline points="17 8 12 3 7 8" />
-                            <line x1="12" y1="3" x2="12" y2="15" />
-                          </svg>
-                          <p className="payment-drop-text">Klik di sini untuk memilih foto screenshot bukti transfer</p>
-                          <span className="payment-drop-hint">Format JPG, PNG, atau WEBP (maks. 8 MB)</span>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="payment-actions-col">
-                      <button
-                        type="button"
-                        className="lp-btn lp-btn--wine"
-                        onClick={handleUploadPaymentProofSubmit}
-                        disabled={isUploadingProof || (!proofFile && !activePayment?.paymentProofUrl)}
-                      >
-                        {isUploadingProof ? "Mengunggah Bukti..." : "Kirim Bukti & Konfirmasi ke WhatsApp →"}
-                      </button>
-
-                      {lastOrderWaUrl && (
-                        <a
-                          href={lastOrderWaUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="lp-btn lp-btn--outline"
-                        >
-                          Buka Chat WhatsApp Concierge Langsung
-                        </a>
-                      )}
-
-                      <button
-                        type="button"
-                        className="payment-cancel-btn"
-                        onClick={handleCancelPaymentPhase}
-                      >
-                        Batalkan pembayaran & edit pesanan
-                      </button>
+                      </div>
                     </div>
                   </div>
                 ) : (
@@ -1755,8 +1765,9 @@ export default function Home() {
                     </header>
 
                     <form className="commission-form lp-form" onSubmit={submitOrder}>
-                      <div className="commission-form-grid lp-form-grid">
-                        <div className="order-items commission-col-span-2">
+                      <div className="commission-split-grid">
+                        {/* KOLOM KIRI: DAFTAR KARYA */}
+                        <div className="commission-split-left">
                           <div className="order-items-head">
                             <div>
                               <span className="order-items-kicker">Daftar Karya</span>
@@ -1768,239 +1779,248 @@ export default function Home() {
                             <span className="order-items-count">{orderUnitCount} karya</span>
                           </div>
 
-                          {orderItems.map((item, index) => (
-                            <div className="order-item-card" key={item.uid}>
-                              <div className="order-item-head">
-                                <span className="order-item-index">Karya {index + 1}</span>
-                                <button
-                                  type="button"
-                                  className="order-item-remove"
-                                  onClick={() => removeOrderItem(item.uid)}
-                                  aria-label={`Hapus karya ${index + 1}`}
-                                >
-                                  Hapus
-                                </button>
-                              </div>
-
-                              <div className="order-item-product-row">
-                                <div className="form-group order-item-product">
-                                  <label className="form-label" htmlFor={`order-product-${item.uid}`}>
-                                    Produk
-                                  </label>
-                                  <select
-                                    id={`order-product-${item.uid}`}
-                                    className="form-select"
-                                    value={item.productId}
-                                    onChange={event => updateOrderItem(item.uid, { productId: event.target.value })}
-                                  >
-                                    <option value="">— Pilih karya —</option>
-                                    {dynamicCollectionGroups.map(group => (
-                                      <optgroup label={group.group} key={group.group}>
-                                        {group.items.map(option => (
-                                          <option key={option.id} value={option.id}>
-                                            {option.name}
-                                          </option>
-                                        ))}
-                                      </optgroup>
-                                    ))}
-                                  </select>
+                          <div className="order-items-scroll">
+                            {orderItems.map((item, index) => (
+                              <div className="order-item-card" key={item.uid}>
+                                <div className="order-item-head">
+                                  <span className="order-item-index">Karya {index + 1}</span>
+                                  {orderItems.length > 1 && (
+                                    <button
+                                      type="button"
+                                      className="order-item-remove"
+                                      onClick={() => removeOrderItem(item.uid)}
+                                      aria-label={`Hapus karya ${index + 1}`}
+                                    >
+                                      Hapus
+                                    </button>
+                                  )}
                                 </div>
 
-                                <div className="order-item-qty">
-                                  <span className="form-label" id={`order-qty-${item.uid}`}>Jumlah</span>
-                                  <div className="qty-stepper" role="group" aria-labelledby={`order-qty-${item.uid}`}>
-                                    <button
-                                      type="button"
-                                      onClick={() => updateOrderItem(item.uid, { qty: Math.max(1, item.qty - 1) })}
-                                      disabled={item.qty <= 1}
-                                      aria-label="Kurangi jumlah karya"
+                                <div className="order-item-product-row">
+                                  <div className="form-group order-item-product">
+                                    <label className="form-label" htmlFor={`order-product-${item.uid}`}>
+                                      Produk
+                                    </label>
+                                    <select
+                                      id={`order-product-${item.uid}`}
+                                      className="form-select"
+                                      value={item.productId}
+                                      onChange={event => updateOrderItem(item.uid, { productId: event.target.value })}
                                     >
-                                      −
-                                    </button>
-                                    <span aria-live="polite">{item.qty}</span>
-                                    <button
-                                      type="button"
-                                      onClick={() => updateOrderItem(item.uid, { qty: Math.min(20, item.qty + 1) })}
-                                      disabled={item.qty >= 20}
-                                      aria-label="Tambah jumlah karya"
-                                    >
-                                      +
-                                    </button>
+                                      <option value="">— Pilih karya —</option>
+                                      {dynamicCollectionGroups.map(group => (
+                                        <optgroup label={group.group} key={group.group}>
+                                          {group.items.map(option => (
+                                            <option key={option.id} value={option.id}>
+                                              {option.name}
+                                            </option>
+                                          ))}
+                                        </optgroup>
+                                      ))}
+                                    </select>
                                   </div>
-                                  <span className="form-field-hint">
-                                    Jumlah 2 = 2 karya fisik &amp; 2 QR vault.
-                                  </span>
-                                </div>
-                              </div>
 
-                              <div className="form-group">
-                                <span className="form-label">Nuansa Warna</span>
-                                <div
-                                  className="order-item-nuansa"
-                                  role="radiogroup"
-                                  aria-label={`Nuansa warna karya ${index + 1}`}
-                                >
-                                  {NUANSA_WARNA_OPTIONS.map(nuansa => {
-                                    const isChecked = item.nuansa === nuansa.id;
-                                    return (
-                                      <label
-                                        key={nuansa.id}
-                                        className={`order-nuansa-option ${isChecked ? "active" : ""}`}
+                                  <div className="order-item-qty">
+                                    <span className="form-label" id={`order-qty-${item.uid}`}>Jumlah</span>
+                                    <div className="qty-stepper" role="group" aria-labelledby={`order-qty-${item.uid}`}>
+                                      <button
+                                        type="button"
+                                        onClick={() => updateOrderItem(item.uid, { qty: Math.max(1, item.qty - 1) })}
+                                        disabled={item.qty <= 1}
+                                        aria-label="Kurangi jumlah karya"
                                       >
-                                        <input
-                                          type="radio"
-                                          name={`nuansa-${item.uid}`}
-                                          value={nuansa.id}
-                                          checked={isChecked}
-                                          onChange={() => updateOrderItem(item.uid, { nuansa: nuansa.id })}
-                                          className="form-nuansa-input"
-                                        />
-                                        <span
-                                          className="form-nuansa-color-pip"
-                                          style={{ backgroundColor: nuansa.swatch }}
-                                          aria-hidden="true"
-                                        />
-                                        <span className="order-nuansa-label">{nuansa.label}</span>
-                                      </label>
-                                    );
-                                  })}
+                                        −
+                                      </button>
+                                      <span aria-live="polite">{item.qty}</span>
+                                      <button
+                                        type="button"
+                                        onClick={() => updateOrderItem(item.uid, { qty: Math.min(20, item.qty + 1) })}
+                                        disabled={item.qty >= 20}
+                                        aria-label="Tambah jumlah karya"
+                                      >
+                                        +
+                                      </button>
+                                    </div>
+                                    <span className="form-field-hint">
+                                      Jumlah 2 = 2 karya fisik &amp; 2 QR vault.
+                                    </span>
+                                  </div>
+                                </div>
+
+                                <div className="form-group">
+                                  <span className="form-label">Nuansa Warna</span>
+                                  <div
+                                    className="order-item-nuansa"
+                                    role="radiogroup"
+                                    aria-label={`Nuansa warna karya ${index + 1}`}
+                                  >
+                                    {NUANSA_WARNA_OPTIONS.map(nuansa => {
+                                      const isChecked = item.nuansa === nuansa.id;
+                                      return (
+                                        <label
+                                          key={nuansa.id}
+                                          className={`order-nuansa-option ${isChecked ? "active" : ""}`}
+                                        >
+                                          <input
+                                            type="radio"
+                                            name={`nuansa-${item.uid}`}
+                                            value={nuansa.id}
+                                            checked={isChecked}
+                                            onChange={() => updateOrderItem(item.uid, { nuansa: nuansa.id })}
+                                            className="form-nuansa-input"
+                                          />
+                                          <span
+                                            className="form-nuansa-color-pip"
+                                            style={{ backgroundColor: nuansa.swatch }}
+                                            aria-hidden="true"
+                                          />
+                                          <span className="order-nuansa-label">{nuansa.label}</span>
+                                        </label>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+
+                                <div className="form-group">
+                                  <label className="form-label" htmlFor={`order-inisial-${item.uid}`}>
+                                    Inisial
+                                  </label>
+                                  <input
+                                    id={`order-inisial-${item.uid}`}
+                                    className="form-input"
+                                    type="text"
+                                    placeholder="Contoh: A, R, atau 5"
+                                    maxLength={10}
+                                    value={item.inisial}
+                                    onChange={event => updateOrderItem(item.uid, { inisial: event.target.value })}
+                                  />
                                 </div>
                               </div>
-
-                              <div className="form-group">
-                                <label className="form-label" htmlFor={`order-inisial-${item.uid}`}>
-                                  Inisial
-                                </label>
-                                <input
-                                  id={`order-inisial-${item.uid}`}
-                                  className="form-input"
-                                  type="text"
-                                  placeholder="Contoh: A, R, atau 5"
-                                  maxLength={10}
-                                  value={item.inisial}
-                                  onChange={event => updateOrderItem(item.uid, { inisial: event.target.value })}
-                                />
-                              </div>
-                            </div>
-                          ))}
+                            ))}
+                          </div>
 
                           <button type="button" className="order-add-item" onClick={addOrderItem}>
                             + Tambah Karya Lain
                           </button>
+                        </div>
+
+                        {/* KOLOM KANAN: DATA PEMESAN & CHECKOUT */}
+                        <div className="commission-split-right">
+                          <div className="buyer-fields-grid">
+                            <div className="form-group">
+                              <label className="form-label" htmlFor="order-nama">Nama Lengkap</label>
+                              <input
+                                id="order-nama"
+                                className="form-input"
+                                type="text"
+                                placeholder="Nama Lengkap Pemesan"
+                                maxLength={120}
+                                autoComplete="name"
+                                required
+                                value={buyerForm.nama}
+                                onChange={event => setBuyerForm(form => ({ ...form, nama: event.target.value }))}
+                              />
+                            </div>
+                            <div className="form-group">
+                              <label className="form-label" htmlFor="order-wa">Nomor WhatsApp</label>
+                              <input
+                                id="order-wa"
+                                className="form-input"
+                                type="tel"
+                                inputMode="tel"
+                                placeholder="08xx-xxxx-xxxx"
+                                maxLength={20}
+                                autoComplete="tel"
+                                aria-describedby="order-wa-hint"
+                                required
+                                value={buyerForm.wa}
+                                onChange={event => setBuyerForm(form => ({ ...form, wa: event.target.value }))}
+                              />
+                              <span className="form-field-hint" id="order-wa-hint">
+                                Nomor WhatsApp aktif (08xx / 62xx).
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="form-vip-wrap">
+                            <label className="form-checkbox-label" htmlFor="order-vip">
+                              <input
+                                id="order-vip"
+                                type="checkbox"
+                                className="form-checkbox-input"
+                                checked={buyerForm.isVip}
+                                onChange={event => setBuyerForm(form => ({ ...form, isVip: event.target.checked }))}
+                              />
+                              <span className="form-checkbox-box" aria-hidden="true" />
+                              <span className="form-checkbox-caption">
+                                Terdaftar di VIP Waiting List (Early-Bird Privilege)
+                              </span>
+                            </label>
+                          </div>
+
+                          <div className="commission-smart-qr-callout" role="note">
+                            <div className="smart-qr-callout-icon" aria-hidden="true">
+                              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+                                <rect x="3" y="3" width="7" height="7" rx="1.5" />
+                                <rect x="14" y="3" width="7" height="7" rx="1.5" />
+                                <rect x="3" y="14" width="7" height="7" rx="1.5" />
+                                <rect x="14" y="14" width="7" height="7" rx="1.5" />
+                              </svg>
+                            </div>
+                            <div className="smart-qr-callout-body">
+                              <span className="smart-qr-callout-badge">Smart-QR Digital Memory Gate</span>
+                              <p className="smart-qr-callout-text">
+                                Tautan pengisian foto, rekaman suara, video, &amp; surat kenangan dikirim otomatis ke WhatsApp setelah DP 50% terverifikasi.
+                              </p>
+                            </div>
+                          </div>
 
                           <div className="order-total" role="status" aria-live="polite">
-                            <span>Total {orderUnitCount} karya</span>
-                            <strong>{orderTotal > 0 ? formatHarga(String(orderTotal)) : "—"}</strong>
+                            <span>Total {orderUnitCount} karya: <strong>{orderTotal > 0 ? formatHarga(String(orderTotal)) : "—"}</strong></span>
                             <span>
-                              DP 50% <strong>{orderDp > 0 ? formatHarga(String(orderDp)) : "—"}</strong>
+                              Uang Muka (DP 50%): <strong>{orderDp > 0 ? formatHarga(String(orderDp)) : "—"}</strong>
                             </span>
                           </div>
-                        </div>
 
-                        <div className="form-group">
-                          <label className="form-label" htmlFor="order-nama">Nama Lengkap</label>
-                          <input
-                            id="order-nama"
-                            className="form-input"
-                            type="text"
-                            placeholder="Nama Lengkap Pemesan"
-                            maxLength={120}
-                            autoComplete="name"
-                            required
-                            value={buyerForm.nama}
-                            onChange={event => setBuyerForm(form => ({ ...form, nama: event.target.value }))}
-                          />
-                        </div>
-                        <div className="form-group">
-                          <label className="form-label" htmlFor="order-wa">Nomor WhatsApp</label>
-                          <input
-                            id="order-wa"
-                            className="form-input"
-                            type="tel"
-                            inputMode="tel"
-                            placeholder="08xx-xxxx-xxxx"
-                            maxLength={20}
-                            autoComplete="tel"
-                            aria-describedby="order-wa-hint"
-                            required
-                            value={buyerForm.wa}
-                            onChange={event => setBuyerForm(form => ({ ...form, wa: event.target.value }))}
-                          />
-                          <span className="form-field-hint" id="order-wa-hint">
-                            Nomor WhatsApp aktif pemesan (contoh: 08xx atau 62xx).
-                          </span>
-                        </div>
-
-                        <div className="form-group commission-col-span-2 form-vip-wrap">
-                          <label className="form-checkbox-label" htmlFor="order-vip">
+                          <div className="form-honeypot" aria-hidden="true">
                             <input
-                              id="order-vip"
-                              type="checkbox"
-                              className="form-checkbox-input"
-                              checked={buyerForm.isVip}
-                              onChange={event => setBuyerForm(form => ({ ...form, isVip: event.target.checked }))}
+                              id="order-website"
+                              className="form-input"
+                              type="text"
+                              tabIndex={-1}
+                              autoComplete="off"
+                              value={buyerForm.website}
+                              onChange={event => setBuyerForm(form => ({ ...form, website: event.target.value }))}
                             />
-                            <span className="form-checkbox-box" aria-hidden="true" />
-                            <span className="form-checkbox-caption">
-                              Saya sudah terdaftar di VIP Waiting List (Klaim Early-Bird Privilege)
-                            </span>
-                          </label>
-                        </div>
+                          </div>
 
-                        <div className="commission-smart-qr-callout commission-col-span-2" role="note">
-                          <div className="smart-qr-callout-icon" aria-hidden="true">
-                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
-                              <rect x="3" y="3" width="7" height="7" rx="1.5" />
-                              <rect x="14" y="3" width="7" height="7" rx="1.5" />
-                              <rect x="3" y="14" width="7" height="7" rx="1.5" />
-                              <rect x="14" y="14" width="7" height="7" rx="1.5" />
-                            </svg>
-                          </div>
-                          <div className="smart-qr-callout-body">
-                            <span className="smart-qr-callout-badge">Smart-QR Digital Memory Gate</span>
-                            <p className="smart-qr-callout-text">
-                              Tautan pengisian memori digital (foto kenangan, surat cinta, rekaman suara, &amp; video) akan dikirimkan otomatis melalui WhatsApp resmi setelah pembayaran DP 50% terverifikasi.
-                            </p>
-                          </div>
+                          <button type="submit" className="lp-btn lp-btn--wine lp-submit" disabled={orderSubmitting}>
+                            {orderSubmitting ? (
+                              <>
+                                <span className="commission-spinner" aria-hidden="true" />
+                                Menyegel Lembar Pre-Order...
+                              </>
+                            ) : (
+                              <>
+                                <svg
+                                  className="lp-submit-wa-icon"
+                                  viewBox="0 0 24 24"
+                                  width="18"
+                                  height="18"
+                                  fill="currentColor"
+                                  aria-hidden="true"
+                                >
+                                  <path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.82 9.82 0 0 0 12.04 2m.01 1.67c2.2 0 4.26.86 5.82 2.42a8.23 8.23 0 0 1 2.41 5.83c0 4.54-3.7 8.24-8.24 8.24-1.48 0-2.93-.4-4.2-1.15l-.3-.18-3.12.82.83-3.04-.2-.31a8.19 8.19 0 0 1-1.26-4.38c0-4.54 3.7-8.24 8.24-8.24m4.52 11.66c-.25-.13-1.47-.72-1.7-.81-.23-.08-.4-.13-.56.13-.17.25-.65.81-.79.98-.15.17-.3.19-.55.06-.25-.13-1.06-.39-2.02-1.24-.75-.67-1.25-1.5-1.4-1.75-.15-.25-.02-.39.11-.51.11-.11.25-.29.38-.44.13-.15.17-.25.25-.42.08-.17.04-.32-.02-.44-.06-.13-.56-1.36-.77-1.86-.2-.49-.41-.42-.56-.43h-.48c-.17 0-.44.06-.67.32-.23.25-.88.86-.88 2.1 0 1.24.9 2.44 1.03 2.61.13.17 1.77 2.7 4.29 3.79.6.26 1.07.41 1.44.53.6.19 1.15.16 1.58.1.48-.07 1.47-.6 1.68-1.18.21-.58.21-1.07.15-1.18-.06-.1-.23-.17-.48-.29" />
+                                </svg>
+                                Lanjut Pembayaran DP 50% →
+                              </>
+                            )}
+                          </button>
+                          <p className="commission-form-note">
+                            DP 50% dibayar via QRIS atelier sebagai tanda jadi slot pengerjaan.
+                          </p>
                         </div>
                       </div>
-                      <div className="form-honeypot" aria-hidden="true">
-                        <input
-                          id="order-website"
-                          className="form-input"
-                          type="text"
-                          tabIndex={-1}
-                          autoComplete="off"
-                          value={buyerForm.website}
-                          onChange={event => setBuyerForm(form => ({ ...form, website: event.target.value }))}
-                        />
-                      </div>
-                      <button type="submit" className="lp-btn lp-btn--wine lp-submit" disabled={orderSubmitting}>
-                        {orderSubmitting ? (
-                          <>
-                            <span className="commission-spinner" aria-hidden="true" />
-                            Menyegel Lembar Pre-Order...
-                          </>
-                        ) : (
-                          <>
-                            <svg
-                              className="lp-submit-wa-icon"
-                              viewBox="0 0 24 24"
-                              width="18"
-                              height="18"
-                              fill="currentColor"
-                              aria-hidden="true"
-                            >
-                              <path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.82 9.82 0 0 0 12.04 2m.01 1.67c2.2 0 4.26.86 5.82 2.42a8.23 8.23 0 0 1 2.41 5.83c0 4.54-3.7 8.24-8.24 8.24-1.48 0-2.93-.4-4.2-1.15l-.3-.18-3.12.82.83-3.04-.2-.31a8.19 8.19 0 0 1-1.26-4.38c0-4.54 3.7-8.24 8.24-8.24m4.52 11.66c-.25-.13-1.47-.72-1.7-.81-.23-.08-.4-.13-.56.13-.17.25-.65.81-.79.98-.15.17-.3.19-.55.06-.25-.13-1.06-.39-2.02-1.24-.75-.67-1.25-1.5-1.4-1.75-.15-.25-.02-.39.11-.51.11-.11.25-.29.38-.44.13-.15.17-.25.25-.42.08-.17.04-.32-.02-.44-.06-.13-.56-1.36-.77-1.86-.2-.49-.41-.42-.56-.43h-.48c-.17 0-.44.06-.67.32-.23.25-.88.86-.88 2.1 0 1.24.9 2.44 1.03 2.61.13.17 1.77 2.7 4.29 3.79.6.26 1.07.41 1.44.53.6.19 1.15.16 1.58.1.48-.07 1.47-.6 1.68-1.18.21-.58.21-1.07.15-1.18-.06-.1-.23-.17-.48-.29" />
-                            </svg>
-                            Kirim Reservasi via WhatsApp
-                          </>
-                        )}
-                      </button>
-                      <p className="commission-form-note">
-                        Satu reservasi dapat berisi beberapa karya. DP 50% dihitung dari total seluruh
-                        karya dan dibayar sekali melalui verifikasi WhatsApp Concierge.
-                      </p>
                     </form>
                   </>
                 )}

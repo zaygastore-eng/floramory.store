@@ -774,7 +774,10 @@ export default function VaultSetup() {
             </div>
 
             <form onSubmit={handleSave} className="vault-setup-form">
-              {/* CARD 1: ARCHIVAL KEEPSAKE PHOTO */}
+              <div className="vault-setup-columns">
+                {/* KOLOM KIRI: MEDIA (FOTO, SUARA, VIDEO) */}
+                <div className="vault-setup-col-media">
+                  {/* CARD 1: ARCHIVAL KEEPSAKE PHOTO */}
               <section className="vault-setup-card">
                 <div className="card-step-badge">STEP 01</div>
                 <h2 className="vault-setup-card-title">Archival Keepsake Photo</h2>
@@ -1227,7 +1230,11 @@ export default function VaultSetup() {
                 )}
               </section>
 
-              {/* CARD 3: WRITE THE SECRET LETTER ON LACE BOARD */}
+                </div>
+
+                {/* KOLOM KANAN: SURAT RAHASIA, PIN & SIMPAN */}
+                <div className="vault-setup-col-letter">
+                  {/* CARD 3: WRITE THE SECRET LETTER ON LACE BOARD */}
               <section className="vault-setup-card">
                 <div className="card-step-badge">STEP 03</div>
                 <h2 className="vault-setup-card-title">Write The Secret Letter</h2>
@@ -1410,6 +1417,9 @@ export default function VaultSetup() {
                 >
                   {saving ? "Mengunci Kenangan..." : "KUNCI & SIMPAN BRANKAS MEMORI →"}
                 </button>
+              </div>
+
+                </div>
               </div>
 
               <div className="vault-mobile-savebar">

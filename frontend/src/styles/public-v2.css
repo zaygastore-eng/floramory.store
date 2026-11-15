@@ -366,10 +366,12 @@
 }
 
 .public-v2 .seo-card {
-  background: #fffaf2;
-  border: 1px solid rgba(197, 168, 128, 0.45);
-  border-radius: 3px;
-  box-shadow: 0 16px 34px rgba(16, 4, 7, 0.28);
+  background: transparent;
+  border: 0;
+  border-top: 1px solid rgba(107, 31, 42, 0.16);
+  border-radius: 0;
+  box-shadow: none;
+  padding: 1.25rem 0.5rem 0;
 }
 
 .public-v2 .seo-card-num {
@@ -1272,10 +1274,11 @@
 }
 
 .public-v2 .vault-setup-card {
-  background: #fffaf2;
-  border: 1px solid rgba(107, 31, 42, 0.14);
-  border-radius: 3px;
-  box-shadow: 0 16px 36px rgba(58, 22, 27, 0.08);
+  background: rgba(255, 250, 242, 0.75);
+  border: 1px solid rgba(107, 31, 42, 0.1);
+  border-radius: 6px;
+  box-shadow: none;
+  padding: clamp(1.1rem, 2.8vw, 1.6rem);
 }
 
 /* A saved setup is a short confirmation, so let it sit directly on the page. */

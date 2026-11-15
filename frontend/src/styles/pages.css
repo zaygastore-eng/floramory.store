@@ -304,10 +304,12 @@
 }
 
 .seo-card {
-  background: #FFFFFF;
-  border: 1px solid rgba(35, 43, 56, 0.08);
-  border-radius: 6px;
-  padding: 2.25rem 1.75rem;
+  background: transparent;
+  border: none;
+  border-top: 1px solid rgba(83, 27, 33, 0.14);
+  border-radius: 0;
+  box-shadow: none;
+  padding: 1.25rem 0.5rem 0;
 }
 
 .seo-card-num {

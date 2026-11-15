@@ -122,14 +122,14 @@
 
 /* PIN Verification Card */
 .vault-pin-card {
-  width: min(100%, 380px);
+  width: min(100%, 360px);
   margin: 0 auto;
-  background: #FFFFFF;
-  border: 1px solid rgba(197, 168, 128, 0.4);
-  border-radius: 10px;
-  padding: clamp(1.15rem, 3vw, 1.6rem);
+  background: rgba(255, 255, 255, 0.88);
+  border: 1px solid rgba(197, 168, 128, 0.3);
+  border-radius: 8px;
+  padding: clamp(1rem, 2.5vw, 1.4rem);
   text-align: center;
-  box-shadow: 0 16px 40px rgba(35, 43, 56, 0.08);
+  box-shadow: 0 4px 16px rgba(35, 43, 56, 0.04);
 }
 
 .vault-pin-icon {
@@ -491,7 +491,46 @@
   margin: 0 auto;
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: 1.25rem;
+}
+
+@media (min-width: 960px) {
+  .vault-setup-container {
+    max-width: 1140px;
+    padding: 0 1.5rem;
+  }
+
+  .vault-setup-columns {
+    display: grid;
+    grid-template-columns: 1.05fr 0.95fr;
+    gap: 1.5rem;
+    align-items: start;
+  }
+
+  .vault-setup-col-media,
+  .vault-setup-col-letter {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+  }
+
+  .vault-setup-action-group {
+    position: sticky;
+    bottom: 1.5rem;
+    z-index: 10;
+    background: rgba(255, 252, 247, 0.94);
+    padding: 0.85rem 1rem;
+    border-radius: 8px;
+    border: 1px solid rgba(107, 31, 42, 0.12);
+    box-shadow: 0 8px 24px rgba(35, 43, 56, 0.08);
+    backdrop-filter: blur(6px);
+  }
+}
+
+.vault-setup-columns {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
 }
 
 .vault-setup-header {
@@ -569,8 +608,8 @@
   background: #FFFFFF;
   border: 1px solid rgba(35, 43, 56, 0.08);
   border-radius: 8px;
-  padding: clamp(1.5rem, 4vw, 2.5rem);
-  box-shadow: 0 8px 30px rgba(35, 43, 56, 0.04);
+  padding: clamp(1.15rem, 3vw, 1.65rem);
+  box-shadow: 0 2px 10px rgba(35, 43, 56, 0.02);
   position: relative;
 }
 
