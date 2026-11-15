@@ -691,16 +691,23 @@ export default function VaultSetup() {
           </section>
         ) : saved || vaultLocked ? (
           <section className="vault-setup-card vault-setup-success-card" role="status">
-            <div className="vault-wax-seal-hero" aria-hidden="true" style={{ margin: "0 auto 1.25rem" }}>
-              <span className="wax-seal-circle">
-                <img src="/a-chapter-logo-light.png" alt="" className="wax-seal-logo-img" />
-              </span>
+            {/* Logo Resmi A Chapter */}
+            <div className="vault-logo" aria-label="A Chapter Botanical Atelier">
+              <span className="logo-flourish">A</span> CHAPTER
             </div>
-            <span className="vault-success-kicker">A CHAPTER ATELIER · ARCHIVE SEALED</span>
-            <h2 className="vault-setup-card-title vault-success-title">Kenangan Berhasil Dikunci</h2>
+
+            {/* Segel Lingkaran Maroon Berisi Ikon Gembok (Animasi 400ms) */}
+            <div className="vault-seal" role="img" aria-label="Ikon Brankas Terkunci">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+              </svg>
+            </div>
+
+            <span className="vault-kicker">Memory Vault · Terkunci</span>
+            <h2 className="vault-setup-card-title vault-success-title">Kenangan berhasil dikunci</h2>
             <p className="vault-success-lead">
-              Memoir digital Anda telah tersimpan permanen di arsip A Chapter. Kurator kami akan
-              mencetak PIN fisik rahasia pada kartu ucapan di dalam boks kado penerima.
+              Memoir digital Anda tersimpan permanen di arsip A Chapter. Kurator kami akan mencetak PIN rahasia pada kartu ucapan di dalam boks kado penerima.
             </p>
 
             {savedPin && (
@@ -724,34 +731,76 @@ export default function VaultSetup() {
                 >
                   {pinCopied ? "✓ Tersalin" : "Salin PIN"}
                 </button>
-                <span className="vault-success-pin-hint">
-                  Simpan PIN ini. Penerima memasukkannya setelah menggosok stiker perak pada kartu.
-                </span>
               </div>
             )}
 
-            <div className="vault-success-summary" role="list" aria-label="Ringkasan kenangan tersimpan">
-              <span role="listitem">📷 {photos.length || 0} foto</span>
-              {personalMessage.trim() && <span role="listitem">✉️ Surat renda</span>}
-              {(audioUrl || spotifyUrl.trim()) && (
-                <span role="listitem">
-                  {audioSource === "spotify" ? "🎵 Spotify" : "🎙️ Pesan suara"}
-                </span>
-              )}
-              {audioMessage.trim() && <span role="listitem">💬 Catatan audio</span>}
-              {(videoUrl || videoPreview) && <span role="listitem">🎬 Video memoir</span>}
+            {/* Kartu Putih Isi Vault Anda */}
+            <div className="vault-content-card" aria-label="Daftar Isi Memory Vault Anda">
+              <span className="vault-card-label">Isi Vault Anda</span>
+              <ul className="vault-items-list">
+                <li className="vault-item-row">
+                  <div className="vault-item-icon-wrap" aria-hidden="true">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                      <circle cx="12" cy="13" r="4" />
+                    </svg>
+                  </div>
+                  <span>{photos.length || 1} foto</span>
+                </li>
+
+                <li className="vault-item-row">
+                  <div className="vault-item-icon-wrap" aria-hidden="true">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+                      <polyline points="22,6 12,13 2,6" />
+                    </svg>
+                  </div>
+                  <span>Surat kenangan</span>
+                </li>
+
+                <li className="vault-item-row">
+                  <div className="vault-item-icon-wrap" aria-hidden="true">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M9 18V5l12-2v13" />
+                      <circle cx="6" cy="18" r="3" />
+                      <circle cx="18" cy="16" r="3" />
+                    </svg>
+                  </div>
+                  <span>{audioSource === "spotify" || spotifyUrl.trim() ? "Lagu Spotify" : "Pesan suara"}</span>
+                </li>
+
+                <li className="vault-item-row">
+                  <div className="vault-item-icon-wrap" aria-hidden="true">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <polygon points="23 7 16 12 23 17 23 7" />
+                      <rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
+                    </svg>
+                  </div>
+                  <span>Video memoar</span>
+                </li>
+              </ul>
             </div>
 
-            <div className="vault-success-actions">
+            {/* Langkah Berikutnya */}
+            <div className="vault-next-steps-block">
+              <span className="steps-heading">Langkah Berikutnya</span>
+              <ol className="steps-numbered-list">
+                <li>Kurator mencetak PIN pada kartu ucapan.</li>
+                <li>Kado dikemas dan dikirim ke penerima.</li>
+                <li>Penerima memindai micro-chip dan membuka vault.</li>
+              </ol>
+            </div>
+
+            <div className="vault-actions-group">
               <button
                 type="button"
-                className="hero-cta hero-cta-primary"
+                className="btn-pill btn-pill-primary"
                 onClick={() => setPreviewModalOpen(true)}
               >
-                [ Pratinjau Tampilan Penerima ]
+                Pratinjau tampilan penerima
               </button>
-              <a className="hero-cta hero-cta-outline" href={pageUrl("/")}>
-                Kembali ke Beranda
+              <a className="btn-pill btn-pill-secondary" href={pageUrl("/")}>
+                Kembali ke beranda
               </a>
             </div>
           </section>

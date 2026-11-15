@@ -1549,18 +1549,17 @@ export default function Home() {
           <section className="lp-kolom" id="pesan">
             <span id="kolom-pengisian" className="lp-anchor" aria-hidden="true" />
             <div className="lp-kolom-inner">
-              <h2 className="lp-script lp-kolom-title">
-                {orderComplete || paymentPhase === "confirmed"
-                  ? "Official Archive"
-                  : paymentPhase === "qris"
-                  ? "Pembayaran DP 50%"
-                  : "Kolom Pengisian"}
-              </h2>
-              
+              {(orderComplete || paymentPhase !== "form") && (
+                <h2 className="lp-script lp-kolom-title">
+                  {orderComplete || paymentPhase === "confirmed"
+                    ? "Official Archive"
+                    : "Pembayaran DP 50%"}
+                </h2>
+              )}
 
               <div
                 className={`lp-kolom-card${
-                  orderComplete || paymentPhase !== "form" ? " is-payment-compact" : ""
+                  orderComplete || paymentPhase !== "form" ? " is-payment-compact" : " is-form-seamless"
                 }`}
               >
                 {orderComplete || paymentPhase === "confirmed" ? (
@@ -1760,7 +1759,7 @@ export default function Home() {
                       <h3 className="lp-form-title">Reserve your chapter</h3>
                       <p className="lp-form-sub">
                         Setiap karya dirangkai khusus berdasarkan ceritamu. Tambahkan satu atau beberapa
-                        karya sekaligus — masing-masing dengan warna dan inisialnya sendiri.
+                        karya sekaligus, masing-masing dengan warna dan inisialnya sendiri.
                       </p>
                     </header>
 
@@ -1769,13 +1768,7 @@ export default function Home() {
                         {/* KOLOM KIRI: DAFTAR KARYA */}
                         <div className="commission-split-left">
                           <div className="order-items-head">
-                            <div>
-                              <span className="order-items-kicker">Daftar Karya</span>
-                              <p className="order-items-sub">
-                                Tambahkan satu baris untuk setiap karya. Produk yang sama boleh dipakai
-                                lebih dari sekali dengan warna berbeda.
-                              </p>
-                            </div>
+                            <span className="order-items-kicker">DAFTAR KARYA</span>
                             <span className="order-items-count">{orderUnitCount} karya</span>
                           </div>
 
@@ -1783,7 +1776,7 @@ export default function Home() {
                             {orderItems.map((item, index) => (
                               <div className="order-item-card" key={item.uid}>
                                 <div className="order-item-head">
-                                  <span className="order-item-index">Karya {index + 1}</span>
+                                  <span className="order-item-index">KARYA {index + 1}</span>
                                   {orderItems.length > 1 && (
                                     <button
                                       type="button"
@@ -1796,59 +1789,57 @@ export default function Home() {
                                   )}
                                 </div>
 
-                                <div className="order-item-product-row">
-                                  <div className="form-group order-item-product">
-                                    <label className="form-label" htmlFor={`order-product-${item.uid}`}>
-                                      Produk
-                                    </label>
-                                    <select
-                                      id={`order-product-${item.uid}`}
-                                      className="form-select"
-                                      value={item.productId}
-                                      onChange={event => updateOrderItem(item.uid, { productId: event.target.value })}
-                                    >
-                                      <option value="">— Pilih karya —</option>
-                                      {dynamicCollectionGroups.map(group => (
-                                        <optgroup label={group.group} key={group.group}>
-                                          {group.items.map(option => (
-                                            <option key={option.id} value={option.id}>
-                                              {option.name}
-                                            </option>
-                                          ))}
-                                        </optgroup>
-                                      ))}
-                                    </select>
-                                  </div>
+                                <div className="form-group">
+                                  <label className="form-label" htmlFor={`order-product-${item.uid}`}>
+                                    Produk
+                                  </label>
+                                  <select
+                                    id={`order-product-${item.uid}`}
+                                    className="form-select"
+                                    value={item.productId}
+                                    onChange={event => updateOrderItem(item.uid, { productId: event.target.value })}
+                                  >
+                                    <option value="">Pilih karya</option>
+                                    {dynamicCollectionGroups.map(group => (
+                                      <optgroup label={group.group} key={group.group}>
+                                        {group.items.map(option => (
+                                          <option key={option.id} value={option.id}>
+                                            {option.name}
+                                          </option>
+                                        ))}
+                                      </optgroup>
+                                    ))}
+                                  </select>
+                                </div>
 
-                                  <div className="order-item-qty">
-                                    <span className="form-label" id={`order-qty-${item.uid}`}>Jumlah</span>
-                                    <div className="qty-stepper" role="group" aria-labelledby={`order-qty-${item.uid}`}>
-                                      <button
-                                        type="button"
-                                        onClick={() => updateOrderItem(item.uid, { qty: Math.max(1, item.qty - 1) })}
-                                        disabled={item.qty <= 1}
-                                        aria-label="Kurangi jumlah karya"
-                                      >
-                                        −
-                                      </button>
-                                      <span aria-live="polite">{item.qty}</span>
-                                      <button
-                                        type="button"
-                                        onClick={() => updateOrderItem(item.uid, { qty: Math.min(20, item.qty + 1) })}
-                                        disabled={item.qty >= 20}
-                                        aria-label="Tambah jumlah karya"
-                                      >
-                                        +
-                                      </button>
-                                    </div>
-                                    <span className="form-field-hint">
-                                      Jumlah 2 = 2 karya fisik &amp; 2 QR vault.
-                                    </span>
+                                <div className="form-group order-item-qty">
+                                  <span className="form-label" id={`order-qty-${item.uid}`}>Jumlah</span>
+                                  <div className="qty-stepper" role="group" aria-labelledby={`order-qty-${item.uid}`}>
+                                    <button
+                                      type="button"
+                                      onClick={() => updateOrderItem(item.uid, { qty: Math.max(1, item.qty - 1) })}
+                                      disabled={item.qty <= 1}
+                                      aria-label="Kurangi jumlah karya"
+                                    >
+                                      −
+                                    </button>
+                                    <span aria-live="polite">{item.qty}</span>
+                                    <button
+                                      type="button"
+                                      onClick={() => updateOrderItem(item.uid, { qty: Math.min(20, item.qty + 1) })}
+                                      disabled={item.qty >= 20}
+                                      aria-label="Tambah jumlah karya"
+                                    >
+                                      +
+                                    </button>
                                   </div>
+                                  <span className="form-field-hint">
+                                    Jumlah 2 = 2 karya fisik &amp; 2 QR vault.
+                                  </span>
                                 </div>
 
                                 <div className="form-group">
-                                  <span className="form-label">Nuansa Warna</span>
+                                  <span className="form-label">Nuansa warna</span>
                                   <div
                                     className="order-item-nuansa"
                                     role="radiogroup"
@@ -1900,125 +1891,125 @@ export default function Home() {
                           </div>
 
                           <button type="button" className="order-add-item" onClick={addOrderItem}>
-                            + Tambah Karya Lain
+                            + Tambah karya lain
                           </button>
                         </div>
 
-                        {/* KOLOM KANAN: DATA PEMESAN & CHECKOUT */}
+                        {/* KOLOM KANAN: DATA PEMESAN & CHECKOUT (Single White Card) */}
                         <div className="commission-split-right">
-                          <div className="buyer-fields-grid">
-                            <div className="form-group">
-                              <label className="form-label" htmlFor="order-nama">Nama Lengkap</label>
+                          <div className="commission-checkout-card">
+                            <div className="buyer-fields-stack">
+                              <div className="form-group">
+                                <label className="form-label" htmlFor="order-nama">Nama lengkap</label>
+                                <input
+                                  id="order-nama"
+                                  className="form-input"
+                                  type="text"
+                                  placeholder="Nama lengkap pemesan"
+                                  maxLength={120}
+                                  autoComplete="name"
+                                  required
+                                  value={buyerForm.nama}
+                                  onChange={event => setBuyerForm(form => ({ ...form, nama: event.target.value }))}
+                                />
+                              </div>
+                              <div className="form-group">
+                                <label className="form-label" htmlFor="order-wa">Nomor WhatsApp</label>
+                                <input
+                                  id="order-wa"
+                                  className="form-input"
+                                  type="tel"
+                                  inputMode="tel"
+                                  placeholder="08xx-xxxx-xxxx"
+                                  maxLength={20}
+                                  autoComplete="tel"
+                                  aria-describedby="order-wa-hint"
+                                  required
+                                  value={buyerForm.wa}
+                                  onChange={event => setBuyerForm(form => ({ ...form, wa: event.target.value }))}
+                                />
+                                <span className="form-field-hint" id="order-wa-hint">
+                                  Gunakan nomor WhatsApp aktif (08xx / 62xx).
+                                </span>
+                              </div>
+                            </div>
+
+                            <div className="form-vip-wrap">
+                              <label className="form-checkbox-label" htmlFor="order-vip">
+                                <input
+                                  id="order-vip"
+                                  type="checkbox"
+                                  className="form-checkbox-input"
+                                  checked={buyerForm.isVip}
+                                  onChange={event => setBuyerForm(form => ({ ...form, isVip: event.target.checked }))}
+                                />
+                                <span className="form-checkbox-box" aria-hidden="true" />
+                                <span className="form-checkbox-caption">
+                                  Terdaftar di VIP Waiting List (Early-Bird Privilege)
+                                </span>
+                              </label>
+                            </div>
+
+                            {/* Separator Aksen Krem Halus */}
+                            <div className="commission-divider-bar" aria-hidden="true" />
+
+                            {/* Total & Uang Muka DP 50% (Tanpa Box Smart-QR) */}
+                            <div className="order-total-v2" role="status" aria-live="polite">
+                              <div className="order-total-line">
+                                <span className="order-total-label">Total {orderUnitCount} karya</span>
+                                <span className="order-total-val">
+                                  {orderTotal > 0 ? formatHarga(String(orderTotal)) : "Rp [HARGA]"}
+                                </span>
+                              </div>
+                              <div className="order-total-line order-dp-line">
+                                <span className="order-dp-label">Uang muka (DP 50%)</span>
+                                <span className="order-dp-val">
+                                  {orderDp > 0 ? formatHarga(String(orderDp)) : "Rp [DP]"}
+                                </span>
+                              </div>
+                            </div>
+
+                            <div className="form-honeypot" aria-hidden="true">
                               <input
-                                id="order-nama"
+                                id="order-website"
                                 className="form-input"
                                 type="text"
-                                placeholder="Nama Lengkap Pemesan"
-                                maxLength={120}
-                                autoComplete="name"
-                                required
-                                value={buyerForm.nama}
-                                onChange={event => setBuyerForm(form => ({ ...form, nama: event.target.value }))}
+                                tabIndex={-1}
+                                autoComplete="off"
+                                value={buyerForm.website}
+                                onChange={event => setBuyerForm(form => ({ ...form, website: event.target.value }))}
                               />
                             </div>
-                            <div className="form-group">
-                              <label className="form-label" htmlFor="order-wa">Nomor WhatsApp</label>
-                              <input
-                                id="order-wa"
-                                className="form-input"
-                                type="tel"
-                                inputMode="tel"
-                                placeholder="08xx-xxxx-xxxx"
-                                maxLength={20}
-                                autoComplete="tel"
-                                aria-describedby="order-wa-hint"
-                                required
-                                value={buyerForm.wa}
-                                onChange={event => setBuyerForm(form => ({ ...form, wa: event.target.value }))}
-                              />
-                              <span className="form-field-hint" id="order-wa-hint">
-                                Nomor WhatsApp aktif (08xx / 62xx).
-                              </span>
-                            </div>
-                          </div>
 
-                          <div className="form-vip-wrap">
-                            <label className="form-checkbox-label" htmlFor="order-vip">
-                              <input
-                                id="order-vip"
-                                type="checkbox"
-                                className="form-checkbox-input"
-                                checked={buyerForm.isVip}
-                                onChange={event => setBuyerForm(form => ({ ...form, isVip: event.target.checked }))}
-                              />
-                              <span className="form-checkbox-box" aria-hidden="true" />
-                              <span className="form-checkbox-caption">
-                                Terdaftar di VIP Waiting List (Early-Bird Privilege)
-                              </span>
-                            </label>
+                            <button type="submit" className="lp-btn-pill-maroon" disabled={orderSubmitting}>
+                              {orderSubmitting ? (
+                                <>
+                                  <span className="commission-spinner" aria-hidden="true" />
+                                  Menyegel Lembar Pre-Order...
+                                </>
+                              ) : (
+                                <>
+                                  <svg
+                                    width="20"
+                                    height="20"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth="2"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    aria-hidden="true"
+                                  >
+                                    <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
+                                  </svg>
+                                  <span>Lanjut pembayaran DP 50%</span>
+                                </>
+                              )}
+                            </button>
+                            <p className="commission-note-small">
+                              DP 50% dibayar via QRIS atelier sebagai tanda jadi slot pengerjaan.
+                            </p>
                           </div>
-
-                          <div className="commission-smart-qr-callout" role="note">
-                            <div className="smart-qr-callout-icon" aria-hidden="true">
-                              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
-                                <rect x="3" y="3" width="7" height="7" rx="1.5" />
-                                <rect x="14" y="3" width="7" height="7" rx="1.5" />
-                                <rect x="3" y="14" width="7" height="7" rx="1.5" />
-                                <rect x="14" y="14" width="7" height="7" rx="1.5" />
-                              </svg>
-                            </div>
-                            <div className="smart-qr-callout-body">
-                              <span className="smart-qr-callout-badge">Smart-QR Digital Memory Gate</span>
-                              <p className="smart-qr-callout-text">
-                                Tautan pengisian foto, rekaman suara, video, &amp; surat kenangan dikirim otomatis ke WhatsApp setelah DP 50% terverifikasi.
-                              </p>
-                            </div>
-                          </div>
-
-                          <div className="order-total" role="status" aria-live="polite">
-                            <span>Total {orderUnitCount} karya: <strong>{orderTotal > 0 ? formatHarga(String(orderTotal)) : "—"}</strong></span>
-                            <span>
-                              Uang Muka (DP 50%): <strong>{orderDp > 0 ? formatHarga(String(orderDp)) : "—"}</strong>
-                            </span>
-                          </div>
-
-                          <div className="form-honeypot" aria-hidden="true">
-                            <input
-                              id="order-website"
-                              className="form-input"
-                              type="text"
-                              tabIndex={-1}
-                              autoComplete="off"
-                              value={buyerForm.website}
-                              onChange={event => setBuyerForm(form => ({ ...form, website: event.target.value }))}
-                            />
-                          </div>
-
-                          <button type="submit" className="lp-btn lp-btn--wine lp-submit" disabled={orderSubmitting}>
-                            {orderSubmitting ? (
-                              <>
-                                <span className="commission-spinner" aria-hidden="true" />
-                                Menyegel Lembar Pre-Order...
-                              </>
-                            ) : (
-                              <>
-                                <svg
-                                  className="lp-submit-wa-icon"
-                                  viewBox="0 0 24 24"
-                                  width="18"
-                                  height="18"
-                                  fill="currentColor"
-                                  aria-hidden="true"
-                                >
-                                  <path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.82 9.82 0 0 0 12.04 2m.01 1.67c2.2 0 4.26.86 5.82 2.42a8.23 8.23 0 0 1 2.41 5.83c0 4.54-3.7 8.24-8.24 8.24-1.48 0-2.93-.4-4.2-1.15l-.3-.18-3.12.82.83-3.04-.2-.31a8.19 8.19 0 0 1-1.26-4.38c0-4.54 3.7-8.24 8.24-8.24m4.52 11.66c-.25-.13-1.47-.72-1.7-.81-.23-.08-.4-.13-.56.13-.17.25-.65.81-.79.98-.15.17-.3.19-.55.06-.25-.13-1.06-.39-2.02-1.24-.75-.67-1.25-1.5-1.4-1.75-.15-.25-.02-.39.11-.51.11-.11.25-.29.38-.44.13-.15.17-.25.25-.42.08-.17.04-.32-.02-.44-.06-.13-.56-1.36-.77-1.86-.2-.49-.41-.42-.56-.43h-.48c-.17 0-.44.06-.67.32-.23.25-.88.86-.88 2.1 0 1.24.9 2.44 1.03 2.61.13.17 1.77 2.7 4.29 3.79.6.26 1.07.41 1.44.53.6.19 1.15.16 1.58.1.48-.07 1.47-.6 1.68-1.18.21-.58.21-1.07.15-1.18-.06-.1-.23-.17-.48-.29" />
-                                </svg>
-                                Lanjut Pembayaran DP 50% →
-                              </>
-                            )}
-                          </button>
-                          <p className="commission-form-note">
-                            DP 50% dibayar via QRIS atelier sebagai tanda jadi slot pengerjaan.
-                          </p>
                         </div>
                       </div>
                     </form>
