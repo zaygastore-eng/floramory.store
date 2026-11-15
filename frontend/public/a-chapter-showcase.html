@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>A Chapter Atelier — Showcase Dua Halaman</title>
+  <style>
+    /* Showcase Switcher Bar */
+    .showcase-nav {
+      position: fixed;
+      top: 12px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 9999;
+      display: flex;
+      gap: 6px;
+      background: rgba(43, 35, 33, 0.88);
+      backdrop-filter: blur(8px);
+      padding: 6px;
+      border-radius: 9999px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+    }
+    .showcase-btn {
+      font-family: system-ui, -apple-system, sans-serif;
+      font-size: 13px;
+      font-weight: 600;
+      color: #E8D8C6;
+      background: transparent;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 9999px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      white-space: nowrap;
+    }
+    .showcase-btn:hover {
+      color: #FFFFFF;
+    }
+    .showcase-btn.active {
+      background: #6B1F2A;
+      color: #FFFFFF;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    }
+    .page-frame {
+      width: 100vw;
+      height: 100vh;
+      border: none;
+      position: absolute;
+      top: 0;
+      left: 0;
+      display: none;
+    }
+    .page-frame.active {
+      display: block;
+    }
+  </style>
+</head>
+<body style="margin:0; overflow:hidden;">
+
+  <!-- Navigasi Switcher Antar Halaman -->
+  <div class="showcase-nav">
+    <button type="button" class="showcase-btn active" onclick="switchPage('form')">
+      Halaman 1: Form Pemesanan
+    </button>
+    <button type="button" class="showcase-btn" onclick="switchPage('vault')">
+      Halaman 2: Memory Vault Sukses
+    </button>
+  </div>
+
+  <iframe id="frameForm" class="page-frame active" src="/reserve-chapter.html" title="Form Pemesanan"></iframe>
+  <iframe id="frameVault" class="page-frame" src="/vault-sealed.html" title="Memory Vault Terkunci"></iframe>
+
+  <script>
+    function switchPage(page) {
+      const btns = document.querySelectorAll('.showcase-btn');
+      const frameForm = document.getElementById('frameForm');
+      const frameVault = document.getElementById('frameVault');
+
+      btns[0].classList.toggle('active', page === 'form');
+      btns[1].classList.toggle('active', page === 'vault');
+
+      frameForm.classList.toggle('active', page === 'form');
+      frameVault.classList.toggle('active', page === 'vault');
+    }
+  </script>
+</body>
+</html>

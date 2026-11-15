@@ -1,0 +1,1179 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <!-- Mobile-first viewport agar responsif di seluruh perangkat -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reserve Your Chapter — A Chapter Atelier</title>
+
+  <!-- Google Fonts: Plus Jakarta Sans untuk teks modern & bersih, Playfair Display italic untuk aksen mewah -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@1,400;1,600&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    /* ============================================================
+       1. VARIABEL WARNA & TEMA (Atelier Warm Luxury Palette)
+       ============================================================ */
+    :root {
+      /* Palet Warna */
+      --bg-warm: #FAF6F0;           /* Krem hangat latar halaman */
+      --surface-card: #FFFFFF;      /* Putih bersih untuk kartu tunggal */
+      --maroon-deep: #531B21;       /* Burgundy / maroon aksen & teks utama */
+      --maroon-hover: #3E1318;      /* Hover tombol utama */
+      --maroon-light: rgba(83, 27, 33, 0.08); /* Aksen transparan */
+      --gold-accent: #C5A880;       /* Emas atelier */
+      --text-dark: #2B2321;         /* Teks utama (kontras tinggi) */
+      --text-muted: #6E625D;        /* Teks pendukung */
+      --border-subtle: #E8E0D5;     /* Border tipis 1px */
+      --border-focus: #531B21;      /* Ring fokus aksesibilitas */
+      --danger: #B3261E;            /* Warna error validasi */
+
+      /* Tipografi */
+      --font-body: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+      --font-script: 'Playfair Display', Georgia, serif;
+
+      /* Skala Font Fluida (clamp) */
+      --text-xs: clamp(0.75rem, 0.7rem + 0.2vw, 0.8125rem);  /* ~12-13px */
+      --text-sm: clamp(0.8125rem, 0.78rem + 0.25vw, 0.875rem); /* ~13-14px (label) */
+      --text-base: clamp(0.9375rem, 0.9rem + 0.3vw, 1.0625rem); /* ~15-17px (body) */
+      --text-title: clamp(2rem, 1.5rem + 2.5vw, 3.25rem);       /* ~32-52px (judul) */
+
+      /* Radius & Bayangan Konsisten */
+      --radius-sm: 8px;
+      --radius-md: 12px;
+      --radius-lg: 16px;
+      --shadow-soft: 0 12px 36px rgba(83, 27, 33, 0.06);
+      --shadow-sticky: 0 -4px 20px rgba(43, 35, 33, 0.08);
+    }
+
+    /* Reset Dasar */
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: var(--font-body);
+      font-size: var(--text-base);
+      color: var(--text-dark);
+      background-color: var(--bg-warm);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+      padding: clamp(1rem, 3vw, 2.5rem) 1rem 6.5rem; /* Padding bawah ekstra untuk bottom bar HP */
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* Kontainer Form Dibatasi Maksimal ~960px dan di Tengah */
+    .atelier-container {
+      width: 100%;
+      max-width: 960px;
+      margin: 0 auto;
+    }
+
+    /* ============================================================
+       2. HEADER UTAMA (Satu Judul Utama yang Romantis & Elegan)
+       ============================================================ */
+    .form-header {
+      text-align: center;
+      margin-bottom: clamp(1.25rem, 3vw, 2rem);
+    }
+
+    .form-eyebrow {
+      display: inline-block;
+      font-size: var(--text-xs);
+      font-weight: 600;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--maroon-deep);
+      margin-bottom: 0.4rem;
+    }
+
+    .form-title {
+      font-family: var(--font-script);
+      font-size: var(--text-title);
+      font-weight: 400;
+      font-style: italic;
+      color: var(--maroon-deep);
+      line-height: 1.15;
+      margin-bottom: 0.5rem;
+    }
+
+    .form-subtitle {
+      font-size: var(--text-sm);
+      color: var(--text-muted);
+      max-width: 540px;
+      margin: 0 auto;
+      line-height: 1.5;
+    }
+
+    /* ============================================================
+       3. KARTU UTAMA TUNGGAL (Satu Level Kartu, Bersih & Luwes)
+       ============================================================ */
+    .order-card {
+      background: var(--surface-card);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-soft);
+      border: 1px solid var(--border-subtle);
+      padding: clamp(1.25rem, 3.5vw, 2.25rem);
+    }
+
+    /* ============================================================
+       4. BREAKPOINT & RESPONSIVE LAYOUT
+       Mobile (< 900px): 1 Kolom
+       Laptop (>= 900px): 2 Kolom Side-by-Side (Katalog Kiri, Checkout Kanan)
+       ============================================================ */
+    .order-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 1.75rem;
+    }
+
+    @media (min-width: 900px) {
+      body {
+        padding-bottom: clamp(1.5rem, 4vw, 3rem); /* Hilangkan offset bottom bar di laptop */
+      }
+
+      .order-grid {
+        display: grid;
+        grid-template-columns: 1.15fr 0.85fr;
+        gap: 2.25rem;
+        align-items: start;
+      }
+
+      /* Kolom kanan sticky pada laptop agar tombol bayar selalu terlihat */
+      .col-checkout {
+        position: sticky;
+        top: 2rem;
+        display: flex;
+        flex-direction: column;
+        gap: 1.25rem;
+      }
+    }
+
+    /* Pemisahan antar-seksi berbasis Spacing (bukan tumpukan border) */
+    .section-block {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .section-heading {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      margin-bottom: 0.25rem;
+    }
+
+    .section-title {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: var(--maroon-deep);
+      letter-spacing: -0.01em;
+    }
+
+    .section-hint {
+      font-size: var(--text-xs);
+      color: var(--text-muted);
+      line-height: 1.4;
+    }
+
+    .unit-badge {
+      font-size: var(--text-xs);
+      font-weight: 600;
+      padding: 0.25rem 0.65rem;
+      background: var(--maroon-light);
+      color: var(--maroon-deep);
+      border-radius: 999px;
+      white-space: nowrap;
+    }
+
+    /* ============================================================
+       5. INPUT & FORM CONTROLS (Tinggi Minimal 48px, No iOS Auto-Zoom)
+       ============================================================ */
+    .field-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+
+    .field-label {
+      font-size: var(--text-sm);
+      font-weight: 600;
+      color: var(--text-dark);
+    }
+
+    .field-input,
+    .field-select {
+      width: 100%;
+      min-height: 48px;
+      padding: 0.75rem 1rem;
+      font-family: var(--font-body);
+      font-size: 1rem; /* 16px mencegah auto-zoom di browser iOS Safari */
+      color: var(--text-dark);
+      background-color: #FAF8F5;
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+      appearance: none;
+    }
+
+    .field-select {
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23531B21' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 1rem center;
+      padding-right: 2.5rem;
+      cursor: pointer;
+    }
+
+    .field-input:focus,
+    .field-select:focus {
+      outline: none;
+      background-color: #FFFFFF;
+      border-color: var(--border-focus);
+      box-shadow: 0 0 0 3px rgba(83, 27, 33, 0.12);
+    }
+
+    .field-input.has-error,
+    .field-select.has-error {
+      border-color: var(--danger);
+      background-color: #FFF8F8;
+    }
+
+    .field-error-text {
+      font-size: var(--text-xs);
+      color: var(--danger);
+      display: none;
+    }
+
+    .field-error-text.is-visible {
+      display: block;
+    }
+
+    /* Grid 2 Kolom Data Pemesan */
+    .buyer-fields-row {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 0.85rem;
+    }
+
+    @media (min-width: 480px) {
+      .buyer-fields-row {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+
+    /* ============================================================
+       6. DAFTAR ITEM KARYA (List of Bespoke Items)
+       ============================================================ */
+    .items-container {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .item-card {
+      background: #FAF7F2;
+      border-radius: var(--radius-md);
+      padding: clamp(1rem, 2.5vw, 1.25rem);
+      border: 1px solid rgba(83, 27, 33, 0.08);
+      display: flex;
+      flex-direction: column;
+      gap: 0.85rem;
+      position: relative;
+    }
+
+    .item-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+    }
+
+    .item-badge {
+      font-size: var(--text-xs);
+      font-weight: 700;
+      color: var(--maroon-deep);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .btn-remove-item {
+      background: none;
+      border: none;
+      color: #9E5259;
+      font-family: var(--font-body);
+      font-size: var(--text-xs);
+      font-weight: 600;
+      cursor: pointer;
+      min-height: 44px;
+      min-width: 44px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: flex-end;
+      text-decoration: underline;
+      text-underline-offset: 3px;
+      transition: color 0.2s ease;
+    }
+
+    .btn-remove-item:hover {
+      color: var(--danger);
+    }
+
+    .item-product-row {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 0.75rem;
+    }
+
+    @media (min-width: 520px) {
+      .item-product-row {
+        grid-template-columns: 1fr auto;
+        align-items: start;
+      }
+    }
+
+    .item-price-preview {
+      font-size: var(--text-xs);
+      color: var(--maroon-deep);
+      font-weight: 600;
+      margin-top: 0.25rem;
+    }
+
+    /* Stepper Jumlah Karya (Target Sentuh Min 44x44px) */
+    .stepper-wrap {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .stepper-btn {
+      width: 44px;
+      height: 44px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border-subtle);
+      background: #FFFFFF;
+      color: var(--maroon-deep);
+      font-size: 1.25rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      user-select: none;
+      transition: all 0.15s ease;
+    }
+
+    .stepper-btn:hover:not(:disabled) {
+      background: var(--maroon-deep);
+      color: #FFFFFF;
+      border-color: var(--maroon-deep);
+    }
+
+    .stepper-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    .stepper-value {
+      min-width: 36px;
+      text-align: center;
+      font-weight: 700;
+      font-size: 1rem;
+      color: var(--text-dark);
+    }
+
+    /* Pilihan Nuansa Warna (Chips/Swatches yang Wrap Rapi) */
+    .color-swatches-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-top: 0.25rem;
+    }
+
+    .swatch-chip {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      min-height: 44px; /* Target sentuh aman */
+      padding: 0.5rem 0.85rem;
+      background: #FFFFFF;
+      border: 1px solid var(--border-subtle);
+      border-radius: 999px;
+      cursor: pointer;
+      font-size: var(--text-sm);
+      font-weight: 500;
+      color: var(--text-dark);
+      transition: all 0.2s ease;
+      user-select: none;
+    }
+
+    .swatch-chip input {
+      position: absolute;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .swatch-circle {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      border: 1px solid rgba(0, 0, 0, 0.15);
+      flex-shrink: 0;
+    }
+
+    .swatch-chip:hover {
+      border-color: var(--maroon-deep);
+    }
+
+    .swatch-chip.is-active {
+      border-color: var(--maroon-deep);
+      background: rgba(83, 27, 33, 0.05);
+      color: var(--maroon-deep);
+      font-weight: 600;
+    }
+
+    .swatch-chip:has(input:focus-visible) {
+      outline: 2px solid var(--border-focus);
+      outline-offset: 2px;
+    }
+
+    /* Tombol Tambah Karya Lain */
+    .btn-add-item {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      width: 100%;
+      min-height: 48px;
+      border: 1px dashed rgba(83, 27, 33, 0.35);
+      background: rgba(255, 255, 255, 0.6);
+      border-radius: var(--radius-sm);
+      color: var(--maroon-deep);
+      font-family: var(--font-body);
+      font-size: var(--text-sm);
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      padding: 0.75rem 1rem;
+    }
+
+    .btn-add-item:hover {
+      background: #FFFFFF;
+      border-color: var(--maroon-deep);
+      border-style: solid;
+    }
+
+    /* ============================================================
+       7. CHECKBOX VIP & SMART-QR INFO BOX
+       ============================================================ */
+    .vip-checkbox-wrap {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.75rem;
+      cursor: pointer;
+      user-select: none;
+      min-height: 44px;
+      padding: 0.25rem 0;
+    }
+
+    .vip-checkbox {
+      width: 22px;
+      height: 22px;
+      accent-color: var(--maroon-deep);
+      cursor: pointer;
+      margin-top: 2px;
+      flex-shrink: 0;
+    }
+
+    .vip-label {
+      font-size: var(--text-sm);
+      color: var(--text-dark);
+      line-height: 1.45;
+    }
+
+    .smart-qr-box {
+      display: flex;
+      gap: 0.85rem;
+      padding: 0.9rem 1rem;
+      background: #FAF7F2;
+      border: 1px solid rgba(197, 168, 128, 0.35);
+      border-radius: var(--radius-sm);
+    }
+
+    .smart-qr-icon {
+      color: var(--maroon-deep);
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+
+    .smart-qr-title {
+      display: block;
+      font-size: var(--text-xs);
+      font-weight: 700;
+      color: var(--maroon-deep);
+      letter-spacing: 0.04em;
+      margin-bottom: 0.2rem;
+    }
+
+    .smart-qr-text {
+      font-size: var(--text-xs);
+      color: var(--text-muted);
+      line-height: 1.45;
+    }
+
+    /* ============================================================
+       8. RINGKASAN HARGA (Jelas, Menonjol, & Bernilai Tinggi)
+       ============================================================ */
+    .summary-card {
+      background: #FAF7F2;
+      border-radius: var(--radius-md);
+      padding: 1.15rem 1.25rem;
+      border: 1px solid rgba(83, 27, 33, 0.1);
+      display: flex;
+      flex-direction: column;
+      gap: 0.65rem;
+    }
+
+    .summary-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+
+    .summary-label {
+      font-size: var(--text-sm);
+      color: var(--text-muted);
+    }
+
+    .summary-val-total {
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--text-dark);
+    }
+
+    .summary-dp-row {
+      padding-top: 0.65rem;
+      border-top: 1px solid rgba(83, 27, 33, 0.12);
+    }
+
+    .summary-dp-label {
+      font-size: var(--text-sm);
+      font-weight: 700;
+      color: var(--maroon-deep);
+      letter-spacing: 0.02em;
+    }
+
+    .summary-dp-val {
+      font-family: var(--font-script);
+      font-size: clamp(1.4rem, 2.5vw, 1.85rem);
+      font-weight: 600;
+      font-style: italic;
+      color: var(--maroon-deep);
+      line-height: 1;
+    }
+
+    /* ============================================================
+       9. TOMBOL UTAMA (Paling Menonjol di Halaman)
+       ============================================================ */
+    .btn-submit-main {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.65rem;
+      width: 100%;
+      min-height: 52px;
+      background-color: var(--maroon-deep);
+      color: #FFFFFF;
+      font-family: var(--font-body);
+      font-size: 1rem;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      border: none;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      box-shadow: 0 4px 16px rgba(83, 27, 33, 0.25);
+      transition: background-color 0.2s ease, transform 0.1s ease, box-shadow 0.2s ease;
+      padding: 0.85rem 1.25rem;
+    }
+
+    .btn-submit-main:hover {
+      background-color: var(--maroon-hover);
+      box-shadow: 0 6px 20px rgba(83, 27, 33, 0.35);
+    }
+
+    .btn-submit-main:active {
+      transform: scale(0.99);
+    }
+
+    .btn-submit-main:focus-visible {
+      outline: 3px solid var(--gold-accent);
+      outline-offset: 3px;
+    }
+
+    .btn-submit-note {
+      font-size: var(--text-xs);
+      color: var(--text-muted);
+      text-align: center;
+      line-height: 1.4;
+      margin-top: 0.35rem;
+    }
+
+    /* ============================================================
+       10. STICKY BOTTOM BAR KHUSUS HP (< 900px)
+       Menampilkan Ringkasan DP & Tombol Cepat Tanpa Menutupi Konten
+       ============================================================ */
+    .mobile-sticky-bar {
+      display: none;
+    }
+
+    @media (max-width: 899px) {
+      .mobile-sticky-bar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        z-index: 100;
+        background: #FFFFFF;
+        padding: 0.75rem 1rem calc(0.75rem + env(safe-area-inset-bottom, 0px));
+        box-shadow: var(--shadow-sticky);
+        border-top: 1px solid var(--border-subtle);
+      }
+
+      .mobile-sticky-info {
+        display: flex;
+        flex-direction: column;
+        gap: 0.1rem;
+      }
+
+      .mobile-sticky-label {
+        font-size: 0.7rem;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        font-weight: 600;
+      }
+
+      .mobile-sticky-price {
+        font-size: 1.15rem;
+        font-weight: 700;
+        color: var(--maroon-deep);
+        line-height: 1.1;
+      }
+
+      .mobile-sticky-btn {
+        min-height: 48px;
+        padding: 0.65rem 1.15rem;
+        font-size: 0.9rem;
+        flex-shrink: 0;
+      }
+
+      /* Sembunyikan summary & tombol inline di kolom kanan pada HP agar tidak dobel */
+      .desktop-only-checkout {
+        display: none;
+      }
+    }
+
+    @media (min-width: 900px) {
+      .mobile-sticky-bar {
+        display: none !important;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <main class="atelier-container">
+    <!-- 1. HEADER UTAMA (Satu Judul Utama Saja) -->
+    <header class="form-header">
+      <span class="form-eyebrow">Bespoke Botanical Commission · Atelier Reservation</span>
+      <h1 class="form-title">Reserve your chapter</h1>
+      <p class="form-subtitle">
+        Setiap karya dirangkai khusus berdasarkan ceritamu. Tambahkan satu atau beberapa karya sekaligus, masing-masing dengan warna dan inisialnya sendiri.
+      </p>
+    </header>
+
+    <!-- 2. KARTU UTAMA TUNGGAL -->
+    <div class="order-card">
+      <form id="bespokeOrderForm" novalidate>
+
+        <div class="order-grid">
+
+          <!-- ========================================================
+               KOLOM A (HP: Ke-2 | Laptop: Sisi Kiri): DAFTAR KARYA
+               ======================================================== -->
+          <div class="col-items section-block">
+            <div class="section-heading">
+              <div>
+                <h2 class="section-title">Daftar Karya</h2>
+                <p class="section-hint">Produk yang sama boleh dipesan lebih dari satu dengan warna berbeda.</p>
+              </div>
+              <span class="unit-badge" id="orderUnitBadge">1 Karya</span>
+            </div>
+
+            <!-- Kontainer Item Dinamis -->
+            <div class="items-container" id="itemsList">
+              <!-- Item di-generate via JavaScript -->
+            </div>
+
+            <!-- Tombol Tambah Karya -->
+            <button type="button" class="btn-add-item" id="btnAddItem">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+              </svg>
+              <span>+ Tambah Karya Lain</span>
+            </button>
+          </div>
+
+          <!-- ========================================================
+               KOLOM B (HP: Ke-1 & Ke-3 | Laptop: Sisi Kanan): DATA PEMESAN & CHECKOUT
+               ======================================================== -->
+          <div class="col-checkout section-block">
+
+            <!-- Data Kontak Pemesan -->
+            <div class="section-block">
+              <div class="section-heading">
+                <h2 class="section-title">Data Pemesan</h2>
+              </div>
+
+              <div class="buyer-fields-row">
+                <div class="field-group">
+                  <label class="field-label" for="buyerName">Nama Lengkap</label>
+                  <input
+                    type="text"
+                    id="buyerName"
+                    class="field-input"
+                    placeholder="Nama Lengkap Pemesan"
+                    autocomplete="name"
+                    required
+                  >
+                  <span class="field-error-text" id="buyerNameError">Nama lengkap wajib diisi.</span>
+                </div>
+
+                <div class="field-group">
+                  <label class="field-label" for="buyerPhone">Nomor WhatsApp</label>
+                  <input
+                    type="tel"
+                    id="buyerPhone"
+                    class="field-input"
+                    placeholder="08xx atau 62xx"
+                    inputmode="tel"
+                    autocomplete="tel"
+                    required
+                  >
+                  <span class="field-error-text" id="buyerPhoneError">Format WA harus diawali 08xx / 62xx (min. 10 digit).</span>
+                </div>
+              </div>
+
+              <!-- VIP Checkbox -->
+              <label class="vip-checkbox-wrap" for="chkVip">
+                <input type="checkbox" id="chkVip" class="vip-checkbox">
+                <span class="vip-label">
+                  Terdaftar di <strong>VIP Waiting List</strong> (Klaim Early-Bird Privilege)
+                </span>
+              </label>
+
+              <!-- Info Box Smart-QR -->
+              <aside class="smart-qr-box" role="note" aria-label="Informasi Smart-QR Memory Gate">
+                <div class="smart-qr-icon" aria-hidden="true">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="3" width="7" height="7" rx="1.5"></rect>
+                    <rect x="14" y="3" width="7" height="7" rx="1.5"></rect>
+                    <rect x="3" y="14" width="7" height="7" rx="1.5"></rect>
+                    <rect x="14" y="14" width="7" height="7" rx="1.5"></rect>
+                  </svg>
+                </div>
+                <div>
+                  <strong class="smart-qr-title">Smart-QR Digital Memory Gate</strong>
+                  <p class="smart-qr-text">
+                    Tautan pengisian foto kenangan, rekaman suara, video, &amp; surat cinta akan dikirim otomatis ke WhatsApp setelah DP 50% terverifikasi.
+                  </p>
+                </div>
+              </aside>
+            </div>
+
+            <!-- Ringkasan & Tombol Utama (Aktif di Laptop) -->
+            <div class="desktop-only-checkout section-block">
+              <div class="summary-card" aria-live="polite">
+                <div class="summary-row">
+                  <span class="summary-label">Total Keseluruhan (<span id="summaryItemCount">1</span> karya)</span>
+                  <strong class="summary-val-total" id="summaryTotalAmount">Rp 0</strong>
+                </div>
+                <div class="summary-row summary-dp-row">
+                  <div>
+                    <span class="summary-dp-label">Uang Muka (DP 50%)</span>
+                    <span class="section-hint" style="display:block;">Tanda jadi slot pengerjaan</span>
+                  </div>
+                  <strong class="summary-dp-val" id="summaryDpAmount">Rp 0</strong>
+                </div>
+              </div>
+
+              <div>
+                <button type="submit" class="btn-submit-main">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                    <path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.82 9.82 0 0 0 12.04 2m.01 1.67c2.2 0 4.26.86 5.82 2.42a8.23 8.23 0 0 1 2.41 5.83c0 4.54-3.7 8.24-8.24 8.24-1.48 0-2.93-.4-4.2-1.15l-.3-.18-3.12.82.83-3.04-.2-.31a8.19 8.19 0 0 1-1.26-4.38c0-4.54 3.7-8.24 8.24-8.24m4.52 11.66c-.25-.13-1.47-.72-1.7-.81-.23-.08-.4-.13-.56.13-.17.25-.65.81-.79.98-.15.17-.3.19-.55.06-.25-.13-1.06-.39-2.02-1.24-.75-.67-1.25-1.5-1.4-1.75-.15-.25-.02-.39.11-.51.11-.11.25-.29.38-.44.13-.15.17-.25.25-.42.08-.17.04-.32-.02-.44-.06-.13-.56-1.36-.77-1.86-.2-.49-.41-.42-.56-.43h-.48c-.17 0-.44.06-.67.32-.23.25-.88.86-.88 2.1 0 1.24.9 2.44 1.03 2.61.13.17 1.77 2.7 4.29 3.79.6.26 1.07.41 1.44.53.6.19 1.15.16 1.58.1.48-.07 1.47-.6 1.68-1.18.21-.58.21-1.07.15-1.18-.06-.1-.23-.17-.48-.29" />
+                  </svg>
+                  <span>Lanjut Pembayaran DP 50% →</span>
+                </button>
+                <p class="btn-submit-note">
+                  Satu reservasi dapat berisi beberapa karya. DP 50% dihitung dari total seluruh karya dan dibayar via QRIS atelier.
+                </p>
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+
+      </form>
+    </div>
+  </main>
+
+  <!-- ============================================================
+       11. BAR RINGKASAN STICKY DI HP (< 900px)
+       Menyediakan Akses Cepat Tombol Bayar & DP Tanpa Scroll Jauh
+       ============================================================ -->
+  <aside class="mobile-sticky-bar" aria-label="Ringkasan pembayaran mobile">
+    <div class="mobile-sticky-info">
+      <span class="mobile-sticky-label">Uang Muka (DP 50%)</span>
+      <span class="mobile-sticky-price" id="mobileStickyDp">Rp 0</span>
+    </div>
+    <button type="button" class="btn-submit-main mobile-sticky-btn" id="btnMobileSubmit">
+      <span>Lanjut Bayar →</span>
+    </button>
+  </aside>
+
+  <!-- ============================================================
+       12. JAVASCRIPT (Logika Form Dinamis, Hitung Otomatis, & Validasi)
+       ============================================================ -->
+  <script>
+    // Katalog Produk Preserved Flower Atelier
+    const CATALOG_PRODUCTS = [
+      { id: "dome-cloche", name: "The Sovereign Bell Jar Cloche", price: 850000 },
+      { id: "archival-frame", name: "The Archival Pressed Herbarium Frame", price: 680000 },
+      { id: "mini-vault", name: "The Miniature Keepsake Vault", price: 450000 },
+      { id: "botanical-monolith", name: "The Grand Botanical Crystal Monolith", price: 1250000 }
+    ];
+
+    // Opsi Nuansa Warna
+    const COLOR_SHADES = [
+      { id: "crimson", label: "Crimson Romance", hex: "#8B1E2B" },
+      { id: "bridgerton", label: "Bridgerton Blue", hex: "#5B7B94" },
+      { id: "ivory", label: "Classic Ivory", hex: "#E6DEC8" }
+    ];
+
+    // State Aplikasi
+    let orderItems = [
+      {
+        uid: "item-" + Date.now(),
+        productId: CATALOG_PRODUCTS[0].id,
+        qty: 1,
+        nuansa: "crimson",
+        inisial: ""
+      }
+    ];
+
+    // Helper Format Rupiah
+    function formatRupiah(amount) {
+      return "Rp " + amount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+    }
+
+    // Render Ulang Seluruh Item Karya
+    function renderItems() {
+      const container = document.getElementById("itemsList");
+      container.innerHTML = "";
+
+      orderItems.forEach((item, index) => {
+        const itemCard = document.createElement("div");
+        itemCard.className = "item-card";
+        itemCard.dataset.uid = item.uid;
+
+        const currentProduct = CATALOG_PRODUCTS.find(p => p.id === item.productId);
+        const itemSubtotal = currentProduct ? currentProduct.price * item.qty : 0;
+
+        itemCard.innerHTML = `
+          <div class="item-header">
+            <span class="item-badge">Karya ${index + 1}</span>
+            ${orderItems.length > 1 ? `
+              <button type="button" class="btn-remove-item" onclick="removeItem('${item.uid}')" aria-label="Hapus karya ${index + 1}">
+                Hapus
+              </button>
+            ` : ""}
+          </div>
+
+          <div class="item-product-row">
+            <div class="field-group" style="flex:1;">
+              <label class="field-label" for="prod-${item.uid}">Pilih Karya</label>
+              <select id="prod-${item.uid}" class="field-select item-prod-select" onchange="updateProduct('${item.uid}', this.value)" required>
+                <option value="">— Pilih jenis karya —</option>
+                ${CATALOG_PRODUCTS.map(p => `
+                  <option value="${p.id}" ${p.id === item.productId ? "selected" : ""}>
+                    ${p.name} (${formatRupiah(p.price)})
+                  </option>
+                `).join("")}
+              </select>
+              <span class="field-error-text" id="err-prod-${item.uid}">Pilih salah satu karya.</span>
+              <div class="item-price-preview">Subtotal: ${formatRupiah(itemSubtotal)}</div>
+            </div>
+
+            <div class="field-group">
+              <span class="field-label">Jumlah</span>
+              <div class="stepper-wrap" role="group" aria-label="Jumlah unit karya">
+                <button type="button" class="stepper-btn" onclick="updateQty('${item.uid}', -1)" ${item.qty <= 1 ? "disabled" : ""} aria-label="Kurangi jumlah">−</button>
+                <span class="stepper-value">${item.qty}</span>
+                <button type="button" class="stepper-btn" onclick="updateQty('${item.uid}', 1)" ${item.qty >= 20 ? "disabled" : ""} aria-label="Tambah jumlah">+</button>
+              </div>
+              <span class="section-hint">Jumlah 2 = 2 karya fisik & 2 QR vault</span>
+            </div>
+          </div>
+
+          <div class="field-group">
+            <span class="field-label">Nuansa Warna</span>
+            <div class="color-swatches-group" role="radiogroup" aria-label="Pilih nuansa warna karya ${index + 1}">
+              ${COLOR_SHADES.map(shade => {
+                const isSelected = item.nuansa === shade.id;
+                return `
+                  <label class="swatch-chip ${isSelected ? "is-active" : ""}">
+                    <input
+                      type="radio"
+                      name="shade-${item.uid}"
+                      value="${shade.id}"
+                      ${isSelected ? "checked" : ""}
+                      onchange="updateShade('${item.uid}', '${shade.id}')"
+                    >
+                    <span class="swatch-circle" style="background-color: ${shade.hex};" aria-hidden="true"></span>
+                    <span>${shade.label}</span>
+                  </label>
+                `;
+              }).join("")}
+            </div>
+          </div>
+
+          <div class="field-group">
+            <label class="field-label" for="initial-${item.uid}">Inisial Huruf / Angka</label>
+            <input
+              type="text"
+              id="initial-${item.uid}"
+              class="field-input item-initial-input"
+              placeholder="Contoh: A, R, atau 5"
+              maxlength="12"
+              value="${item.inisial}"
+              oninput="updateInitial('${item.uid}', this.value)"
+              required
+            >
+            <span class="field-error-text" id="err-initial-${item.uid}">Inisial wajib diisi (maks. 12 karakter).</span>
+          </div>
+        `;
+
+        container.appendChild(itemCard);
+      });
+
+      calculateTotals();
+    }
+
+    // Hitung Ulang Total & DP 50%
+    function calculateTotals() {
+      let totalUnits = 0;
+      let grandTotal = 0;
+
+      orderItems.forEach(item => {
+        totalUnits += item.qty;
+        const product = CATALOG_PRODUCTS.find(p => p.id === item.productId);
+        if (product) {
+          grandTotal += product.price * item.qty;
+        }
+      });
+
+      const dpAmount = Math.ceil(grandTotal * 0.5);
+
+      // Update badge & teks summary
+      document.getElementById("orderUnitBadge").textContent = `${totalUnits} Karya`;
+      document.getElementById("summaryItemCount").textContent = totalUnits;
+      document.getElementById("summaryTotalAmount").textContent = formatRupiah(grandTotal);
+      document.getElementById("summaryDpAmount").textContent = formatRupiah(dpAmount);
+
+      // Update bottom bar mobile
+      const mobileStickyDp = document.getElementById("mobileStickyDp");
+      if (mobileStickyDp) {
+        mobileStickyDp.textContent = formatRupiah(dpAmount);
+      }
+    }
+
+    // Handler Tambah Baris Karya Baru
+    document.getElementById("btnAddItem").addEventListener("click", () => {
+      orderItems.push({
+        uid: "item-" + Date.now(),
+        productId: CATALOG_PRODUCTS[0].id,
+        qty: 1,
+        nuansa: "crimson",
+        inisial: ""
+      });
+      renderItems();
+    });
+
+    // Handler Hapus Baris Karya
+    function removeItem(uid) {
+      if (orderItems.length <= 1) return; // Minimal 1 baris
+      orderItems = orderItems.filter(item => item.uid !== uid);
+      renderItems();
+    }
+
+    // Handler Update Kuantitas
+    function updateQty(uid, change) {
+      const target = orderItems.find(item => item.uid === uid);
+      if (target) {
+        target.qty = Math.max(1, Math.min(20, target.qty + change));
+        renderItems();
+      }
+    }
+
+    // Handler Update Produk
+    function updateProduct(uid, productId) {
+      const target = orderItems.find(item => item.uid === uid);
+      if (target) {
+        target.productId = productId;
+        renderItems();
+      }
+    }
+
+    // Handler Update Warna
+    function updateShade(uid, shadeId) {
+      const target = orderItems.find(item => item.uid === uid);
+      if (target) {
+        target.nuansa = shadeId;
+        renderItems();
+      }
+    }
+
+    // Handler Update Inisial
+    function updateInitial(uid, val) {
+      const target = orderItems.find(item => item.uid === uid);
+      if (target) {
+        target.inisial = val.trim();
+        const err = document.getElementById(`err-initial-${uid}`);
+        if (err && val.trim()) {
+          err.classList.remove("is-visible");
+        }
+      }
+    }
+
+    // Validasi Form
+    function validateForm() {
+      let isValid = true;
+
+      // 1. Validasi Nama
+      const nameInput = document.getElementById("buyerName");
+      const nameErr = document.getElementById("buyerNameError");
+      if (!nameInput.value.trim()) {
+        nameInput.classList.add("has-error");
+        nameErr.classList.add("is-visible");
+        isValid = false;
+      } else {
+        nameInput.classList.remove("has-error");
+        nameErr.classList.remove("is-visible");
+      }
+
+      // 2. Validasi Nomor WhatsApp (08xx atau 62xx, min 10 digit)
+      const phoneInput = document.getElementById("buyerPhone");
+      const phoneErr = document.getElementById("buyerPhoneError");
+      const phoneClean = phoneInput.value.replace(/[^0-9]/g, "");
+      const waRegex = /^(08|628)[0-9]{8,13}$/;
+
+      if (!waRegex.test(phoneClean)) {
+        phoneInput.classList.add("has-error");
+        phoneErr.classList.add("is-visible");
+        isValid = false;
+      } else {
+        phoneInput.classList.remove("has-error");
+        phoneErr.classList.remove("is-visible");
+      }
+
+      // 3. Validasi Tiap Baris Karya
+      orderItems.forEach(item => {
+        const prodSelect = document.getElementById(`prod-${item.uid}`);
+        const prodErr = document.getElementById(`err-prod-${item.uid}`);
+        if (!item.productId) {
+          if (prodSelect) prodSelect.classList.add("has-error");
+          if (prodErr) prodErr.classList.add("is-visible");
+          isValid = false;
+        } else {
+          if (prodSelect) prodSelect.classList.remove("has-error");
+          if (prodErr) prodErr.classList.remove("is-visible");
+        }
+
+        const initInput = document.getElementById(`initial-${item.uid}`);
+        const initErr = document.getElementById(`err-initial-${item.uid}`);
+        if (!item.inisial || item.inisial.trim() === "") {
+          if (initInput) initInput.classList.add("has-error");
+          if (initErr) initErr.classList.add("is-visible");
+          isValid = false;
+        } else {
+          if (initInput) initInput.classList.remove("has-error");
+          if (initErr) initErr.classList.remove("is-visible");
+        }
+      });
+
+      return isValid;
+    }
+
+    // Submit Handler
+    function handleFormSubmit(e) {
+      if (e) e.preventDefault();
+
+      if (!validateForm()) {
+        // Scroll ke elemen error pertama
+        const firstError = document.querySelector(".has-error");
+        if (firstError) {
+          firstError.scrollIntoView({ behavior: "smooth", block: "center" });
+          firstError.focus();
+        }
+        return;
+      }
+
+      // Hitung ringkasan
+      let total = 0;
+      let units = 0;
+      orderItems.forEach(i => {
+        units += i.qty;
+        const p = CATALOG_PRODUCTS.find(prod => prod.id === i.productId);
+        if (p) total += p.price * i.qty;
+      });
+      const dp = Math.ceil(total * 0.5);
+
+      alert(
+        `✓ RESERVASI TERCATAT!\n\n` +
+        `Nama Pemesan: ${document.getElementById("buyerName").value.trim()}\n` +
+        `WhatsApp: ${document.getElementById("buyerPhone").value.trim()}\n` +
+        `Total Karya: ${units} karya (${formatRupiah(total)})\n` +
+        `Uang Muka (DP 50%): ${formatRupiah(dp)}\n\n` +
+        `Langkah selanjutnya: Mengarahkan Anda ke pembayaran QRIS Atelier...`
+      );
+    }
+
+    document.getElementById("bespokeOrderForm").addEventListener("submit", handleFormSubmit);
+
+    // Hubungkan tombol bottom bar HP ke submit form utama
+    const btnMobileSubmit = document.getElementById("btnMobileSubmit");
+    if (btnMobileSubmit) {
+      btnMobileSubmit.addEventListener("click", () => {
+        handleFormSubmit();
+      });
+    }
+
+    // Inisialisasi awal
+    renderItems();
+  </script>
+</body>
+</html>
