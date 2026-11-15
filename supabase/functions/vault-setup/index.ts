@@ -128,6 +128,7 @@ const ORDER_SELECT = [
   "vault_letter_style",
   "audio_url",
   "audio_durasi",
+  "vault_audio_message",
   "video_url",
   "status",
   "vault_submitted_at",
@@ -290,7 +291,13 @@ function cleanMediaUrl(value: unknown, orderId: string, allowEmbedHosts: boolean
 
   const supabaseHost = SUPABASE_URL ? new URL(SUPABASE_URL).host : "";
   if (supabaseHost && url.host === supabaseHost) {
-    return url.pathname.includes(`/vault/${orderId}/`) ? raw : "";
+    if (!url.pathname.includes(`/vault/${orderId}/`)) return "";
+    // Buang cache-buster (?v=...) dan hash: path storage adalah identitas
+    // berkas yang sebenarnya. Tanpa ini, pembersihan orphan akan
+    // menganggap semua media masih dipakai sebagai berkas asing.
+    url.search = "";
+    url.hash = "";
+    return url.toString();
   }
 
   if (!allowEmbedHosts) return "";
@@ -308,7 +315,19 @@ async function pruneOrderMedia(
   orderId: string,
   keepUrls: string[]
 ): Promise<void> {
-  const keep = new Set(keepUrls.map((url) => String(url || "").trim()).filter(Boolean));
+  const normalize = (value: string): string => {
+    const raw = String(value || "").trim();
+    if (!raw) return "";
+    try {
+      const url = new URL(raw);
+      url.search = "";
+      url.hash = "";
+      return url.toString();
+    } catch {
+      return raw;
+    }
+  };
+  const keep = new Set(keepUrls.map(normalize).filter(Boolean));
   const folder = `vault/${orderId}`;
 
   for (const bucket of ["product-images", "vault-media"]) {
@@ -320,7 +339,7 @@ async function pruneOrderMedia(
         .map((entry) => `${folder}/${entry.name}`)
         .filter((path) => {
           const publicUrl = admin.storage.from(bucket).getPublicUrl(path).data.publicUrl;
-          return !keep.has(publicUrl);
+          return !keep.has(normalize(publicUrl));
         });
 
       if (stale.length > 0) {
@@ -600,6 +619,7 @@ async function handleSave(
       : generateSecurePin();
 
   const personalMessage = cleanText(body.personal_message, MAX_MESSAGE_LENGTH);
+  const audioMessage = cleanText(body.vault_audio_message, 600);
   const fotoVault = cleanMediaUrl(body.foto_vault, orderId, false);
   const audioUrl = cleanMediaUrl(body.audio_url, orderId, true);
   const videoUrl = cleanMediaUrl(body.video_url, orderId, true);
@@ -645,6 +665,7 @@ async function handleSave(
     p_foto_vault: fotoVault,
     p_audio_url: audioUrl,
     p_audio_durasi: audioDurationValue,
+    p_audio_message: audioMessage,
     p_video_url: videoUrl,
     p_photos: photos,
     p_photobooth_theme: photoboothTheme,

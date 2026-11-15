@@ -798,6 +798,21 @@
   box-shadow: 0 24px 60px rgba(107, 31, 42, 0.14);
 }
 
+/* Saat pelanggan sudah memesan dan masuk fase pembayaran, kartu
+   menyempit agar fokus pada instruksi QRIS & unggah bukti transfer. */
+.landing-v2 .lp-kolom-card.is-payment-compact {
+  max-width: 560px;
+  margin: 0 auto;
+  padding: clamp(1.25rem, 3vw, 2rem);
+}
+
+@media (max-width: 640px) {
+  .landing-v2 .lp-kolom-card.is-payment-compact {
+    max-width: 100%;
+    padding: 1.15rem 1rem;
+  }
+}
+
 .landing-v2 .lp-form-head {
   margin-bottom: 1.6rem;
   text-align: center;

@@ -1552,7 +1552,11 @@ export default function Home() {
               <h2 className="lp-script lp-kolom-title">Kolom Pengisian</h2>
               
 
-              <div className="lp-kolom-card">
+              <div
+                className={`lp-kolom-card${
+                  orderComplete || paymentPhase !== "form" ? " is-payment-compact" : ""
+                }`}
+              >
                 {orderComplete || paymentPhase === "confirmed" ? (
                   <div className="commission-confirmation lp-confirmation" role="status" aria-live="polite">
                     <div className="certificate-seal" aria-hidden="true">

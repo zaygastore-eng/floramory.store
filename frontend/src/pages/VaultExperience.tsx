@@ -92,6 +92,7 @@ export default function VaultExperience({
         vault_photos: previewData.vault_photos || [],
         vault_photobooth_theme: previewData.vault_photobooth_theme || "",
         vault_letter_style: previewData.vault_letter_style || {},
+        vault_audio_message: previewData.vault_audio_message || "",
         is_catalog: false,
       });
       setVaultUnlocked(true);
@@ -695,9 +696,11 @@ export default function VaultExperience({
                     </a>
                     <blockquote className="vault-audio-quote">
                       <p>
-                        {product.pesan_personal?.trim()
-                          ? `“${product.pesan_personal.trim()}”`
-                          : "“Lagu yang dipilih khusus untuk mewakili setiap rasa yang tak sempat terucap.”"}
+                        {product.vault_audio_message?.trim()
+                          ? `“${product.vault_audio_message.trim()}”`
+                          : product.pesan_personal?.trim()
+                            ? `“${product.pesan_personal.trim()}”`
+                            : "“Lagu yang dipilih khusus untuk mewakili setiap rasa yang tak sempat terucap.”"}
                       </p>
                       <footer>— {product.dari || "Atelier Keepsake"}</footer>
                     </blockquote>
@@ -717,7 +720,11 @@ export default function VaultExperience({
                       />
                     </Suspense>
                     <blockquote className="vault-audio-quote">
-                      <p>“Dengarkan dengan saksama suara yang dirangkai untuk menemani babak terindah hidupmu.”</p>
+                      <p>
+                        {product.vault_audio_message?.trim()
+                          ? `“${product.vault_audio_message.trim()}”`
+                          : "“Dengarkan dengan saksama suara yang dirangkai untuk menemani babak terindah hidupmu.”"}
+                      </p>
                       <footer>— {product.dari || "Atelier Keepsake"}</footer>
                     </blockquote>
                   </div>

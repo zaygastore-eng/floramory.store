@@ -51,6 +51,7 @@ export default function VaultSetup() {
 
   // Content states
   const [personalMessage, setPersonalMessage] = useState("");
+  const [audioMessage, setAudioMessage] = useState("");
   const [photoSlots, setPhotoSlots] = useState<PhotoSlot[]>(emptyPhotoSlots);
   const [photoboothTheme, setPhotoboothTheme] = useState<PhotoboothThemeId>(DEFAULT_PHOTOBOOTH_THEME);
   const [letterStyle, setLetterStyle] = useState<VaultLetterStyle>(DEFAULT_LETTER_STYLE);
@@ -83,6 +84,8 @@ export default function VaultSetup() {
   const [saving, setSaving] = useState(false);
   const [uploadError, setUploadError] = useState("");
   const [saved, setSaved] = useState(false);
+  const [savedPin, setSavedPin] = useState("");
+  const [pinCopied, setPinCopied] = useState(false);
   const [vaultLocked, setVaultLocked] = useState(false);
   const [vaultExpired, setVaultExpired] = useState(false);
   const [previewModalOpen, setPreviewModalOpen] = useState(false);
@@ -102,6 +105,7 @@ export default function VaultSetup() {
     setVaultLocked(Boolean(result.vaultLocked));
     setDpRequired(Boolean(result.dpRequired));
     setPersonalMessage(result.order.personal_message || "");
+    setAudioMessage(result.order.vault_audio_message || "");
 
     const savedPhotos = Array.isArray(result.order.vault_photos) ? result.order.vault_photos : [];
     const merged = [...savedPhotos];
@@ -499,6 +503,7 @@ export default function VaultSetup() {
         vault_letter_style: letterStyle as unknown as Record<string, unknown>,
         audio_url: audioSource === "spotify" ? spotifyUrl.trim() : audioUrl,
         audio_durasi: audioSource === "spotify" ? 0 : audioDuration,
+        vault_audio_message: audioMessage,
         video_url: videoUrl.trim(),
         vault_pin: customPin.trim(),
       });
@@ -520,6 +525,7 @@ export default function VaultSetup() {
       }
       setVaultLocked(true);
       setSaved(true);
+      setSavedPin(result.pin || customPin.trim() || order?.vault_pin || "");
     } catch (error) {
       setUploadError(error instanceof Error ? error.message : "Gagal menyimpan Memory Vault.");
     } finally {
@@ -684,23 +690,70 @@ export default function VaultSetup() {
             </div>
           </section>
         ) : saved || vaultLocked ? (
-          <section className="vault-setup-card text-center vault-setup-success-card" role="status">
-            <div className="vault-wax-seal-hero" aria-hidden="true" style={{ margin: "0 auto 1.5rem" }}>
+          <section className="vault-setup-card vault-setup-success-card" role="status">
+            <div className="vault-wax-seal-hero" aria-hidden="true" style={{ margin: "0 auto 1.25rem" }}>
               <span className="wax-seal-circle">
                 <img src="/a-chapter-logo-light.png" alt="" className="wax-seal-logo-img" />
               </span>
             </div>
-            <h2 className="vault-setup-card-title" style={{ fontSize: "2rem" }}>Kenangan Berhasil Dikunci</h2>
-            <p className="vault-setup-hint" style={{ maxWidth: "480px", margin: "1rem auto 2rem" }}>
-              Memoir digital Anda telah aman tersimpan di cloud permanen A Chapter. Kurator kami akan mencetak PIN fisik rahasia pada kartu ucapan di dalam boks kado penerima.
+            <span className="vault-success-kicker">A CHAPTER ATELIER · ARCHIVE SEALED</span>
+            <h2 className="vault-setup-card-title vault-success-title">Kenangan Berhasil Dikunci</h2>
+            <p className="vault-success-lead">
+              Memoir digital Anda telah tersimpan permanen di arsip A Chapter. Kurator kami akan
+              mencetak PIN fisik rahasia pada kartu ucapan di dalam boks kado penerima.
             </p>
-            <button
-              type="button"
-              className="hero-cta hero-cta-primary"
-              onClick={() => setPreviewModalOpen(true)}
-            >
-              [ Pratinjau Tampilan Penerima ]
-            </button>
+
+            {savedPin && (
+              <div className="vault-success-pin">
+                <span className="vault-success-pin-label">PIN RAHASIA PENERIMA</span>
+                <strong className="vault-success-pin-value">
+                  {savedPin.replace(/(\d{3})(?=\d)/g, "$1 ")}
+                </strong>
+                <button
+                  type="button"
+                  className="vault-success-pin-copy"
+                  onClick={() => void (async () => {
+                    try {
+                      await navigator.clipboard.writeText(savedPin);
+                      setPinCopied(true);
+                      window.setTimeout(() => setPinCopied(false), 2200);
+                    } catch {
+                      setPinCopied(false);
+                    }
+                  })()}
+                >
+                  {pinCopied ? "✓ Tersalin" : "Salin PIN"}
+                </button>
+                <span className="vault-success-pin-hint">
+                  Simpan PIN ini. Penerima memasukkannya setelah menggosok stiker perak pada kartu.
+                </span>
+              </div>
+            )}
+
+            <div className="vault-success-summary" role="list" aria-label="Ringkasan kenangan tersimpan">
+              <span role="listitem">📷 {photos.length || 0} foto</span>
+              {personalMessage.trim() && <span role="listitem">✉️ Surat renda</span>}
+              {(audioUrl || spotifyUrl.trim()) && (
+                <span role="listitem">
+                  {audioSource === "spotify" ? "🎵 Spotify" : "🎙️ Pesan suara"}
+                </span>
+              )}
+              {audioMessage.trim() && <span role="listitem">💬 Catatan audio</span>}
+              {(videoUrl || videoPreview) && <span role="listitem">🎬 Video memoir</span>}
+            </div>
+
+            <div className="vault-success-actions">
+              <button
+                type="button"
+                className="hero-cta hero-cta-primary"
+                onClick={() => setPreviewModalOpen(true)}
+              >
+                [ Pratinjau Tampilan Penerima ]
+              </button>
+              <a className="hero-cta hero-cta-outline" href={pageUrl("/")}>
+                Kembali ke Beranda
+              </a>
+            </div>
           </section>
         ) : (
           <>
@@ -1038,6 +1091,25 @@ export default function VaultSetup() {
                     />
                   </div>
                 )}
+
+                <div className="vault-audio-message-field">
+                  <label htmlFor="vault-audio-message" className="vault-file-label">
+                    Pesan Pengantar Audio
+                  </label>
+                  <textarea
+                    id="vault-audio-message"
+                    className="form-input vault-audio-message-input"
+                    rows={3}
+                    maxLength={600}
+                    value={audioMessage}
+                    onChange={e => setAudioMessage(e.target.value)}
+                    placeholder="Contoh: “Dengarkan rekaman ini saat kamu merindukan suasana sore di rumah kita...”"
+                  />
+                  <span className="drop-hint">
+                    Catatan ini tampil di bawah pemutar suara penerima, berdampingan dengan rekaman/Spotify Anda.
+                  </span>
+                  <span className="char-counter">{audioMessage.length} / 600 karakter</span>
+                </div>
               </section>
 
               {/* CARD: VIDEO MEMOIR (OPTIONAL) */}
@@ -1391,6 +1463,7 @@ export default function VaultSetup() {
                       ? spotifyUrl.trim()
                       : audioPreview || audioUrl,
                   audio_durasi: audioDuration,
+                  vault_audio_message: audioMessage.trim(),
                   video_url:
                     videoSource === "youtube"
                       ? videoUrl.trim()

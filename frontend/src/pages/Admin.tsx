@@ -331,6 +331,7 @@ export default function Admin() {
   const [form, setForm] = useState<FormState>(EMPTY);
   const [generatedUrl, setGeneratedUrl] = useState("");
   const [qrVisible, setQrVisible] = useState(false);
+  const [orderQrTarget, setOrderQrTarget] = useState<{ url: string; label: string; id: string } | null>(null);
   const [savingProduct, setSavingProduct] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [uploadingGallery, setUploadingGallery] = useState(false);
@@ -361,6 +362,7 @@ export default function Admin() {
   const [uploadingQris, setUploadingQris] = useState(false);
   const qrisUploadRef = useRef<HTMLInputElement>(null);
   const qrRef = useRef<HTMLDivElement>(null);
+  const orderQrRef = useRef<HTMLDivElement>(null);
   const produkUploadRef = useRef<HTMLInputElement>(null);
   const galleryUploadRef = useRef<HTMLInputElement>(null);
   const heroUploadRef = useRef<HTMLInputElement>(null);
@@ -560,8 +562,8 @@ export default function Admin() {
     }
   };
 
-  const loadPreOrders = async () => {
-    setLoadingOrders(true);
+  const loadPreOrders = async (silent = false) => {
+    if (!silent) setLoadingOrders(true);
     try {
       const [page, counts] = await Promise.all([fetchPreOrders(0), fetchPreOrderStatusCounts()]);
       setPreOrders(page.orders);
@@ -569,9 +571,9 @@ export default function Admin() {
       setHasMorePreOrders(page.hasMore);
       setOperationalCounts(counts);
     } catch (error) {
-      showToast(error instanceof Error ? error.message : "Gagal memuat pre-order");
+      if (!silent) showToast(error instanceof Error ? error.message : "Gagal memuat pre-order");
     } finally {
-      setLoadingOrders(false);
+      if (!silent) setLoadingOrders(false);
     }
   };
 
@@ -637,10 +639,12 @@ export default function Admin() {
         const currentWaiting = counts.waiting_dp ?? 0;
         if (currentWaiting > prevWaiting) {
           showToast("🛎️ Ada pre-order baru masuk!", "alert");
-          void loadPreOrders();
         }
         prevWaiting = currentWaiting;
         setOperationalCounts(counts);
+        // Segarkan daftar pesanan agar status pengisian Memory Vault
+        // (PIN, jumlah foto, audio, surat) ikut ter-update tanpa reload manual.
+        await loadPreOrders(true);
       } catch {
         // Abaikan error background polling
       }
@@ -1075,23 +1079,17 @@ export default function Admin() {
     navigator.clipboard.writeText(generatedUrl).then(() => showToast("URL disalin ke clipboard"));
   };
 
-  const downloadQR = () => {
-    const canvas = qrRef.current?.querySelector("canvas");
-    if (!canvas) {
-      showToast("Gagal download, canvas tidak tersedia");
-      return;
-    }
-
+  const buildQrPrintCanvas = (
+    canvas: HTMLCanvasElement,
+    serial: string
+  ): HTMLCanvasElement | null => {
     // High-resolution canvas for physical printing (acrylic tags, sticker paper, gift cards)
     // Canvas dimensions: 1200 x 1500 px (well above 1024x1024 minimum requirement)
     const printCanvas = document.createElement("canvas");
     printCanvas.width = 1200;
     printCanvas.height = 1500;
     const ctx = printCanvas.getContext("2d");
-    if (!ctx) {
-      showToast("Gagal membuat canvas cetak resolusi tinggi");
-      return;
-    }
+    if (!ctx) return null;
 
     ctx.imageSmoothingEnabled = true;
     ctx.imageSmoothingQuality = "high";
@@ -1116,40 +1114,84 @@ export default function Admin() {
     }
 
     // 2. Draw 1024x1024 QR Code at 1:1 pixel mapping with quiet zone
-    // Positioned centered horizontally: (1200 - 1024) / 2 = 88 px, top margin = 80 px
     ctx.drawImage(canvas, 88, 80, 1024, 1024);
 
     // 3. Micro-QR Frame & Branding Integration
-    // Primary brand header
     ctx.fillStyle = "#111111";
     ctx.font = "bold 64px 'Cormorant Garamond', Georgia, serif";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.fillText("A Chapter", 600, 1170);
 
-    // Subtitle
     ctx.fillStyle = "#4f557d";
     ctx.font = "500 36px 'DM Sans', -apple-system, sans-serif";
     ctx.fillText("Smart Eco-Preserved Artware · Memory Vault", 600, 1230);
 
-    // Product Serial / Identifier
-    const productId = form.id.trim() || "new";
     ctx.fillStyle = "#697099";
     ctx.font = "bold 32px 'SF Mono', Menlo, Consolas, monospace";
-    ctx.fillText("#" + productId, 600, 1290);
+    ctx.fillText("#" + serial, 600, 1290);
 
-    // Micro-QR Whisper / Instruction
     ctx.fillStyle = "#4a4a4a";
     ctx.font = "26px 'DM Sans', -apple-system, sans-serif";
-    ctx.fillText("Scan untuk info produk & pesan personal", 600, 1350);
+    ctx.fillText("Scan untuk membuka Memory Vault", 600, 1350);
 
-    // 4. Download Trigger with required naming pattern: achapter-qr-${product.id || 'new'}.png
+    return printCanvas;
+  };
+
+  const downloadQrCanvas = (canvas: HTMLCanvasElement, serial: string) => {
+    const printCanvas = buildQrPrintCanvas(canvas, serial);
+    if (!printCanvas) {
+      showToast("Gagal membuat canvas cetak resolusi tinggi");
+      return;
+    }
     const link = document.createElement("a");
-    link.download = `achapter-qr-${form.id.trim() || "new"}.png`;
+    link.download = `achapter-qr-${serial || "new"}.png`;
     link.href = printCanvas.toDataURL("image/png");
     link.click();
     showToast("QR Code resolusi cetak (1200×1500) berhasil didownload", "success");
   };
+
+  const downloadQR = () => {
+    const canvas = qrRef.current?.querySelector("canvas");
+    if (!canvas) {
+      showToast("Gagal download, canvas tidak tersedia");
+      return;
+    }
+    downloadQrCanvas(canvas, form.id.trim() || "new");
+  };
+
+  const orderQrId = (order: PreOrder) => {
+    const suffix = String(order.id || "").replace(/[^a-zA-Z0-9]/g, "").slice(0, 8).toUpperCase();
+    return `ORD-${suffix || Date.now().toString().slice(-6)}`;
+  };
+
+  const openOrderQr = (order: PreOrder) => {
+    const base = (localStorage.getItem(BASE_URL_KEY) || baseUrl || PRODUCTION_SITE_URL).trim().replace(/\/+$/, "");
+    const id = orderQrId(order);
+    setOrderQrTarget({
+      id,
+      url: `${base}/produk?id=${encodeURIComponent(id)}`,
+      label: order.order_number || order.id || order.customer_name,
+    });
+  };
+
+  const downloadOrderQr = () => {
+    const canvas = orderQrRef.current?.querySelector("canvas");
+    if (!canvas || !orderQrTarget) {
+      showToast("Gagal download, canvas tidak tersedia");
+      return;
+    }
+    downloadQrCanvas(canvas, orderQrTarget.id);
+  };
+
+  const copyOrderQrUrl = () => {
+    if (!orderQrTarget) return;
+    navigator.clipboard.writeText(orderQrTarget.url).then(
+      () => showToast("URL QR Vault berhasil disalin.", "success"),
+      () => showToast("Gagal menyalin URL QR.", "alert")
+    );
+  };
+
 
   const copyProductQrUrl = (productId: string) => {
     const base = (localStorage.getItem(BASE_URL_KEY) || baseUrl || PRODUCTION_SITE_URL).trim().replace(/\/+$/, "");
@@ -1820,6 +1862,29 @@ export default function Admin() {
     </div>
   );
 
+  const vaultBadgeFor = (order: PreOrder) => {
+    const submitted = Boolean(order.vault_submitted_at || order.vault_pin);
+    const photoCount =
+      (Array.isArray(order.vault_photos) ? order.vault_photos.length : 0) ||
+      (order.foto_vault ? 1 : 0);
+    const parts: string[] = [];
+    if (photoCount > 0) parts.push(`${photoCount} foto`);
+    if (order.personal_message) parts.push("surat");
+    if (order.audio_url) {
+      parts.push(order.audio_url.includes("spotify") ? "Spotify" : "audio");
+    }
+    if (order.vault_audio_message) parts.push("catatan audio");
+    if (order.video_url) parts.push("video");
+    const submittedLabel = order.vault_submitted_at
+      ? new Date(order.vault_submitted_at).toLocaleDateString("id-ID", {
+          day: "2-digit",
+          month: "short",
+          year: "numeric",
+        })
+      : "";
+    return { submitted, parts, submittedLabel };
+  };
+
   const renderPreOrders = () => (
     <div className="admin-panel-card">
       <div className="admin-panel-head">
@@ -1961,9 +2026,22 @@ export default function Admin() {
                 <div className="admin-order-memory">
                   <span className="admin-status-caption">Status Memori Vault</span>
                   <div className="admin-order-pin-row">
-                    <span className={`admin-order-pin-status ${order.vault_pin ? "ready" : "pending"}`}>
-                      {order.vault_pin ? "Siap Cetak / Pasang Stiker Gosok" : "Menunggu Pengisian Kenangan"}
-                    </span>
+                    {(() => {
+                      const { submitted, parts, submittedLabel } = vaultBadgeFor(order);
+                      return (
+                        <>
+                          <span className={`admin-order-pin-status ${submitted ? "ready" : "pending"}`}>
+                            {submitted ? "✓ Kenangan Terisi & Terkunci" : "Menunggu Pengisian Kenangan"}
+                          </span>
+                          {submitted && (
+                            <span className="admin-order-vault-summary">
+                              {submittedLabel ? `Diisi ${submittedLabel}` : "Sudah diisi"}
+                              {parts.length > 0 ? ` · ${parts.join(" · ")}` : ""}
+                            </span>
+                          )}
+                        </>
+                      );
+                    })()}
                     {order.vault_pin && (
                       <span className="admin-order-pin">
                         PIN Kartu: <strong>{order.vault_pin}</strong>
@@ -2034,13 +2112,9 @@ export default function Admin() {
                 <button
                   type="button"
                   className="admin-order-sync-btn"
-                  onClick={() => {
-                    if (window.confirm("Proses pesanan ini menjadi produk dan buat QR Vault? Aksi ini akan mengunci data pesanan.")) {
-                      processOrderToProduct(order);
-                    }
-                  }}
+                  onClick={() => openOrderQr(order)}
                 >
-                  ✦ Proses jadi Produk &amp; Cetak QR
+                  ✦ Cetak QR Vault
                 </button>
               </div>
             </div>
@@ -2052,6 +2126,56 @@ export default function Admin() {
           <button className="admin-outline-btn" onClick={loadMorePreOrders} disabled={loadingOrders}>
             Muat lebih banyak
           </button>
+        </div>
+      )}
+
+      {orderQrTarget && (
+        <div
+          className="admin-qr-modal-overlay"
+          role="dialog"
+          aria-modal="true"
+          aria-label="QR Vault pesanan"
+          onClick={() => setOrderQrTarget(null)}
+        >
+          <div className="admin-qr-modal" onClick={event => event.stopPropagation()}>
+            <div className="admin-qr-modal-head">
+              <div>
+                <span className="admin-qr-modal-kicker">STIKER QR VAULT</span>
+                <h3>#{orderQrTarget.label}</h3>
+              </div>
+              <button
+                type="button"
+                className="admin-qr-modal-close"
+                aria-label="Tutup pratinjau QR"
+                onClick={() => setOrderQrTarget(null)}
+              >
+                ✕
+              </button>
+            </div>
+            <div className="admin-qr-modal-canvas" ref={orderQrRef}>
+              <QRCode
+                value={orderQrTarget.url}
+                size={512}
+                fgColor="#111111"
+                bgColor="#fafbff"
+                level="H"
+                marginSize={2}
+                style={{ width: "220px", height: "220px", display: "block" }}
+              />
+            </div>
+            <p className="admin-qr-modal-url">{orderQrTarget.url}</p>
+            <p className="admin-qr-modal-hint">
+              QR ini langsung mengarah ke Memory Vault pesanan tanpa perlu mengonversi pesanan menjadi produk.
+            </p>
+            <div className="admin-qr-modal-actions">
+              <button type="button" className="admin-order-sync-btn" onClick={downloadOrderQr}>
+                Download PNG Cetak
+              </button>
+              <button type="button" className="admin-outline-btn" onClick={copyOrderQrUrl}>
+                Salin URL
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

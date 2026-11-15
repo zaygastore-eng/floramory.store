@@ -61,6 +61,7 @@ const PRODUCT_SELECT = [
   "vault_letter_style",
   "audio_url",
   "audio_durasi",
+  "vault_audio_message",
   "video_url",
   "vault_pin",
   "vault_pin_hash",
@@ -202,6 +203,7 @@ function vaultProduct(product: ProductRow): Record<string, unknown> {
     vault_letter_style: product.vault_letter_style,
     audio_url: product.audio_url,
     audio_durasi: product.audio_durasi,
+    vault_audio_message: product.vault_audio_message,
     video_url: product.video_url,
   };
 }

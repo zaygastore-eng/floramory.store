@@ -982,6 +982,14 @@
   color: #92400E;
 }
 
+.admin-order-vault-summary {
+  display: block;
+  width: 100%;
+  font-size: 0.72rem;
+  color: var(--admin-slate);
+  opacity: 0.78;
+}
+
 .admin-order-pin {
   display: inline-flex;
   align-items: center;
@@ -1909,4 +1917,91 @@
     padding: 0 4px;
     font-size: 0.72rem;
   }
+}
+
+/* ── DIRECT ORDER QR MODAL ── */
+.admin-qr-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: rgba(24, 16, 18, 0.55);
+  backdrop-filter: blur(3px);
+}
+
+.admin-qr-modal {
+  width: min(100%, 420px);
+  padding: 1.4rem;
+  border-radius: 16px;
+  background: #fffdf8;
+  box-shadow: 0 28px 70px rgba(35, 12, 18, 0.32);
+  text-align: center;
+}
+
+.admin-qr-modal-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  text-align: left;
+  margin-bottom: 1rem;
+}
+
+.admin-qr-modal-kicker {
+  display: block;
+  font-family: var(--font-body, sans-serif);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  color: #8c766b;
+}
+
+.admin-qr-modal-head h3 {
+  margin: 0.25rem 0 0;
+  font-family: var(--font-display, Georgia, serif);
+  font-size: 1.25rem;
+  color: #3c1419;
+}
+
+.admin-qr-modal-close {
+  border: 0;
+  background: transparent;
+  font-size: 1rem;
+  color: #756c64;
+  cursor: pointer;
+  padding: 0.2rem 0.35rem;
+}
+
+.admin-qr-modal-canvas {
+  display: flex;
+  justify-content: center;
+  padding: 1rem;
+  border: 1px dashed rgba(83, 27, 33, 0.22);
+  border-radius: 12px;
+  background: #fafbff;
+}
+
+.admin-qr-modal-url {
+  margin: 0.9rem 0 0;
+  font-family: monospace;
+  font-size: 0.68rem;
+  color: #697099;
+  word-break: break-all;
+}
+
+.admin-qr-modal-hint {
+  margin: 0.5rem 0 1rem;
+  font-size: 0.78rem;
+  line-height: 1.5;
+  color: #756c64;
+}
+
+.admin-qr-modal-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.6rem;
 }

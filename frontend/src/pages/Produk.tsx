@@ -192,29 +192,14 @@ export default function Produk() {
 
           <div className="vault-content-stack">
             {isVaultLocked ? (
-              <div
-                className="order-step-content"
-                style={{
-                  padding: "clamp(1.5rem, 5vw, 2.5rem)",
-                  border: "1px solid rgba(160, 139, 94, 0.35)",
-                  borderRadius: "24px",
-                  background: "linear-gradient(145deg, #fffdf7, #f7f3e8)",
-                  boxShadow: "0 18px 48px rgba(67, 59, 39, 0.1)",
-                  textAlign: "center",
-                }}
-              >
-                <span aria-hidden="true" style={{ fontSize: "2.5rem" }}>✦</span>
-                <h3 style={{ margin: "0.75rem 0", color: "#4b503b", fontFamily: "var(--font-heading, Georgia, serif)" }}>
-                  Kapsul Kenangan Terkunci
-                </h3>
-                <p style={{ margin: "0 auto 1.25rem", maxWidth: "28rem", color: "#69705d", lineHeight: 1.7 }}>
-                  Kado ini dilengkapi pesan pribadi &amp; kenangan khusus untuk penerima.
+              <div className="vault-pin-card" role="dialog" aria-label="Verifikasi PIN Brankas">
+                <div className="vault-pin-icon" aria-hidden="true">🔒</div>
+                <h3 className="vault-pin-heading">Kapsul Kenangan Terkunci</h3>
+                <p className="vault-pin-desc">
+                  Gosok stiker perak pada kartu ucapan A Chapter kamu, lalu masukkan 6 digit PIN rahasia untuk membuka kenangan ini.
                 </p>
-                <form onSubmit={handleVerifyPin} style={{ margin: "1.5rem auto 0", maxWidth: "24rem" }}>
-                    <p style={{ margin: "0 0 0.9rem", color: "#69705d", lineHeight: 1.65 }}>
-                      Gosok stiker perak pada kartu ucapan A Chapter kamu, lalu masukkan 6 digit PIN rahasia di bawah ini.
-                    </p>
-                    <div style={{ display: "flex", justifyContent: "center", gap: "0.5rem", marginBottom: "1rem" }}>
+                <form onSubmit={handleVerifyPin} className="vault-pin-form">
+                    <div className="vault-pin-inputs">
                       {Array.from({ length: 6 }, (_, index) => (
                         <input
                           key={index}
@@ -232,16 +217,15 @@ export default function Produk() {
                             }
                           }}
                           onPaste={handlePinPaste}
-                          className="form-input"
-                          style={{ width: "2.8rem", height: "3.2rem", padding: 0, textAlign: "center", fontSize: "1.25rem", fontWeight: 700 }}
+                          className="vault-pin-digit"
                         />
                       ))}
                     </div>
-                    <button type="submit" className="specimen-order-button" disabled={pinBusy || pinDigits.join("").length !== 6}>
-                      {pinBusy ? <><LoaderCircle size={18} className="vault-pin-spinner" aria-hidden="true" /> Memeriksa PIN...</> : "🎁 Buka Memory Vault"}
+                    <button type="submit" className="hero-cta hero-cta-primary vault-pin-submit" disabled={pinBusy || pinDigits.join("").length !== 6}>
+                      {pinBusy ? <><LoaderCircle size={16} className="vault-pin-spinner" aria-hidden="true" /> Memeriksa PIN...</> : "Buka Memory Vault"}
                     </button>
                     {pinMessage && (
-                      <p role="alert" aria-live="polite" style={{ margin: "0.8rem 0 0", padding: "0.8rem", borderRadius: "10px", background: pinLocked ? "#fff0ed" : "#fff8e7", color: pinLocked ? "#9d3e32" : "#805d21", fontSize: "0.88rem", lineHeight: 1.5 }}>
+                      <p role="alert" aria-live="polite" className="vault-pin-message">
                         {pinMessage}
                       </p>
                     )}
@@ -249,9 +233,9 @@ export default function Produk() {
                       href={`https://wa.me/${waDigits}?text=${encodeURIComponent("Halo A Chapter, kartu kado saya rusak atau PIN tidak terbaca. Mohon bantu saya.")}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      style={{ display: "inline-block", marginTop: "1rem", color: "#69705d", fontSize: "0.86rem", textDecoration: "underline" }}
+                      className="vault-pin-help-link"
                     >
-                      Kartu rusak atau tergores tidak terbaca? Hubungi WhatsApp A Chapter
+                      Kartu rusak atau PIN tidak terbaca? Hubungi WhatsApp A Chapter
                     </a>
                 </form>
               </div>

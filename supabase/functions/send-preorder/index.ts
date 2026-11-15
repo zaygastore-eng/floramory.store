@@ -519,16 +519,28 @@ Deno.serve(async (req: Request) => {
   const productIds = Array.from(new Set(items.map((item) => item.product_id)));
   const { data: productRows, error: productError } = await admin
     .from("products")
-    .select("id, nama_produk, harga")
+    .select("id, nama_produk, harga, kategori, tier, bunga, deskripsi, bahan, ukuran, foto_produk")
     .in("id", productIds)
     .eq("status", "active");
   if (productError) {
     return json({ message: "Produk tidak ditemukan." }, 400);
   }
 
-  const productMap = new Map<string, { id: string; nama_produk: string; harga: string }>();
+  type CatalogRow = {
+    id: string;
+    nama_produk: string;
+    harga: string;
+    kategori?: string;
+    tier?: string;
+    bunga?: string;
+    deskripsi?: string;
+    bahan?: string;
+    ukuran?: string;
+    foto_produk?: string;
+  };
+  const productMap = new Map<string, CatalogRow>();
   for (const row of productRows || []) {
-    productMap.set(String(row.id), row);
+    productMap.set(String(row.id), row as CatalogRow);
   }
 
   for (const item of items) {
@@ -653,6 +665,51 @@ Deno.serve(async (req: Request) => {
 
   const orderIds = insertedRows.map((row) => String(row.id));
   const orderNumbers = insertedRows.map((row) => String(row.order_number));
+
+  // 11b) Buat produk privat per pesanan SEKARANG, sehingga QR Vault bisa
+  // dicetak langsung dari daftar pesanan tanpa langkah konversi manual.
+  // Produk ini yang nanti diisi oleh save_vault_setup.
+  const idByOrderNumber = new Map<string, string>();
+  for (const row of insertedRows) {
+    idByOrderNumber.set(String(row.order_number), String(row.id));
+  }
+
+  const linkedProductRows = orderRows.flatMap((row) => {
+    const orderId = idByOrderNumber.get(String(row.order_number || ""));
+    if (!orderId) return [];
+    const catalog = productMap.get(String(row.product_id || ""));
+    const suffix = orderId.replace(/[^a-zA-Z0-9]/g, "").slice(0, 8).toUpperCase();
+    const tier = String(catalog?.tier || "classic").toLowerCase();
+    return [{
+      id: `ORD-${suffix}`,
+      order_id: orderId,
+      nama_produk: String(catalog?.nama_produk || row.product_name || "Kado Botani A Chapter"),
+      kategori: String(catalog?.kategori || ""),
+      tier: ["classic", "signature", "masterpiece"].includes(tier) ? tier : "classic",
+      harga: String(catalog?.harga || ""),
+      bunga: String(catalog?.bunga || ""),
+      deskripsi: String(catalog?.deskripsi || ""),
+      bahan: String(catalog?.bahan || ""),
+      ukuran: String(catalog?.ukuran || ""),
+      nama_pembeli: String(row.recipient_name || row.customer_name || ""),
+      dari: String(row.sender_name || row.customer_name || ""),
+      pesan_personal: String(row.personal_message || ""),
+      foto_produk: String(catalog?.foto_produk || ""),
+      recipient_whatsapp: String(row.whatsapp || ""),
+      is_catalog: false,
+      status: "active",
+    }];
+  });
+
+  if (linkedProductRows.length > 0) {
+    const { error: linkedProductError } = await admin
+      .from("products")
+      .upsert(linkedProductRows, { onConflict: "id", ignoreDuplicates: true });
+    if (linkedProductError) {
+      // Jangan gagalkan pre-order: produk bisa dibuat ulang saat vault disimpan.
+      console.warn("[PREORDER_LINKED_PRODUCT_ERROR]", linkedProductError.message);
+    }
+  }
 
   // Notifikasi email ke atelier. Tidak pernah menggagalkan pemesanan.
   const itemLines = pricedItems

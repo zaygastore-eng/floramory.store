@@ -41,6 +41,8 @@ export interface Product extends CatalogProduct {
   foto_qr: string;
   audio_url: string;
   audio_durasi: number; // in seconds
+  /** Pesan/catatan pengantar yang tampil bersama pemutar audio. */
+  vault_audio_message?: string;
   video_url: string;
   foto_vault: string;
   /** Foto galeri tambahan produk (tampil di halaman detail/folio). */
@@ -84,6 +86,7 @@ export interface PreOrder {
   vault_letter_style?: Record<string, unknown>;
   audio_url?: string;
   audio_durasi?: number;
+  vault_audio_message?: string;
   video_url?: string;
   vault_submitted_at?: string;
   vault_pin?: string;
@@ -798,6 +801,7 @@ export async function saveVaultSetup(
     vault_letter_style?: Record<string, unknown>;
     audio_url: string;
     audio_durasi?: number;
+    vault_audio_message?: string;
     video_url: string;
     vault_pin?: string;
   }
@@ -964,8 +968,29 @@ function tierToDbValue(tier: string): string {
 }
 
 function toStringArray(value: unknown): string[] {
-  if (!Array.isArray(value)) return [];
-  return value
+  let list: unknown[] = [];
+  if (Array.isArray(value)) {
+    list = value;
+  } else if (typeof value === "string") {
+    const raw = value.trim();
+    if (!raw) return [];
+    if (raw.startsWith("[") || raw.startsWith("\"")) {
+      try {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) list = parsed;
+        else if (typeof parsed === "string") list = [parsed];
+      } catch {
+        list = [raw];
+      }
+    } else if (raw.startsWith("{")) {
+      // Literal array PostgreSQL: {"https://...","https://..."}
+      const matches = raw.match(/"((?:[^"\\]|\\.)*)"/g) || [];
+      list = matches.map((item) => item.slice(1, -1).replace(/\\"/g, "\""));
+    } else {
+      list = raw.split(/[\n,]+/);
+    }
+  }
+  return list
     .map((item) => String(item || "").trim())
     .filter((item) => item.length > 0);
 }
@@ -990,6 +1015,7 @@ function normalizeProduct(obj: Partial<Product>): Product {
     foto_qr: String(obj.foto_qr || record.foto_QR || "").trim(),
     audio_url: String(obj.audio_url || record.audio_url || "").trim(),
     audio_durasi: Number.isFinite(parsedDurasi) ? Math.max(0, Math.round(parsedDurasi)) : 0,
+    vault_audio_message: String(obj.vault_audio_message || record.vault_audio_message || "").trim(),
     video_url: String(obj.video_url || record.video_url || "").trim(),
     foto_vault: String(obj.foto_vault || record.foto_vault || "").trim(),
     gallery_photos: toStringArray(obj.gallery_photos ?? record.gallery_photos),
@@ -1085,6 +1111,7 @@ function normalizePreOrder(obj: Partial<PreOrder> & Record<string, unknown>): Pr
         : {},
     audio_url: String(obj.audio_url || "").trim(),
     audio_durasi: Number(obj.audio_durasi) || 0,
+    vault_audio_message: String(obj.vault_audio_message || "").trim(),
     video_url: String(obj.video_url || "").trim(),
     vault_submitted_at: String(obj.vault_submitted_at || "").trim(),
     vault_pin: String(obj.vault_pin || "").trim(),
@@ -1604,7 +1631,7 @@ function isTierConstraintError(message: string): boolean {
 
 // Kolom eksplisit (bukan select=*). updated_at tidak dipakai UI.
 const PREORDER_SELECT =
-  "id,order_number,group_id,group_number,group_item_index,group_item_count,group_total_amount,group_dp_amount,total_amount,dp_amount,nuansa,inisial,customer_name,whatsapp,product_id,product_name,custom_request,recipient_name,sender_name,personal_message,recipient_whatsapp,foto_vault,audio_url,audio_durasi,video_url,vault_submitted_at,vault_pin,vault_setup_token,vault_setup_expires_at,vault_locked_at,payment_proof_url,status,created_at";
+  "id,order_number,group_id,group_number,group_item_index,group_item_count,group_total_amount,group_dp_amount,total_amount,dp_amount,nuansa,inisial,customer_name,whatsapp,product_id,product_name,custom_request,recipient_name,sender_name,personal_message,recipient_whatsapp,foto_vault,vault_photos,vault_photobooth_theme,vault_letter_style,audio_url,audio_durasi,vault_audio_message,video_url,vault_submitted_at,vault_pin,vault_setup_token,vault_setup_expires_at,vault_locked_at,payment_proof_url,status,created_at";
 
 export interface PreOrderPage {
   orders: PreOrder[];

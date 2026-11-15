@@ -78,7 +78,7 @@ export function formatGroupCommissionWhatsApp(params: {
   summary.push(
     `• Status VIP Waiting List: ${params.isVip ? "Ya (Klaim Early-Bird Privilege)" : "Belum Terdaftar"}`,
     "",
-    "Mohon verifikasi ketersediaan slot, nomor registrasi arsip, dan langkah pengisian brankas memori saya. Terima kasih."
+    "Saya sudah melakukan pembayaran DP 50% dan mengunggah bukti transfer. Mohon verifikasi pembayaran serta kirimkan tautan pengisian brankas memori saya. Terima kasih."
   );
 
   return summary.join("\n");
