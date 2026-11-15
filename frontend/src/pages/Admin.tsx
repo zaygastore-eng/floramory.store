@@ -201,6 +201,197 @@ function formatCurrency(value: number): string {
   }).format(value);
 }
 
+function printWhenReady(printWindow: Window): void {
+  let hasPrinted = false;
+  const startPrint = () => {
+    if (hasPrinted || printWindow.closed) return;
+    hasPrinted = true;
+    printWindow.focus();
+    printWindow.print();
+  };
+  const image = printWindow.document.querySelector("img");
+  if (image && !image.complete) {
+    image.addEventListener("load", startPrint, { once: true });
+    image.addEventListener("error", startPrint, { once: true });
+    window.setTimeout(startPrint, 1500);
+    return;
+  }
+  window.setTimeout(startPrint, 250);
+}
+
+function printOrderQrSticker(canvas: HTMLCanvasElement, printWindow: Window): void {
+  const qrImage = canvas.toDataURL("image/png");
+  printWindow.document.open();
+  printWindow.document.write(`<!doctype html>
+    <html lang="id">
+      <head>
+        <meta charset="utf-8">
+        <title>Stiker QR A Chapter</title>
+        <style>
+          @page { size: 20mm 20mm; margin: 0; }
+          * { box-sizing: border-box; }
+          html, body { width: 20mm; height: 20mm; margin: 0; padding: 0; }
+          body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          .sticker {
+            width: 20mm;
+            height: 20mm;
+            padding: 0.6mm;
+            border: 0.2mm solid #c5a880;
+            border-radius: 2mm;
+            background: #fff;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+          }
+          img { display: block; width: 16.4mm; height: 16.4mm; }
+          .caption {
+            margin-top: 0.25mm;
+            color: #531b21;
+            font: 700 1.15mm/1.2 Arial, sans-serif;
+            letter-spacing: 0.08mm;
+            white-space: nowrap;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="sticker">
+          <img src="${qrImage}" alt="QR Memory Vault">
+          <div class="caption">A CHAPTER · SCAN ME</div>
+        </div>
+      </body>
+    </html>`);
+  printWindow.document.close();
+  printWhenReady(printWindow);
+}
+
+function printOrderPinCard(pin: string, printWindow: Window): void {
+  const formattedPin = `${pin.slice(0, 3)} · ${pin.slice(3)}`;
+  printWindow.document.open();
+  printWindow.document.write(`<!doctype html>
+    <html lang="id">
+      <head>
+        <meta charset="utf-8">
+        <title>Kartu PIN A Chapter</title>
+        <style>
+          @page { size: 65mm 90mm; margin: 0; }
+          * { box-sizing: border-box; }
+          html, body { width: 65mm; height: 90mm; margin: 0; padding: 0; }
+          body {
+            color: #531b21;
+            font-family: "Courier New", monospace;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+          }
+          .card {
+            position: relative;
+            width: 65mm;
+            height: 90mm;
+            padding: 2.2mm;
+            overflow: hidden;
+            background: #fbf8f3;
+          }
+          .frame {
+            width: 100%;
+            height: 100%;
+            border: 0.3mm solid #c5a880;
+            padding: 2.5mm 3.2mm 2mm;
+            text-align: center;
+          }
+          h1 {
+            margin: 0 0 2.5mm;
+            font: 700 2.8mm/1.2 "Courier New", monospace;
+            letter-spacing: 0.15mm;
+          }
+          .step {
+            display: flex;
+            gap: 1.8mm;
+            margin: 0 0 2.2mm;
+            text-align: left;
+            font-size: 1.85mm;
+            line-height: 1.3;
+          }
+          .step-number { flex: 0 0 auto; }
+          .scratch-frame {
+            height: 30mm;
+            margin: 3mm 0 3mm;
+            border: 0.25mm solid #c5a880;
+            padding: 2mm;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+          }
+          .scratch-sticker {
+            width: 40mm;
+            height: 15mm;
+            border: 0.25mm solid #531b21;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+          }
+          .scratch-foil {
+            width: 30mm;
+            height: 5mm;
+            border: 0.2mm solid #aaa7a5;
+            background: repeating-linear-gradient(45deg, #d6d3d0 0 0.45mm, #f3f1ef 0.45mm 0.9mm);
+          }
+          .scratch-label {
+            margin-top: 0.4mm;
+            font: 400 1.8mm/1.15 "Courier New", monospace;
+          }
+          .pin-caption {
+            margin-top: 2.4mm;
+            font-size: 1.8mm;
+            line-height: 1.2;
+          }
+          .pin {
+            margin-top: 0.7mm;
+            font: 700 3.6mm/1.15 "Courier New", monospace;
+            letter-spacing: 1.2mm;
+          }
+          .promise {
+            margin: 0;
+            font-size: 1.8mm;
+            line-height: 1.3;
+            text-align: left;
+          }
+          .footer {
+            position: absolute;
+            right: 0;
+            bottom: 1.6mm;
+            left: 0;
+            font-size: 1.8mm;
+            line-height: 1.2;
+            text-align: center;
+          }
+        </style>
+      </head>
+      <body>
+        <main class="card">
+          <div class="frame">
+            <h1>HOW TO UNLOCK</h1>
+            <p class="step"><span class="step-number">1.</span><span>Pindai kode QR mini yang terpasang pada karya botani fisik Anda menggunakan kamera ponsel.</span></p>
+            <p class="step"><span class="step-number">2.</span><span>Gosok perlahan stiker perak di bawah ini untuk menemukan 6 digit kunci rahasia brankas Anda:</span></p>
+            <section class="scratch-frame">
+              <div class="scratch-sticker">
+                <div class="scratch-foil"></div>
+                <div class="scratch-label">[ GOSOK DENGAN KOIN ]</div>
+              </div>
+              <div class="pin-caption">Di baliknya tercetak angka tajam:</div>
+              <div class="pin">${formattedPin}</div>
+            </section>
+            <p class="promise">“Kenangan, potret, dan suara yang tersimpan di dalamnya akan menjadi milikmu selamanya.”</p>
+            <footer class="footer">www.achapter.my.id · Preserved Forever</footer>
+          </div>
+        </main>
+      </body>
+    </html>`);
+  printWindow.document.close();
+  printWhenReady(printWindow);
+}
+
 function LoginGate({ onLogin, notice }: { onLogin: () => void; notice?: string }) {
   const supabaseReady = hasSupabaseConfig();
   const [email, setEmail] = useState("");
@@ -331,7 +522,10 @@ export default function Admin() {
   const [form, setForm] = useState<FormState>(EMPTY);
   const [generatedUrl, setGeneratedUrl] = useState("");
   const [qrVisible, setQrVisible] = useState(false);
-  const [orderQrTarget, setOrderQrTarget] = useState<{ url: string; label: string; id: string } | null>(null);
+  const [orderQrPrintTarget, setOrderQrPrintTarget] = useState<{
+    url: string;
+    printWindow: Window;
+  } | null>(null);
   const [savingProduct, setSavingProduct] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [uploadingGallery, setUploadingGallery] = useState(false);
@@ -353,7 +547,6 @@ export default function Admin() {
   const [financialPeriod, setFinancialPeriod] = useState<"all" | "month" | "30days">("all");
   const [editingId, setEditingId] = useState("");
   const [productSearch, setProductSearch] = useState("");
-  const [productViewTab, setProductViewTab] = useState<"catalog" | "orders">("catalog");
   const [toastMsg, setToastMsg] = useState("");
   const [toastVisible, setToastVisible] = useState(false);
   const [toastLevel, setToastLevel] = useState<"info" | "success" | "alert">("info");
@@ -550,6 +743,19 @@ export default function Admin() {
     setToastVisible(true);
     setTimeout(() => setToastVisible(false), level === "alert" ? 5000 : 2500);
   }, []);
+
+  useEffect(() => {
+    if (!orderQrPrintTarget) return;
+    const canvas = orderQrRef.current?.querySelector("canvas");
+    if (!canvas) {
+      orderQrPrintTarget.printWindow.close();
+      showToast("Gagal membuat QR, canvas tidak tersedia.", "alert");
+      setOrderQrPrintTarget(null);
+      return;
+    }
+    printOrderQrSticker(canvas, orderQrPrintTarget.printWindow);
+    setOrderQrPrintTarget(null);
+  }, [orderQrPrintTarget, showToast]);
 
   const loadProducts = async () => {
     setLoadingProducts(true);
@@ -948,47 +1154,6 @@ export default function Admin() {
     }
   };
 
-  const processOrderToProduct = (order: PreOrder) => {
-    const rawId = order.id ? order.id.replace(/[^a-zA-Z0-9]/g, "").slice(0, 8).toUpperCase() : "";
-    const uniqueId = `ORD-${rawId || Date.now().toString().slice(-6)}`;
-
-    const linkedProduct = managedProducts.find(item => item.id === order.product_id)
-      || managedProducts.find(item => item.nama_produk.toLowerCase() === (order.product_name || "").toLowerCase());
-
-    setEditingId("");
-    setForm({
-      ...EMPTY,
-      id: uniqueId,
-      isCatalog: false,
-      nama: order.product_name || linkedProduct?.nama_produk || (order.product_id ? `Pesanan #${order.product_id}` : "Kado Botani A Chapter"),
-      tier: linkedProduct?.tier || "classic",
-      harga: linkedProduct?.harga || "",
-      bunga: linkedProduct?.bunga || "",
-      bahan: linkedProduct?.bahan || "Epoxy resin + stainless steel",
-      ukuran: linkedProduct?.ukuran || "",
-      deskripsi: order.custom_request ? `Catatan kustom: ${order.custom_request}` : (linkedProduct?.deskripsi || ""),
-      namaPembeli: order.recipient_name || order.customer_name || "",
-      recipientWhatsapp: order.recipient_whatsapp || order.whatsapp || "",
-      orderId: order.id || "",
-      dari: order.sender_name || order.customer_name || "",
-      pesan: order.personal_message || order.custom_request || "",
-      fotoProduk: linkedProduct?.foto_produk || "",
-      audioUrl: order.audio_url || "",
-      audioDurasi: order.audio_durasi || 0,
-      videoUrl: order.video_url || "",
-      fotoVault: order.foto_vault || "",
-      vaultPin: order.vault_pin || "",
-    });
-
-    setProductFormOpen(true);
-    setActiveTab("produk");
-    setProductViewTab("orders");
-    setQrVisible(false);
-    setGeneratedUrl("");
-    window.scrollTo({ top: 0, behavior: "smooth" });
-    showToast(`Form kado fisik #${uniqueId} siap. Masukkan link media & simpan.`);
-  };
-
   const setOrderStatus = async (order: PreOrder, status: string) => {
     if (!order.id) return;
     const previousStatus = getOrderStatus(order.status);
@@ -1040,31 +1205,6 @@ export default function Admin() {
       showToast(`Status pesanan diperbarui: ${statusLabel}`, "success");
     } catch (error) {
       showToast(error instanceof Error ? error.message : "Gagal mengubah status pre-order");
-    }
-  };
-
-  const verifyGroupDp = async (order: PreOrder) => {
-    if (!order.group_id) return;
-    const groupOrders = preOrders.filter(item => item.group_id === order.group_id);
-    try {
-      await updatePreOrderGroupStatus(order.group_id, "dp_verified");
-      setPreOrders(orders =>
-        orders.map(item =>
-          item.group_id === order.group_id ? { ...item, status: "dp_verified" } : item
-        )
-      );
-      const firstOrder = groupOrders.find(item => item.id);
-      if (firstOrder?.id) {
-        void notifyDpConfirmed(firstOrder.id).catch(error => {
-          console.warn("[DP_NOTIFICATION_AUDIT_ERROR]", error);
-        });
-      }
-      showToast(
-        `DP grup ${order.group_number || order.group_id} diverifikasi untuk ${groupOrders.length} karya.`,
-        "success"
-      );
-    } catch (error) {
-      showToast(error instanceof Error ? error.message : "Gagal memverifikasi DP grup");
     }
   };
 
@@ -1162,52 +1302,55 @@ export default function Admin() {
 
   const orderQrId = (order: PreOrder) => {
     const suffix = String(order.id || "").replace(/[^a-zA-Z0-9]/g, "").slice(0, 8).toUpperCase();
-    return `ORD-${suffix || Date.now().toString().slice(-6)}`;
+    return suffix ? `ORD-${suffix}` : "";
   };
 
-  const openOrderQr = (order: PreOrder) => {
+  const getOrderQrDetails = (order: PreOrder) => {
+    if (!order.id) return null;
     const base = (localStorage.getItem(BASE_URL_KEY) || baseUrl || PRODUCTION_SITE_URL).trim().replace(/\/+$/, "");
-    const id = orderQrId(order);
-    setOrderQrTarget({
+    const linkedProduct = managedProducts.find(product => product.order_id === order.id);
+    const id = linkedProduct?.id || orderQrId(order);
+    return {
       id,
       url: `${base}/produk?id=${encodeURIComponent(id)}`,
-      label: order.order_number || order.id || order.customer_name,
-    });
+      ready: Boolean(linkedProduct || order.vault_submitted_at || order.vault_pin),
+    };
   };
 
-  const downloadOrderQr = () => {
-    const canvas = orderQrRef.current?.querySelector("canvas");
-    if (!canvas || !orderQrTarget) {
-      showToast("Gagal download, canvas tidak tersedia");
+  const startOrderQrPrint = (order: PreOrder) => {
+    const details = getOrderQrDetails(order);
+    if (!details) {
+      showToast("ID pesanan tidak tersedia, QR tidak dapat dibuat.", "alert");
       return;
     }
-    downloadQrCanvas(canvas, orderQrTarget.id);
+    if (!details.ready) {
+      showToast("Simpan konten Memory Vault sebelum mencetak QR.", "alert");
+      return;
+    }
+    if (/^https?:\/\/(localhost|127\.0\.0\.1)(?::\d+)?\//i.test(details.url)) {
+      showToast("URL lokal terdeteksi. Jangan cetak QR untuk produk fisik.", "alert");
+      return;
+    }
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) {
+      showToast("Izinkan pop-up browser untuk mencetak stiker QR.", "alert");
+      return;
+    }
+    setOrderQrPrintTarget({ url: details.url, printWindow });
   };
 
-  const copyOrderQrUrl = () => {
-    if (!orderQrTarget) return;
-    navigator.clipboard.writeText(orderQrTarget.url).then(
-      () => showToast("URL QR Vault berhasil disalin.", "success"),
-      () => showToast("Gagal menyalin URL QR.", "alert")
-    );
-  };
-
-
-  const copyProductQrUrl = (productId: string) => {
-    const base = (localStorage.getItem(BASE_URL_KEY) || baseUrl || PRODUCTION_SITE_URL).trim().replace(/\/+$/, "");
-    const productUrl = `${base}/produk?id=${encodeURIComponent(productId)}`;
-    navigator.clipboard.writeText(productUrl).then(() => showToast(`URL QR #${productId} disalin ke clipboard`));
-  };
-
-  const downloadProductQR = (product: Product) => {
-    const base = (localStorage.getItem(BASE_URL_KEY) || baseUrl || PRODUCTION_SITE_URL).trim().replace(/\/+$/, "");
-    const productUrl = `${base}/produk?id=${encodeURIComponent(product.id)}`;
-    setForm(productToForm(product));
-    setGeneratedUrl(productUrl);
-    setQrVisible(true);
-    setTimeout(() => {
-      downloadQR();
-    }, 100);
+  const startOrderPinPrint = (order: PreOrder) => {
+    const pin = String(order.vault_pin || "").trim();
+    if (!/^\d{6}$/.test(pin)) {
+      showToast("PIN 6 digit belum tersedia untuk pesanan ini.", "alert");
+      return;
+    }
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) {
+      showToast("Izinkan pop-up browser untuk mencetak kartu PIN.", "alert");
+      return;
+    }
+    printOrderPinCard(pin, printWindow);
   };
 
   const exportPreOrders = () => {
@@ -1285,26 +1428,17 @@ export default function Admin() {
     () => managedProducts.filter(p => (p.status || "active") === "active"),
     [managedProducts]
   );
-  const archivedProducts = useMemo(
-    () => managedProducts.filter(p => p.status === "archived"),
-    [managedProducts]
-  );
   const catalogProducts = useMemo(
     () => activeProducts.filter(p => p.is_catalog === true),
     [activeProducts]
   );
-  const orderProducts = useMemo(
-    () => activeProducts.filter(p => !p.is_catalog),
-    [activeProducts]
-  );
   const search = productSearch.trim().toLowerCase();
-  const currentTabProducts = productViewTab === "catalog" ? catalogProducts : orderProducts;
-  const filteredProducts = currentTabProducts.filter(p =>
+  const filteredProducts = catalogProducts.filter(p =>
     !search ||
     p.id.toLowerCase().includes(search) ||
     p.nama_produk.toLowerCase().includes(search) ||
     p.tier.toLowerCase().includes(search) ||
-    (Boolean(p.nama_pembeli) && p.nama_pembeli.toLowerCase().includes(search))
+    (Boolean(p.kategori) && (p.kategori || "").toLowerCase().includes(search))
   );
   const recentProducts = activeProducts.slice(0, 5);
   const tierCounts = TIER_OPTIONS.map(option => ({
@@ -1503,7 +1637,7 @@ export default function Admin() {
         <div className="admin-panel-card admin-product-form-card">
           <div className="admin-panel-head">
             <div>
-              <h2>Lampiran Memory Vault (Pesanan Kado Fisik)</h2>
+              <h2>Lampiran Memory Vault</h2>
               <p>Isi pesan personal dan media kenangan yang tampil saat QR fisik dipindai.</p>
             </div>
           </div>
@@ -1731,41 +1865,24 @@ export default function Admin() {
     <div className="admin-panel-card">
       <div className="admin-panel-head">
         <div>
-          <h2>Manajemen Produk & Kado Fisik</h2>
-          <p>{catalogProducts.length} produk katalog publik, {orderProducts.length} pesanan kado fisik ({archivedProducts.length} terarsip).</p>
+          <h2>Etalase Toko</h2>
+          <p>{catalogProducts.length} produk ditampilkan di etalase toko.</p>
         </div>
         <div className="admin-panel-head-actions">
           <button className="admin-primary-btn" onClick={() => {
             resetForm();
-            setForm(f => ({ ...f, isCatalog: productViewTab === "catalog" }));
+            setForm(f => ({ ...f, isCatalog: true }));
             setProductFormOpen(true);
           }}>
-            {productViewTab === "catalog" ? "+ Tambah Produk Katalog" : "+ Buat Kado Fisik Baru"}
+            + Tambah Produk Katalog
           </button>
         </div>
-      </div>
-
-      <div className="admin-product-tabs">
-        <button
-          type="button"
-          className={`admin-product-tab${productViewTab === "catalog" ? " active" : ""}`}
-          onClick={() => setProductViewTab("catalog")}
-        >
-          🛍️ Etalase Toko <span className="badge">{catalogProducts.length}</span>
-        </button>
-        <button
-          type="button"
-          className={`admin-product-tab${productViewTab === "orders" ? " active" : ""}`}
-          onClick={() => setProductViewTab("orders")}
-        >
-          💌 Pesanan Kado Fisik <span className="badge">{orderProducts.length}</span>
-        </button>
       </div>
 
       <input
         className="admin-form-input admin-product-search"
         type="search"
-        placeholder={productViewTab === "catalog" ? "Cari produk katalog (ID, nama, tier)..." : "Cari kado fisik (ID, nama, penerima, tier)..."}
+        placeholder="Cari produk etalase (ID, nama, kategori, tier)..."
         value={productSearch}
         onChange={e => setProductSearch(e.target.value)}
       />
@@ -1773,40 +1890,15 @@ export default function Admin() {
         {loadingProducts ? (
           <div className="manage-empty">Memuat data...</div>
         ) : filteredProducts.length === 0 ? (
-          <div className="manage-empty">
-            {productViewTab === "catalog"
-              ? "Belum ada produk etalase toko."
-              : "Belum ada pesanan kado fisik tersimpan."}
-          </div>
+          <div className="manage-empty">Belum ada produk etalase toko.</div>
         ) : filteredProducts.map(product => {
           const base = (localStorage.getItem(BASE_URL_KEY) || baseUrl || PRODUCTION_SITE_URL).trim().replace(/\/+$/, "");
           const productUrl = `${base}/produk?id=${encodeURIComponent(product.id)}`;
-          const recipientWhatsapp = normalizeWhatsApp(product.recipient_whatsapp || "");
           return (
             <div className={`admin-list-item admin-product-row${editingId === product.id ? " active" : ""}`} key={product.id}>
               <div className="admin-list-main">
                 <strong>{product.nama_produk || product.id}</strong>
                 <span className="admin-product-id">#{product.id}</span>
-                {!product.is_catalog && (
-                  <span className="admin-product-recipient">
-                    {product.nama_pembeli && (
-                      <>Penerima: {product.nama_pembeli}{recipientWhatsapp && " · "}</>
-                    )}
-                    {recipientWhatsapp && (
-                      <>
-                        <Phone size={13} aria-hidden="true" /> WA:{" "}
-                        <a
-                          href={`https://wa.me/${recipientWhatsapp}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          aria-label={`Hubungi penerima ${product.nama_pembeli || product.id} melalui WhatsApp`}
-                        >
-                          {product.recipient_whatsapp}
-                        </a>
-                      </>
-                    )}
-                  </span>
-                )}
               </div>
               <span className={`admin-product-status${product.deleted_at || product.status === "archived" ? " is-archived" : " is-active"}`}>
                 {product.deleted_at ? "Dihapus" : product.status === "archived" ? "Terarsip" : "Aktif"}
@@ -1823,18 +1915,6 @@ export default function Admin() {
                     <MoreVertical size={16} aria-hidden="true" />
                   </summary>
                   <div className="admin-product-more-menu">
-                    {!product.is_catalog && (
-                      <>
-                        <button type="button" onClick={event => {
-                          copyProductQrUrl(product.id);
-                          event.currentTarget.closest("details")?.removeAttribute("open");
-                        }}>Salin QR</button>
-                        <button type="button" onClick={event => {
-                          downloadProductQR(product);
-                          event.currentTarget.closest("details")?.removeAttribute("open");
-                        }}>Download QR</button>
-                      </>
-                    )}
                     {product.deleted_at ? (
                       <button type="button" onClick={event => {
                         void handleRestoreProduct(product);
@@ -1943,6 +2023,13 @@ export default function Admin() {
             .replace(/\/+$/, "");
           const setupToken = order.vault_setup_token || order.id || "";
           const vaultUrl = `${activeBaseUrl}/vault-setup?token=${encodeURIComponent(setupToken)}`;
+          const orderQrDetails = getOrderQrDetails(order);
+          const canPrintQr = Boolean(
+            order.id &&
+            orderQrDetails?.ready &&
+            !/^https?:\/\/(localhost|127\.0\.0\.1)(?::\d+)?\//i.test(orderQrDetails.url)
+          );
+          const canPrintPin = /^\d{6}$/.test(String(order.vault_pin || "").trim());
           return (
             <div className="admin-list-item admin-order-row" key={order.id || `${order.whatsapp}-${order.created_at}`}>
               <div className="admin-order-main">
@@ -2008,20 +2095,6 @@ export default function Admin() {
                   >
                     {ORDER_STATUSES.map(status => <option value={status.value} key={status.value}>{status.label}</option>)}
                   </select>
-                  {order.group_id && (
-                    <span className="admin-order-meta admin-order-group-detail">
-                      Pilih “DP Diterima” untuk memverifikasi seluruh karya dalam grup ini.
-                    </span>
-                  )}
-                  {order.group_id && (
-                    <button
-                      type="button"
-                      className="admin-outline-btn admin-group-verify"
-                      onClick={() => void verifyGroupDp(order)}
-                    >
-                      Verifikasi DP Semua Item
-                    </button>
-                  )}
                 </div>
                 <div className="admin-order-memory">
                   <span className="admin-status-caption">Status Memori Vault</span>
@@ -2112,9 +2185,20 @@ export default function Admin() {
                 <button
                   type="button"
                   className="admin-order-sync-btn"
-                  onClick={() => openOrderQr(order)}
+                  disabled={!canPrintQr}
+                  aria-label={`Cetak stiker QR untuk pesanan ${order.order_number || order.id || customerName}`}
+                  onClick={() => startOrderQrPrint(order)}
                 >
-                  ✦ Cetak QR Vault
+                  Cetak QR
+                </button>
+                <button
+                  type="button"
+                  className="admin-order-sync-btn"
+                  disabled={!canPrintPin}
+                  aria-label={`Cetak kartu PIN untuk pesanan ${order.order_number || order.id || customerName}`}
+                  onClick={() => startOrderPinPrint(order)}
+                >
+                  Cetak PIN
                 </button>
               </div>
             </div>
@@ -2129,53 +2213,20 @@ export default function Admin() {
         </div>
       )}
 
-      {orderQrTarget && (
+      {orderQrPrintTarget && (
         <div
-          className="admin-qr-modal-overlay"
-          role="dialog"
-          aria-modal="true"
-          aria-label="QR Vault pesanan"
-          onClick={() => setOrderQrTarget(null)}
+          ref={orderQrRef}
+          aria-hidden="true"
+          style={{ position: "fixed", left: "-10000px", top: 0 }}
         >
-          <div className="admin-qr-modal" onClick={event => event.stopPropagation()}>
-            <div className="admin-qr-modal-head">
-              <div>
-                <span className="admin-qr-modal-kicker">STIKER QR VAULT</span>
-                <h3>#{orderQrTarget.label}</h3>
-              </div>
-              <button
-                type="button"
-                className="admin-qr-modal-close"
-                aria-label="Tutup pratinjau QR"
-                onClick={() => setOrderQrTarget(null)}
-              >
-                ✕
-              </button>
-            </div>
-            <div className="admin-qr-modal-canvas" ref={orderQrRef}>
-              <QRCode
-                value={orderQrTarget.url}
-                size={512}
-                fgColor="#111111"
-                bgColor="#fafbff"
-                level="H"
-                marginSize={2}
-                style={{ width: "220px", height: "220px", display: "block" }}
-              />
-            </div>
-            <p className="admin-qr-modal-url">{orderQrTarget.url}</p>
-            <p className="admin-qr-modal-hint">
-              QR ini langsung mengarah ke Memory Vault pesanan tanpa perlu mengonversi pesanan menjadi produk.
-            </p>
-            <div className="admin-qr-modal-actions">
-              <button type="button" className="admin-order-sync-btn" onClick={downloadOrderQr}>
-                Download PNG Cetak
-              </button>
-              <button type="button" className="admin-outline-btn" onClick={copyOrderQrUrl}>
-                Salin URL
-              </button>
-            </div>
-          </div>
+          <QRCode
+            value={orderQrPrintTarget.url}
+            size={512}
+            fgColor="#111111"
+            bgColor="#ffffff"
+            level="H"
+            marginSize={2}
+          />
         </div>
       )}
     </div>

@@ -347,13 +347,10 @@ logout menghapus cookie.
 Alur kerja:
 
 1. Base URL otomatis terkonfigurasi ke domain produksi `https://www.achapter.my.id` (dapat dikonfigurasi via `VITE_PUBLIC_SITE_URL`).
-2. Lihat pesanan pelanggan di kartu Pre-order masuk.
-3. Klik Pakai pada pre-order untuk memasukkan data Memory Vault ke form produk.
-4. Lengkapi data produk dan foto.
-5. Klik Simpan Produk + Generate QR.
-6. Klik Cek di daftar produk sebelum QR dicetak.
-7. Gunakan Edit untuk memperbarui produk.
-8. Gunakan Hapus untuk menyembunyikan produk dari publik.
+2. Kelola produk yang tampil di toko dari menu **Produk → Etalase Toko**.
+3. Kelola transaksi dan Memory Vault dari menu **Pesanan**.
+4. Pada pesanan, klik **Cetak QR** untuk mencetak stiker QR 20 × 20 mm dengan teks “A CHAPTER · SCAN ME”.
+5. Klik **Cetak PIN** jika PIN 6 digit tersedia. Kartu dicetak satu sisi ukuran 6,5 × 9 cm sesuai desain instruksi gosok; tempelkan stiker gosok perak 40 × 15 mm di area yang disediakan sebelum kartu diberikan.
 
 ## QR Produk
 
@@ -363,7 +360,9 @@ Format URL QR:
 https://www.achapter.my.id/produk?id=ID_PRODUK
 ```
 
-Panel admin otomatis menjaga agar QR fisik tidak menggunakan URL localhost dev. Download QR menghasilkan gambar PNG beresolusi tinggi (1200×1500 px) dengan branding A Chapter Memory Vault yang siap cetak ke media fisik (stiker, akrilik, kartu hadiah).
+QR fisik dicetak dari aksi pada pesanan, bukan dari daftar produk etalase.
+Panel admin menonaktifkan aksi cetak QR jika URL mengarah ke localhost.
+Pastikan stiker gosok sudah menutupi area PIN pada kartu sebelum kartu diberikan.
 
 ## Foto Produk & QR (Storage)
 
