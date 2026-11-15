@@ -1864,15 +1864,17 @@
 
 .vault-lace-sheet {
   position: relative;
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+  width: min(100%, 760px);
+  margin: 0 auto;
+  aspect-ratio: 804 / 848;
 }
 
 .vault-lace-mat {
+  position: absolute;
+  inset: 0;
   width: 100%;
-  height: auto;
+  height: 100%;
+  object-fit: fill;
   display: block;
   border-radius: 10px;
   background-color: #ffffff;
@@ -1880,25 +1882,43 @@
   pointer-events: none;
 }
 
-/* Surat diletakkan sebagai lembar kertas putih bersih yang tumbuh mengikuti panjang isi */
+/* Surat tampil menyatu di atas kertas putih di dalam bingkai renda. */
 .vault-lace-parchment {
-  position: relative;
+  position: absolute;
+  top: 17.7%;
+  bottom: 13.8%;
+  left: 16.04%;
+  right: 16.04%;
   z-index: 1;
-  width: min(100%, 560px);
-  margin: -1.25rem auto 0;
+  width: auto;
+  margin: 0;
   display: flex;
   flex-direction: column;
-  padding: 1.6rem 1.9rem 1.9rem;
-  border-radius: 6px;
-  background-color: #ffffff;
-  border: 1px solid rgba(228, 218, 208, 0.7);
-  box-shadow: 0 16px 36px rgba(58, 22, 27, 0.08);
+  padding: 0.4rem 0.6rem;
+  border-radius: 0;
+  background-color: transparent;
+  border: 0;
+  box-shadow: none;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(83, 27, 33, 0.28) transparent;
+}
+
+.vault-lace-parchment::-webkit-scrollbar {
+  width: 6px;
+}
+
+.vault-lace-parchment::-webkit-scrollbar-thumb {
+  background: rgba(83, 27, 33, 0.24);
+  border-radius: 999px;
 }
 
 .vault-lace-letter {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+  flex: 1 1 auto;
+  min-height: 100%;
 }
 
 .vault-lace-salutation {
@@ -2527,28 +2547,45 @@
 
 .vault-lace-board {
   position: relative;
-  width: min(100%, 940px);
+  width: min(100%, 760px);
   margin: 0 auto;
+  aspect-ratio: 804 / 848;
 }
 
 .vault-lace-board .vault-lace-mat {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
   border-radius: 10px;
   background-color: #ffffff;
   box-shadow: 0 16px 40px rgba(35, 12, 18, 0.1);
 }
 
+/* Area tulis menyatu di atas kertas putih di dalam bingkai renda. */
 .vault-lace-board .vault-lace-parchment {
-  width: min(100%, 720px);
-  padding: 1.4rem 1.6rem;
-  background-color: #ffffff;
-  border: 1px solid rgba(228, 218, 208, 0.7);
-  box-shadow: 0 16px 36px rgba(58, 22, 27, 0.08);
+  position: absolute;
+  top: 17.7%;
+  bottom: 13.8%;
+  left: 16.04%;
+  right: 16.04%;
+  width: auto;
+  margin: 0;
+  padding: 0.35rem 0.55rem;
+  background-color: transparent;
+  border: 0;
+  box-shadow: none;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .vault-lace-textarea {
+  flex: 1;
   width: 100%;
-  min-height: 220px;
-  height: auto;
+  min-height: 0;
+  height: 100%;
   padding: 0;
   margin: 0;
   border: 0;
@@ -2556,8 +2593,17 @@
   background: transparent;
   resize: none;
   overflow-y: auto;
-  field-sizing: content;
   scrollbar-width: thin;
+  scrollbar-color: rgba(83, 27, 33, 0.28) transparent;
+}
+
+.vault-lace-textarea::-webkit-scrollbar {
+  width: 6px;
+}
+
+.vault-lace-textarea::-webkit-scrollbar-thumb {
+  background: rgba(83, 27, 33, 0.24);
+  border-radius: 999px;
 }
 
 .vault-letter-foot {
@@ -2576,30 +2622,18 @@
   .vault-strip-preview { width: 100%; max-width: 280px; }
   .vault-letter-toolbar { gap: 0.65rem 0.9rem; }
 
-  /* Di ponsel, papan renda menjadi kepala dekoratif dan surat turun
-     ke lembar perkamen yang tumbuh mengikuti panjang isi. */
+  /* Di ponsel, area tulis tetap menyatu di atas kartu surat renda. */
   .vault-lace-mat {
     border-radius: 6px;
     box-shadow: 0 14px 30px rgba(58, 22, 27, 0.18);
   }
 
-  .vault-lace-parchment {
-    width: 100%;
-    margin: -1rem 0 0;
-    padding: 1.15rem 1rem;
-    border-radius: 3px;
-  }
-
   .vault-lace-board .vault-lace-parchment {
-    width: 100%;
-    margin: 0.75rem 0 0;
-    padding: 0.75rem 0.85rem;
+    padding: 0.2rem 0.35rem;
   }
 
-  /* Editor surat tumbuh mengikuti panjang isi agar tidak ada teks
-     yang tersembunyi di dalam kotak gulir sempit. */
   .vault-lace-textarea {
-    min-height: 240px;
+    min-height: 0;
   }
 }
 

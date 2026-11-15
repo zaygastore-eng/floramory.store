@@ -2099,7 +2099,7 @@
 
 .landing-v2 .lace-board-frame {
   position: relative;
-  width: min(100%, 640px);
+  width: min(100%, 520px);
   border-radius: 12px;
   overflow: hidden;
   background: #ffffff;
@@ -2115,13 +2115,13 @@
 
 .landing-v2 .lace-board-parchment {
   position: absolute;
-  top: 19%;
-  bottom: 20%;
-  left: 17%;
-  right: 22%;
+  top: 17.7%;
+  bottom: 13.8%;
+  left: 16.04%;
+  right: 16.04%;
   display: flex;
   flex-direction: column;
-  padding: 0.5rem 0.8rem;
+  padding: 0.4rem 0.6rem;
 }
 
 .landing-v2 .lace-letter-textarea {

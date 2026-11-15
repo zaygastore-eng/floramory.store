@@ -733,7 +733,7 @@ export default function VaultExperience({
                 <div className="vault-letter-panel" role="tabpanel">
                   <div className="vault-lace-sheet">
                     <img
-                      src="/landing/lace-letter-card.webp"
+                      src="/landing/lace-letter-frame.webp"
                       alt="Papan renda surat rahasia"
                       className="vault-lace-mat"
                       loading="lazy"

@@ -1449,7 +1449,7 @@ export default function Home() {
                               {/* The Lace Board Canvas */}
                               <div className="lace-board-frame">
                                 <img
-                                  src="/landing/lace-letter-card.webp"
+                                  src="/landing/lace-letter-frame.webp"
                                   alt="Lace Board Card"
                                   className="lace-board-mat"
                                   loading="lazy"

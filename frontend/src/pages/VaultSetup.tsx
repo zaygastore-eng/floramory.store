@@ -1270,8 +1270,8 @@ export default function VaultSetup() {
 
                 <div className="vault-lace-board">
                   <img
-                    src="/landing/lace-letter-card.webp"
-                    alt="Papan renda tempat menulis surat"
+                    src="/landing/lace-letter-frame.webp"
+                    alt="Kartu surat renda tempat menulis pesan"
                     className="vault-lace-mat"
                     loading="lazy"
                   />
