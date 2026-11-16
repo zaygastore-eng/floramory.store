@@ -215,11 +215,12 @@ Fungsi ini satu-satunya jalur masuk pre-order (berjalan dengan
    berstatus `active` (nama produk diambil dari database, tidak percaya
    input client).
 5. **Konfirmasi Pemesanan & Notifikasi** — setelah pesanan grup dan setiap karya
-   tersimpan dengan status `waiting_dp`, frontend langsung mengarahkan pelanggan
-   ke WhatsApp concierge atelier dengan ringkasan pesanan berformat rapi
-   (nomor grup, rincian karya, inisial, palet warna, dan nominal DP 50%).
-   Secara bersamaan, Edge Function mengirim notifikasi email rincian reservasi
-   ke tim atelier melalui Resend (`sendAdminEmail`).
+   tersimpan dengan status `new`, frontend mengarahkan pelanggan ke halaman
+   sukses dengan tombol WhatsApp concierge. Atelier mengonfirmasi ketersediaan,
+   ongkir, dan instruksi DP 50% secara manual melalui WhatsApp, lalu mengubah
+   status menjadi `waiting_dp`. Setelah DP diterima, admin menandai
+   `dp_verified` dan mengirim tautan Vault. Tidak ada QRIS atau unggah bukti
+   transfer di website.
 
 Deploy Edge Function:
 

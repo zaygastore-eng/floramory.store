@@ -73,6 +73,8 @@ export interface PreOrder {
   inisial?: string;
   customer_name: string;
   whatsapp: string;
+  shipping_city?: string;
+  shipping_address?: string;
   recipient_whatsapp?: string;
   product_id: string;
   product_name: string;
@@ -93,7 +95,6 @@ export interface PreOrder {
   vault_setup_token?: string;
   vault_setup_expires_at?: string;
   vault_locked_at?: string;
-  payment_proof_url?: string;
   status?: string;
   created_at?: string;
 }
@@ -110,6 +111,8 @@ export interface PreOrderGroupInput {
   customer_name: string;
   whatsapp: string;
   is_vip?: boolean;
+  shipping_city?: string;
+  shipping_address?: string;
   items: PreOrderItemInput[];
 }
 
@@ -117,7 +120,6 @@ export interface PreOrderGroupSubmissionResult {
   success: boolean;
   groupId: string;
   groupNumber: string;
-  paymentToken?: string;
   orderIds: string[];
   orderNumbers: string[];
   orderId: string;
@@ -901,38 +903,6 @@ export async function fetchWhatsAppNumber(): Promise<string> {
   }
 }
 
-export async function fetchQrisImageUrl(): Promise<string> {
-  if (!isSupabaseConfigured()) return "";
-
-  try {
-    const res = await fetch(
-      `${SUPABASE_URL}/rest/v1/app_settings?key=eq.qris_image_url&select=value&limit=1`,
-      { headers: supabaseHeaders() }
-    );
-    if (!res.ok) return "";
-    const data = await res.json();
-    const value = Array.isArray(data) ? data[0]?.value : "";
-    return String(value || "").trim();
-  } catch {
-    return "";
-  }
-}
-
-export async function updateQrisImageUrl(value: string): Promise<void> {
-  if (!isSupabaseConfigured()) return;
-
-  const clean = value.trim();
-  await adminRequest("POST", "/rest/v1/app_settings", {
-    query: "on_conflict=key",
-    prefer: "resolution=merge-duplicates",
-    body: {
-      key: "qris_image_url",
-      value: clean,
-      updated_at: new Date().toISOString(),
-    },
-  });
-}
-
 export async function updateWhatsAppNumber(value: string): Promise<void> {
   if (!isSupabaseConfigured()) return;
 
@@ -1095,6 +1065,8 @@ function normalizePreOrder(obj: Partial<PreOrder> & Record<string, unknown>): Pr
     inisial: String(obj.inisial || "").trim(),
     customer_name: String(obj.customer_name || "").trim(),
     whatsapp: String(obj.whatsapp || "").trim(),
+    shipping_city: String(obj.shipping_city || "").trim(),
+    shipping_address: String(obj.shipping_address || "").trim(),
     recipient_whatsapp: String(obj.recipient_whatsapp || "").trim(),
     product_id: String(obj.product_id || "").trim(),
     product_name: String(obj.product_name || "").trim(),
@@ -1118,7 +1090,6 @@ function normalizePreOrder(obj: Partial<PreOrder> & Record<string, unknown>): Pr
     vault_setup_token: String(obj.vault_setup_token || "").trim(),
     vault_setup_expires_at: String(obj.vault_setup_expires_at || "").trim(),
     vault_locked_at: String(obj.vault_locked_at || "").trim(),
-    payment_proof_url: String(obj.payment_proof_url || "").trim(),
     status: String(obj.status || "new").trim(),
     created_at: String(obj.created_at || "").trim(),
   };
@@ -1493,6 +1464,8 @@ export async function createGroupPreOrder(
       customer_name: group.customer_name.trim(),
       whatsapp: normalizeWhatsApp(group.whatsapp),
       is_vip: Boolean(group.is_vip),
+      shipping_city: (group.shipping_city || "").trim(),
+      shipping_address: (group.shipping_address || "").trim(),
       items: group.items.map(item => ({
         product_id: item.product_id.trim(),
         product_name: (item.product_name || "").trim(),
@@ -1523,7 +1496,6 @@ export async function createGroupPreOrder(
     success: data.success === true,
     groupId: String(data.groupId || ""),
     groupNumber: String(data.groupNumber || ""),
-    paymentToken: typeof data.paymentToken === "string" ? data.paymentToken : undefined,
     orderIds: Array.isArray(data.orderIds) ? data.orderIds.map(String) : [],
     orderNumbers: Array.isArray(data.orderNumbers) ? data.orderNumbers.map(String) : [],
     orderId: String(data.orderId || data.id || ""),
@@ -1535,95 +1507,6 @@ export async function createGroupPreOrder(
   };
 }
 
-export interface PaymentInfoResult {
-  ok: boolean;
-  group: {
-    id: string;
-    group_number: string;
-    customer_name: string;
-    whatsapp: string;
-    total_amount: number;
-    dp_amount: number;
-    status: string;
-    payment_proof_url: string;
-    created_at: string;
-  };
-  items: Array<{
-    id: string;
-    order_number: string;
-    product_name: string;
-    nuansa: string;
-    inisial: string;
-    total_amount: number;
-    dp_amount: number;
-    status: string;
-  }>;
-}
-
-export async function getPaymentInfo(params: {
-  groupNumber?: string;
-  groupId?: string;
-  paymentToken?: string;
-}): Promise<PaymentInfoResult> {
-  if (!isSupabaseConfigured()) {
-    throw new Error("Supabase belum dikonfigurasi.");
-  }
-
-  const res = await fetch(PREORDER_FUNCTION, {
-    method: "POST",
-    headers: {
-      apikey: SUPABASE_ANON_KEY,
-      Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      action: "get_payment_info",
-      group_number: params.groupNumber,
-      group_id: params.groupId,
-      payment_token: params.paymentToken,
-    }),
-  });
-
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    throw new Error(data.message || "Gagal mengambil data tagihan pembayaran.");
-  }
-  return data as PaymentInfoResult;
-}
-
-export async function uploadPaymentProof(params: {
-  groupNumber?: string;
-  groupId?: string;
-  paymentToken: string;
-  imageBase64: string;
-}): Promise<{ ok: boolean; success: boolean; payment_proof_url: string; message: string }> {
-  if (!isSupabaseConfigured()) {
-    throw new Error("Supabase belum dikonfigurasi.");
-  }
-
-  const res = await fetch(PREORDER_FUNCTION, {
-    method: "POST",
-    headers: {
-      apikey: SUPABASE_ANON_KEY,
-      Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      action: "upload_payment_proof",
-      group_number: params.groupNumber,
-      group_id: params.groupId,
-      payment_token: params.paymentToken,
-      image: params.imageBase64,
-    }),
-  });
-
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    throw new Error(data.message || "Gagal mengunggah bukti pembayaran.");
-  }
-  return data;
-}
-
 function isTierConstraintError(message: string): boolean {
   const lower = String(message || "").toLowerCase();
   return /products_tier_check|check.*tier|tier.*check|invalid.*tier|constraint.*tier/.test(lower);
@@ -1631,7 +1514,7 @@ function isTierConstraintError(message: string): boolean {
 
 // Kolom eksplisit (bukan select=*). updated_at tidak dipakai UI.
 const PREORDER_SELECT =
-  "id,order_number,group_id,group_number,group_item_index,group_item_count,group_total_amount,group_dp_amount,total_amount,dp_amount,nuansa,inisial,customer_name,whatsapp,product_id,product_name,custom_request,recipient_name,sender_name,personal_message,recipient_whatsapp,foto_vault,vault_photos,vault_photobooth_theme,vault_letter_style,audio_url,audio_durasi,vault_audio_message,video_url,vault_submitted_at,vault_pin,vault_setup_token,vault_setup_expires_at,vault_locked_at,payment_proof_url,status,created_at";
+  "id,order_number,group_id,group_number,group_item_index,group_item_count,group_total_amount,group_dp_amount,total_amount,dp_amount,nuansa,inisial,customer_name,whatsapp,shipping_city,shipping_address,product_id,product_name,custom_request,recipient_name,sender_name,personal_message,recipient_whatsapp,foto_vault,vault_photos,vault_photobooth_theme,vault_letter_style,audio_url,audio_durasi,vault_audio_message,video_url,vault_submitted_at,vault_pin,vault_setup_token,vault_setup_expires_at,vault_locked_at,status,created_at";
 
 export interface PreOrderPage {
   orders: PreOrder[];
@@ -1640,6 +1523,7 @@ export interface PreOrderPage {
 }
 
 export interface PreOrderStatusCounts {
+  new: number;
   waiting_dp: number;
   dp_verified: number;
   completed: number;
@@ -1690,16 +1574,17 @@ export async function fetchPreOrders(offset = 0): Promise<PreOrderPage> {
 
 export async function fetchPreOrderStatusCounts(): Promise<PreOrderStatusCounts> {
   if (!isSupabaseConfigured()) {
-    return { waiting_dp: 0, dp_verified: 0, completed: 0, cancelled: 0 };
+    return { new: 0, waiting_dp: 0, dp_verified: 0, completed: 0, cancelled: 0 };
   }
 
   const statusFilters: Record<keyof PreOrderStatusCounts, string> = {
-    waiting_dp: "waiting_dp,new",
+    new: "new",
+    waiting_dp: "waiting_dp",
     dp_verified: "dp_verified,in_production,in_progress",
     completed: "completed,paid",
     cancelled: "cancelled",
   };
-  const statusKeys = ["waiting_dp", "dp_verified", "completed", "cancelled"] as const;
+  const statusKeys = ["new", "waiting_dp", "dp_verified", "completed", "cancelled"] as const;
   const counts = await Promise.all(
     statusKeys.map(async statusKey => {
       const { status, data, headers } = await adminCall("proxy", {
@@ -1717,7 +1602,13 @@ export async function fetchPreOrderStatusCounts(): Promise<PreOrderStatusCounts>
       return [statusKey, total] as const;
     })
   );
-  const result: PreOrderStatusCounts = { waiting_dp: 0, dp_verified: 0, completed: 0, cancelled: 0 };
+  const result: PreOrderStatusCounts = {
+    new: 0,
+    waiting_dp: 0,
+    dp_verified: 0,
+    completed: 0,
+    cancelled: 0,
+  };
   for (const [statusKey, count] of counts) result[statusKey] = count;
   return result;
 }

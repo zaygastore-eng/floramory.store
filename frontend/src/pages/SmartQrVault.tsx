@@ -22,7 +22,7 @@ const VAULT_FAQS = [
   },
   {
     q: "Kapan dan bagaimana saya mengirimkan foto, rekaman suara, dan surat?",
-    a: "Setelah Anda melakukan reservasi dan konfirmasi DP 50%, Concierge A Chapter akan mengirimkan tautan privat 'Vault Setup' melalui WhatsApp. Anda dapat langsung mengunggah foto, merekam suara, menambahkan video memoir, dan mengetik surat dari ponsel Anda dengan santai."
+    a: "Setelah Anda melakukan pre-order dan konfirmasi pembayaran DP 50% manual melalui WhatsApp, Concierge A Chapter akan mengirimkan tautan privat 'Vault Setup' melalui WhatsApp. Anda dapat langsung mengunggah foto, merekam suara, menambahkan video memoir, dan mengetik surat dari ponsel Anda dengan santai."
   }
 ];
 
@@ -98,8 +98,8 @@ export default function SmartQrVault() {
                 <a href="#simulator" className="hero-cta-primary">
                   Lihat Simulasi Vault ↓
                 </a>
-                <Link href="/#pesan" className="smart-vault-hero-secondary">
-                  Commission Your Keepsake →
+                <Link href="/pre-order" className="smart-vault-hero-secondary">
+                  Pre-Order Karya →
                 </Link>
               </div>
             </div>
@@ -382,8 +382,8 @@ export default function SmartQrVault() {
                     mereka langsung membuka lembar arsip eksklusif berisi foto beresolusi tinggi,
                     rekaman suara asli, dan surat cinta personal tanpa perlu menginstal aplikasi apapun.
                   </p>
-                  <Link className="hero-cta-primary vault-commission-cta" href="/#pesan">
-                    COMMISSION YOUR VAULT →
+                  <Link className="hero-cta-primary vault-commission-cta" href="/pre-order">
+                    BUKA HALAMAN PRE-ORDER →
                   </Link>
                 </div>
               </div>
@@ -523,8 +523,8 @@ export default function SmartQrVault() {
             <p style={{ color: "#666", lineHeight: 1.7, fontSize: "1rem", marginBottom: "2rem" }}>
               Konsultasikan bunga spesial Anda, foto polaroid kenangan, dan rekaman suara untuk diramu oleh artisan laboratorium A Chapter di Surabaya.
             </p>
-            <Link href="/#pesan" className="hero-cta-primary" style={{ padding: "1rem 2.5rem", fontSize: "1rem" }}>
-              Buka Lembar Pre-Order / Reservasi →
+            <Link href="/pre-order" className="hero-cta-primary" style={{ padding: "1rem 2.5rem", fontSize: "1rem" }}>
+              Buka Halaman Pre-Order →
             </Link>
           </div>
         </section>

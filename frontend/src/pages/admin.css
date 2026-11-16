@@ -604,6 +604,11 @@
   color: #92400E;
 }
 
+.admin-order-filter.status-new > span {
+  background: #FFE4E6;
+  color: #9F1239;
+}
+
 .admin-order-filter.status-dp_verified > span {
   background: var(--admin-powder-subtle);
   color: #1E3A8A;
@@ -640,6 +645,12 @@
   background: #FEF3C7;
   color: #92400E;
   border: 1px solid #FCD34D;
+}
+
+.status-badge.status-new {
+  background: #FFE4E6;
+  color: #9F1239;
+  border: 1px solid #FECDD3;
 }
 
 .status-badge.status-dp_verified {
@@ -1029,6 +1040,12 @@
   border-color: #FCD34D;
   background: #FEF3C7;
   color: #92400E;
+}
+
+.admin-order-status-select.status-new {
+  border-color: #FECDD3;
+  background: #FFE4E6;
+  color: #9F1239;
 }
 
 .admin-order-status-select.status-dp_verified {

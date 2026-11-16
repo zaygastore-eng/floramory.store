@@ -1050,6 +1050,19 @@
   border-top: 1px solid rgba(107, 31, 42, 0.16);
   box-shadow: 0 -10px 30px rgba(58, 22, 27, 0.1);
   backdrop-filter: blur(8px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.public-v2 .floating-bar-left {
+  flex: 1;
+  padding-right: 0.75rem;
+}
+
+.public-v2 .floating-order-btn {
+  flex: 0 0 auto;
+  min-height: 44px;
+  padding: 0.7rem 1rem;
+  white-space: nowrap;
 }
 
 .public-v2 .floating-title {
@@ -1487,6 +1500,29 @@
 
   .public-v2 .smart-vault-hero {
     background-position: center 20%;
+  }
+}
+
+@media (max-width: 420px) {
+  .public-v2 .pdp-floating-bar {
+    min-height: 68px;
+    height: auto;
+    padding: 0.55rem 0.75rem calc(0.55rem + env(safe-area-inset-bottom, 0px));
+  }
+
+  .public-v2 .floating-title {
+    max-width: 38vw;
+    font-size: 0.86rem;
+  }
+
+  .public-v2 .floating-price {
+    font-size: 0.78rem;
+  }
+
+  .public-v2 .floating-order-btn {
+    padding: 0.65rem 0.75rem;
+    font-size: 0.7rem;
+    letter-spacing: 0.06em;
   }
 }
 

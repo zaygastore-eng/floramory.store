@@ -1,0 +1,1108 @@
+/* ============================================================
+   A Chapter — Reservation flow & product buy box
+   Used by /reservasi, the product configurator, and the Home
+   "Cara Reservasi" section. No online-payment UI lives here.
+   ============================================================ */
+
+/* ── PRODUCT DETAIL BUY BOX ── */
+.public-v2 .pdp-price-row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.public-v2 .pdp-unit-price {
+  font-family: var(--pv-body);
+  font-size: 0.76rem;
+  color: var(--pv-muted);
+}
+
+.public-v2 .pdp-purchase {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  width: 100%;
+  padding: 1.25rem 0;
+  border-top: 1px solid rgba(107, 31, 42, 0.14);
+  border-bottom: 1px solid rgba(107, 31, 42, 0.14);
+}
+
+.public-v2 .pdp-purchase-head,
+.public-v2 .pdp-purchase-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.public-v2 .pdp-purchase-row > div:not(.pdp-qty-stepper) {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.public-v2 .pdp-purchase-row {
+  flex-wrap: wrap;
+}
+
+.public-v2 .pdp-purchase-row--stack {
+  align-items: flex-start;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.public-v2 .pdp-config-label {
+  font-family: var(--pv-body);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--pv-ink);
+}
+
+.public-v2 .pdp-config-hint,
+.public-v2 .pdp-config-optional {
+  font-family: var(--pv-body);
+  font-size: 0.72rem;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--pv-muted);
+}
+
+.public-v2 .pdp-swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.public-v2 .pdp-swatch {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-height: 42px;
+  padding: 0.35rem 0.75rem 0.35rem 0.4rem;
+  border: 1px solid rgba(107, 31, 42, 0.16);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.5);
+  color: var(--pv-muted);
+  font-family: var(--pv-body);
+  font-size: 0.72rem;
+  cursor: pointer;
+  transition: border-color 150ms ease, background 150ms ease, color 150ms ease;
+}
+
+.public-v2 .pdp-swatch:hover {
+  border-color: rgba(107, 31, 42, 0.45);
+  color: var(--pv-wine);
+}
+
+.public-v2 .pdp-swatch.is-selected {
+  border-color: var(--pv-wine);
+  background: rgba(107, 31, 42, 0.06);
+  color: var(--pv-wine);
+  font-weight: 600;
+}
+
+.public-v2 .pdp-swatch-dot,
+.public-v2 .reservation-swatch-dot {
+  display: inline-grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 1px solid rgba(58, 35, 38, 0.18);
+  flex: 0 0 auto;
+}
+
+.public-v2 .pdp-swatch-check,
+.reservation-swatch-check {
+  display: inline-grid;
+  place-items: center;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.92);
+  color: #531b21;
+  font-size: 9px;
+  line-height: 1;
+}
+
+.public-v2 .pdp-qty-stepper,
+.reservation-qty {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid rgba(107, 31, 42, 0.2);
+  border-radius: 3px;
+  background: #fffaf2;
+  overflow: hidden;
+}
+
+.public-v2 .pdp-qty-stepper button,
+.reservation-qty button {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  background: transparent;
+  color: var(--pv-wine);
+  font-size: 1.15rem;
+  cursor: pointer;
+}
+
+.public-v2 .pdp-qty-stepper button:hover:not(:disabled),
+.reservation-qty button:hover:not(:disabled) {
+  background: rgba(107, 31, 42, 0.06);
+}
+
+.public-v2 .pdp-qty-stepper button:disabled,
+.reservation-qty button:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.public-v2 .pdp-qty-stepper span,
+.reservation-qty span {
+  min-width: 40px;
+  text-align: center;
+  font-family: var(--pv-body);
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--pv-ink);
+}
+
+.public-v2 .pdp-initial-input,
+.reservation-input {
+  width: 100%;
+  min-height: 46px;
+  padding: 0.7rem 0.85rem;
+  border: 1px solid rgba(58, 35, 38, 0.18);
+  border-radius: 3px;
+  background: #fffaf2;
+  color: var(--pv-ink);
+  font-family: var(--pv-body);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.public-v2 .pdp-initial-input:focus,
+.reservation-input:focus {
+  outline: none;
+  border-color: var(--pv-wine);
+  box-shadow: 0 0 0 3px rgba(107, 31, 42, 0.1);
+  background: #ffffff;
+}
+
+.public-v2 .pdp-subtotal {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.85rem 1rem;
+  background: var(--pv-cream-deep);
+  border: 1px solid rgba(197, 168, 128, 0.3);
+}
+
+.public-v2 .pdp-subtotal span {
+  font-family: var(--pv-body);
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--pv-muted);
+}
+
+.public-v2 .pdp-subtotal strong {
+  font-family: var(--pv-display);
+  font-size: 1.45rem;
+  font-weight: 600;
+  color: var(--pv-wine);
+}
+
+.public-v2 .pdp-purchase-note,
+.public-v2 .pdp-cta-note {
+  margin: 0;
+  font-family: var(--pv-body);
+  font-size: 0.72rem;
+  line-height: 1.6;
+  color: var(--pv-muted);
+}
+
+.public-v2 .pdp-assurance {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.65rem 1.25rem;
+  width: 100%;
+  padding: 1rem 0;
+  border-bottom: 1px solid rgba(107, 31, 42, 0.12);
+}
+
+.public-v2 .pdp-assurance-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.public-v2 .pdp-assurance-item span {
+  font-family: var(--pv-body);
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--pv-muted);
+}
+
+.public-v2 .pdp-assurance-item strong {
+  font-family: var(--pv-body);
+  font-size: 0.78rem;
+  font-weight: 500;
+  line-height: 1.45;
+  color: var(--pv-ink);
+}
+
+.public-v2 .pdp-reservation-steps {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5rem;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.public-v2 .pdp-reservation-steps li {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-family: var(--pv-body);
+  font-size: 0.7rem;
+  line-height: 1.45;
+  color: var(--pv-muted);
+}
+
+.public-v2 .pdp-reservation-steps span {
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: var(--pv-gold);
+}
+
+.public-v2 .pdp-cta-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  width: 100%;
+}
+
+.public-v2 .pdp-order-button {
+  width: 100%;
+  border: 0;
+  cursor: pointer;
+}
+
+.public-v2 .pdp-whatsapp-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0.65rem 1.2rem;
+  border: 1px solid rgba(107, 31, 42, 0.35);
+  border-radius: 2px;
+  background: transparent;
+  color: var(--pv-wine);
+  font-family: var(--pv-body);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-align: center;
+  text-decoration: none;
+  text-transform: uppercase;
+  transition: background 150ms ease, color 150ms ease;
+}
+
+.public-v2 .pdp-whatsapp-btn:hover {
+  background: rgba(107, 31, 42, 0.06);
+}
+
+.public-v2 .floating-order-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  cursor: pointer;
+  min-height: 44px;
+}
+
+@media (max-width: 640px) {
+  .public-v2 .pdp-purchase-head,
+  .public-v2 .pdp-purchase-row {
+    align-items: flex-start;
+  }
+
+  .public-v2 .pdp-assurance,
+  .public-v2 .pdp-reservation-steps {
+    grid-template-columns: 1fr;
+  }
+
+  .public-v2 .pdp-swatch {
+    padding-right: 0.6rem;
+  }
+
+  .public-v2 .pdp-swatch-label {
+    font-size: 0.68rem;
+  }
+}
+
+/* ── RESERVATION PAGE ── */
+.reservation-page {
+  background: #f9edde;
+}
+
+.reservation-hero {
+  position: relative;
+  padding: clamp(3.5rem, 8vw, 6rem) clamp(1.25rem, 5vw, 4rem) clamp(2.5rem, 5vw, 4rem);
+  background:
+    linear-gradient(180deg, rgba(42, 15, 20, 0.82) 0%, rgba(48, 16, 22, 0.9) 100%),
+    url("/landing/garden-flowers.webp") center 40% / cover;
+  color: #fbf1e4;
+  text-align: center;
+  border-bottom: 1px solid rgba(197, 168, 128, 0.3);
+}
+
+.reservation-hero h1 {
+  max-width: 18ch;
+  margin: 0.6rem auto 0.9rem;
+  font-family: var(--pv-display);
+  font-size: clamp(2.2rem, 5vw, 3.6rem);
+  font-weight: 500;
+  line-height: 1.08;
+}
+
+.reservation-hero p {
+  max-width: 62ch;
+  margin: 0 auto;
+  font-family: var(--pv-body);
+  font-size: clamp(0.9rem, 1.4vw, 1rem);
+  line-height: 1.75;
+  color: rgba(251, 241, 228, 0.82);
+}
+
+.reservation-eyebrow {
+  display: inline-block;
+  font-family: var(--pv-body);
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--pv-gold);
+}
+
+.reservation-container {
+  width: min(1220px, 100%);
+  margin: 0 auto;
+  padding: clamp(1.5rem, 4vw, 3rem) clamp(1rem, 4vw, 2rem) clamp(3rem, 6vw, 5rem);
+}
+
+.reservation-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(320px, 0.85fr);
+  gap: clamp(1.25rem, 3vw, 2.5rem);
+  align-items: start;
+}
+
+.reservation-items,
+.reservation-summary,
+.reservation-success,
+.reservation-empty {
+  background: rgba(255, 250, 242, 0.92);
+  border: 1px solid rgba(107, 31, 42, 0.14);
+  border-radius: 4px;
+  box-shadow: 0 14px 40px rgba(58, 22, 27, 0.06);
+}
+
+.reservation-items {
+  padding: clamp(1rem, 2.5vw, 1.6rem);
+}
+
+.reservation-section-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.reservation-section-head h2,
+.reservation-summary h2 {
+  margin: 0.35rem 0 0;
+  font-family: var(--pv-display);
+  font-size: clamp(1.5rem, 2.4vw, 1.9rem);
+  font-weight: 500;
+  color: var(--pv-wine);
+}
+
+.reservation-count {
+  font-family: var(--pv-body);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--pv-muted);
+  white-space: nowrap;
+}
+
+.reservation-item-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.reservation-item {
+  display: grid;
+  grid-template-columns: 112px minmax(0, 1fr);
+  gap: 1rem;
+  padding: 1rem;
+  border: 1px solid rgba(107, 31, 42, 0.12);
+  background: #fffdf9;
+}
+
+.reservation-item-media {
+  overflow: hidden;
+  background: var(--pv-cream-deep);
+  aspect-ratio: 4 / 5;
+}
+
+.reservation-item-media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.reservation-item-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.reservation-item-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.reservation-item-index {
+  font-family: var(--pv-body);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  color: var(--pv-gold);
+}
+
+.reservation-remove-btn {
+  border: 0;
+  background: transparent;
+  color: var(--pv-muted);
+  font-family: var(--pv-body);
+  font-size: 0.72rem;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+  min-height: 32px;
+  padding: 0 0.25rem;
+}
+
+.reservation-remove-btn:hover {
+  color: var(--pv-wine);
+}
+
+.reservation-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 0;
+  font-family: var(--pv-body);
+}
+
+.reservation-field > span {
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--pv-muted);
+}
+
+.reservation-field > span em {
+  font-style: normal;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--pv-muted);
+  opacity: 0.8;
+}
+
+.reservation-input {
+  width: 100%;
+  min-height: 44px;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid rgba(58, 35, 38, 0.18);
+  border-radius: 3px;
+  background: #fffaf2;
+  color: var(--pv-ink);
+  font-family: var(--pv-body);
+  font-size: 0.88rem;
+}
+
+.reservation-input:focus {
+  outline: none;
+  border-color: var(--pv-wine);
+  box-shadow: 0 0 0 3px rgba(107, 31, 42, 0.1);
+  background: #fff;
+}
+
+.reservation-textarea {
+  resize: vertical;
+  min-height: 84px;
+}
+
+.reservation-item-meta {
+  margin: 0;
+  font-family: var(--pv-body);
+  font-size: 0.72rem;
+  color: var(--pv-muted);
+}
+
+.reservation-item-options {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 1rem;
+  align-items: start;
+}
+
+.reservation-swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.reservation-swatch {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 38px;
+  padding: 0.25rem 0.55rem 0.25rem 0.3rem;
+  border: 1px solid rgba(107, 31, 42, 0.14);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--pv-muted);
+  font-family: var(--pv-body);
+  font-size: 0.66rem;
+  cursor: pointer;
+}
+
+.reservation-swatch.is-selected {
+  border-color: var(--pv-wine);
+  background: rgba(107, 31, 42, 0.06);
+  color: var(--pv-wine);
+  font-weight: 600;
+}
+
+.reservation-swatch-dot {
+  width: 20px;
+  height: 20px;
+  font-size: 8px;
+}
+
+.reservation-qty-field {
+  align-items: flex-end;
+  text-align: right;
+}
+
+.reservation-qty button {
+  width: 38px;
+  height: 38px;
+}
+
+.reservation-hint {
+  font-family: var(--pv-body);
+  font-size: 0.66rem;
+  line-height: 1.4;
+  color: var(--pv-muted);
+}
+
+.reservation-item-foot {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding-top: 0.65rem;
+  border-top: 1px dashed rgba(107, 31, 42, 0.18);
+  font-family: var(--pv-body);
+  font-size: 0.75rem;
+  color: var(--pv-muted);
+}
+
+.reservation-item-foot strong {
+  font-family: var(--pv-display);
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: var(--pv-wine);
+}
+
+.reservation-add-btn {
+  width: 100%;
+  min-height: 46px;
+  margin-top: 1rem;
+  border: 1px dashed rgba(107, 31, 42, 0.35);
+  background: transparent;
+  color: var(--pv-wine);
+  font-family: var(--pv-body);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.reservation-add-btn:hover {
+  background: rgba(107, 31, 42, 0.05);
+}
+
+.reservation-items-empty {
+  padding: 1.25rem;
+  border: 1px dashed rgba(107, 31, 42, 0.22);
+  color: var(--pv-muted);
+  font-family: var(--pv-body);
+  font-size: 0.85rem;
+}
+
+.reservation-items-empty p {
+  margin: 0;
+}
+
+.reservation-summary {
+  position: sticky;
+  top: 92px;
+  padding: clamp(1rem, 2.5vw, 1.5rem);
+}
+
+.reservation-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  margin: 1rem 0;
+}
+
+.reservation-shipping {
+  padding: 0.85rem;
+  border: 1px solid rgba(197, 168, 128, 0.3);
+  background: rgba(243, 226, 205, 0.35);
+}
+
+.reservation-shipping-title {
+  margin: 0 0 0.2rem;
+  font-family: var(--pv-body);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--pv-ink);
+}
+
+.reservation-shipping-title span {
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--pv-muted);
+}
+
+.reservation-shipping .reservation-field {
+  margin-top: 0.65rem;
+}
+
+.reservation-vip {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.55rem;
+  margin-top: 0.85rem;
+  font-family: var(--pv-body);
+  font-size: 0.75rem;
+  line-height: 1.5;
+  color: var(--pv-muted);
+  cursor: pointer;
+}
+
+.reservation-vip input {
+  width: 18px;
+  height: 18px;
+  margin-top: 1px;
+  accent-color: var(--pv-wine);
+  flex: 0 0 auto;
+}
+
+.reservation-vip em {
+  font-style: normal;
+  color: var(--pv-muted);
+  opacity: 0.8;
+}
+
+.reservation-total {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  margin: 1rem 0 0.85rem;
+  padding: 0.9rem 1rem;
+  background: var(--pv-cream-deep);
+  border: 1px solid rgba(197, 168, 128, 0.35);
+}
+
+.reservation-total > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  font-family: var(--pv-body);
+  font-size: 0.78rem;
+  color: var(--pv-muted);
+}
+
+.reservation-total strong {
+  font-family: var(--pv-display);
+  font-size: 1.3rem;
+  font-weight: 600;
+  color: var(--pv-wine);
+}
+
+.reservation-total .reservation-dp {
+  padding-top: 0.55rem;
+  border-top: 1px dashed rgba(107, 31, 42, 0.2);
+}
+
+.reservation-total .reservation-dp strong {
+  font-size: 1.05rem;
+}
+
+.reservation-payment-note,
+.reservation-summary-note {
+  margin: 0 0 0.8rem;
+  font-family: var(--pv-body);
+  font-size: 0.7rem;
+  line-height: 1.6;
+  color: var(--pv-muted);
+}
+
+.reservation-summary-note {
+  margin: 0.65rem 0 0;
+  text-align: center;
+}
+
+.reservation-primary-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 50px;
+  padding: 0.85rem 1.2rem;
+  border: 1px solid rgba(197, 168, 128, 0.45);
+  border-radius: 2px;
+  background: var(--pv-wine);
+  color: #fdf5e9;
+  font-family: var(--pv-body);
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-align: center;
+  text-decoration: none;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 150ms ease, transform 150ms ease;
+}
+
+.reservation-primary-btn:hover:not(:disabled) {
+  background: var(--pv-wine-soft);
+  transform: translateY(-1px);
+}
+
+.reservation-primary-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.reservation-secondary-btn {
+  min-height: 44px;
+  padding: 0.6rem 1rem;
+  border: 0;
+  background: transparent;
+  color: var(--pv-muted);
+  font-family: var(--pv-body);
+  font-size: 0.72rem;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.reservation-loading {
+  padding: 4rem 1rem;
+  text-align: center;
+  font-family: var(--pv-body);
+  color: var(--pv-muted);
+}
+
+/* Empty & success */
+.reservation-empty,
+.reservation-success {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: clamp(2rem, 5vw, 3.5rem);
+  text-align: center;
+}
+
+.reservation-empty h2,
+.reservation-success h2 {
+  margin: 0.5rem 0 0.8rem;
+  font-family: var(--pv-display);
+  font-size: clamp(1.9rem, 4vw, 2.8rem);
+  font-weight: 500;
+  color: var(--pv-wine);
+}
+
+.reservation-empty p,
+.reservation-success-lead {
+  max-width: 54ch;
+  margin: 0 auto 1.5rem;
+  font-family: var(--pv-body);
+  font-size: 0.9rem;
+  line-height: 1.75;
+  color: var(--pv-muted);
+}
+
+.reservation-success-seal {
+  display: grid;
+  place-items: center;
+  width: 74px;
+  height: 74px;
+  margin: 0 auto 1rem;
+  border-radius: 50%;
+  background: var(--pv-wine);
+  border: 1px solid rgba(197, 168, 128, 0.5);
+}
+
+.reservation-success-seal img {
+  width: 42px;
+  height: auto;
+}
+
+.reservation-success-ref {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  margin: 1rem auto;
+  padding: 0.8rem 1rem;
+  max-width: 320px;
+  border: 1px dashed rgba(107, 31, 42, 0.3);
+  background: var(--pv-cream-deep);
+}
+
+.reservation-success-ref span {
+  font-family: var(--pv-body);
+  font-size: 0.62rem;
+  letter-spacing: 0.16em;
+  color: var(--pv-muted);
+}
+
+.reservation-success-ref strong {
+  font-family: var(--pv-display);
+  font-size: 1.35rem;
+  color: var(--pv-wine);
+}
+
+.reservation-success-summary {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem 1.25rem;
+  margin: 0 auto 1.4rem;
+  font-family: var(--pv-body);
+  font-size: 0.78rem;
+  color: var(--pv-muted);
+}
+
+.reservation-success .reservation-primary-btn {
+  width: auto;
+  min-width: 260px;
+}
+
+.reservation-success-note {
+  max-width: 52ch;
+  margin: 1rem auto 0.5rem;
+  font-family: var(--pv-body);
+  font-size: 0.7rem;
+  line-height: 1.6;
+  color: var(--pv-muted);
+}
+
+/* ── HOME "CARA RESERVASI" ── */
+.landing-v2 .lp-reserve {
+  padding: clamp(3.5rem, 8vw, 6rem) clamp(1.25rem, 5vw, 4rem);
+  background:
+    linear-gradient(180deg, rgba(249, 237, 222, 0.96), rgba(243, 226, 205, 0.92)),
+    url("/landing/pink-texture.webp") center / cover;
+  border-top: 1px solid rgba(107, 31, 42, 0.1);
+  border-bottom: 1px solid rgba(107, 31, 42, 0.1);
+}
+
+.landing-v2 .lp-reserve-inner {
+  max-width: 1120px;
+  margin: 0 auto;
+}
+
+.landing-v2 .lp-reserve-head {
+  max-width: 720px;
+  margin: 0 auto clamp(1.8rem, 4vw, 2.8rem);
+  text-align: center;
+}
+
+.landing-v2 .lp-reserve-head h2 {
+  margin: 0.5rem 0 0.8rem;
+  font-size: clamp(2rem, 4vw, 3rem);
+  color: var(--lp-wine);
+}
+
+.landing-v2 .lp-reserve-head p {
+  margin: 0;
+  font-family: var(--lp-body);
+  font-size: 0.92rem;
+  line-height: 1.75;
+  color: #6d5a52;
+}
+
+.landing-v2 .lp-reserve-steps {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.landing-v2 .lp-reserve-steps li {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 1.4rem;
+  background: rgba(255, 250, 242, 0.75);
+  border: 1px solid rgba(107, 31, 42, 0.14);
+}
+
+.landing-v2 .lp-reserve-num {
+  font-family: var(--lp-body);
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  color: var(--lp-gold);
+}
+
+.landing-v2 .lp-reserve-steps h3 {
+  margin: 0.45rem 0 0.4rem;
+  font-family: var(--lp-display);
+  font-size: 1.35rem;
+  font-weight: 500;
+  color: var(--lp-wine);
+}
+
+.landing-v2 .lp-reserve-steps p {
+  margin: 0 0 0.9rem;
+  font-family: var(--lp-body);
+  font-size: 0.82rem;
+  line-height: 1.65;
+  color: #6d5a52;
+}
+
+.landing-v2 .lp-reserve-link {
+  margin-top: auto;
+  color: var(--lp-wine);
+  font-family: var(--lp-body);
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-decoration: none;
+  border-bottom: 1px solid rgba(107, 31, 42, 0.35);
+  padding-bottom: 2px;
+}
+
+.landing-v2 .lp-reserve-link:hover {
+  color: var(--lp-wine-deep);
+}
+
+.nav-drawer-cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 46px;
+  margin-top: 0.75rem;
+  padding: 0.7rem 1.2rem;
+  background: #531b21;
+  color: #fbf1e4 !important;
+  border-radius: 999px;
+  font-size: 0.72rem !important;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+@media (max-width: 960px) {
+  .reservation-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .reservation-summary {
+    position: static;
+  }
+
+  .landing-v2 .lp-reserve-steps {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .nav-chat-mobile {
+    display: inline-flex;
+    min-height: 40px;
+    padding: 0 0.65rem;
+    font-size: 0.64rem;
+  }
+
+  .reservation-item {
+    grid-template-columns: 84px minmax(0, 1fr);
+    padding: 0.75rem;
+  }
+
+  .reservation-item-options {
+    grid-template-columns: 1fr;
+  }
+
+  .reservation-qty-field {
+    align-items: flex-start;
+    text-align: left;
+  }
+
+  .reservation-section-head {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 0.4rem;
+  }
+
+  .reservation-success .reservation-primary-btn {
+    width: 100%;
+    min-width: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reservation-primary-btn,
+  .public-v2 .pdp-order-link,
+  .public-v2 .pdp-whatsapp-btn {
+    transition: none;
+  }
+}

@@ -1,21 +1,30 @@
 import { useState, useEffect, useRef, type TouchEvent } from "react";
-import { Link, useRoute } from "wouter";
+import { Link, useLocation, useRoute } from "wouter";
 import SiteHeader from "@/components/SiteHeader";
 import SiteFooter from "@/components/SiteFooter";
 import ProductImage from "@/components/ProductImage";
 import {
   fetchCatalogProducts,
   fetchProductDetailById,
+  fetchWhatsAppNumber,
   tierLabel,
   type CatalogProduct,
   type Product,
 } from "@/lib/api";
-import { formatHarga } from "@/lib/site";
+import { formatHarga, normalizeWhatsApp } from "@/lib/site";
 import { applyProductMeta } from "@/lib/seo";
+import {
+  NUANSA_WARNA_OPTIONS,
+  addReservationItem,
+  clampQty,
+  parseHargaAmount,
+  type NuansaId,
+} from "@/lib/reservation";
 
 export default function ProductDetail() {
   const [, matchProducts] = useRoute("/products/:id");
   const [, matchProduk] = useRoute("/produk/:id");
+  const [, navigate] = useLocation();
   const productId = matchProducts?.id || matchProduk?.id || "";
 
   const [product, setProduct] = useState<Product | null>(null);
@@ -24,15 +33,28 @@ export default function ProductDetail() {
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
   const [showFloatingBar, setShowFloatingBar] = useState(false);
+  const [selectedNuansa, setSelectedNuansa] = useState<NuansaId>(NUANSA_WARNA_OPTIONS[0].id);
+  const [qty, setQty] = useState(1);
+  const [inisial, setInisial] = useState("");
+  const [whatsappNumber, setWhatsappNumber] = useState("6285235242425");
 
-  const mainCtaRef = useRef<HTMLAnchorElement>(null);
+  const mainCtaRef = useRef<HTMLButtonElement>(null);
   const touchStartX = useRef<number | null>(null);
   const didSwipeRef = useRef(false);
 
   useEffect(() => {
     window.scrollTo(0, 0);
     setActiveImageIndex(0);
+    setQty(1);
+    setInisial("");
+    setSelectedNuansa(NUANSA_WARNA_OPTIONS[0].id);
   }, [productId]);
+
+  useEffect(() => {
+    fetchWhatsAppNumber()
+      .then(number => setWhatsappNumber(normalizeWhatsApp(number) || "6285235242425"))
+      .catch(() => undefined);
+  }, []);
 
   useEffect(() => {
     fetchCatalogProducts()
@@ -125,8 +147,32 @@ export default function ProductDetail() {
   const selectedImage = galleryImages[activeImageIndex] || galleryImages[0];
   const hasMultipleImages = galleryImages.length > 1;
 
-  // Tombol pesan mengarah ke form reservasi di beranda (produk otomatis terpilih).
-  const commissionUrl = `/?product=${encodeURIComponent(product.id)}#pesan`;
+  // Pre-order berada di halaman terpisah. Produk yang sudah dikonfigurasi
+  // dimasukkan ke draft agar tetap terpilih saat halaman /pre-order dibuka.
+  const selectedNuansaOption =
+    NUANSA_WARNA_OPTIONS.find(option => option.id === selectedNuansa) ||
+    NUANSA_WARNA_OPTIONS[0];
+  const unitPrice = parseHargaAmount(product.harga);
+  const subtotal = unitPrice * qty;
+  const subtotalLabel = unitPrice > 0 ? formatHarga(String(subtotal)) : "Konfirmasi atelier";
+  const unitPriceLabel = product.harga ? formatHarga(String(product.harga)) : "";
+
+  const whatsappMessage = `Halo A Chapter, saya ingin bertanya tentang ${product.nama_produk}${
+    product.id ? ` (ID: ${product.id})` : ""
+  }. Saya memilih warna ${selectedNuansaOption.label} sebanyak ${qty}.`;
+  const whatsappUrl = `https://wa.me/${normalizeWhatsApp(whatsappNumber) || "6285235242425"}?text=${encodeURIComponent(
+    whatsappMessage
+  )}`;
+
+  const handleReserve = () => {
+    addReservationItem({
+      productId: product.id,
+      qty,
+      nuansa: selectedNuansa,
+      inisial,
+    });
+    navigate("/pre-order");
+  };
 
   const storyText = product.deskripsi ||
     "Karya seni botani asli yang dipreservasi abadi melalui standar presisi laboratorium, dituangkan dalam kristal epoxy anti-UV bersama brankas kenangan digital untuk menyimpan suara, surat, dan foto orang tersayang selamanya.";
@@ -286,28 +332,152 @@ export default function ProductDetail() {
                 </p>
               )}
 
-              <p className="pdp-price pdp-price-minimal">{formatHarga(product.harga)}</p>
+              <div className="pdp-price-row">
+                <p className="pdp-price pdp-price-minimal">{formatHarga(product.harga)}</p>
+                {unitPriceLabel && qty > 1 && (
+                  <span className="pdp-unit-price">{unitPriceLabel} / karya</span>
+                )}
+              </div>
 
               <p className="pdp-narrative pdp-story">{storyText}</p>
 
-              <a
-                ref={mainCtaRef}
-                href={commissionUrl}
-                className="pdp-order-link"
-              >
-                <span>Pesan Karya Ini</span>
-                <span aria-hidden="true">→</span>
-              </a>
+              <div className="pdp-purchase" aria-label="Konfigurasi karya">
+                <div className="pdp-purchase-head">
+                  <span className="pdp-config-label">Pilih nuansa warna</span>
+                  <span className="pdp-config-hint">Harga sama untuk semua warna</span>
+                </div>
+                <div className="pdp-swatches" role="radiogroup" aria-label="Pilih nuansa warna karya">
+                  {NUANSA_WARNA_OPTIONS.map(option => {
+                    const isSelected = selectedNuansa === option.id;
+                    return (
+                      <button
+                        key={option.id}
+                        type="button"
+                        role="radio"
+                        aria-checked={isSelected}
+                        className={`pdp-swatch${isSelected ? " is-selected" : ""}`}
+                        onClick={() => setSelectedNuansa(option.id)}
+                        title={option.detail}
+                      >
+                        <span className="pdp-swatch-dot" style={{ backgroundColor: option.swatch }} aria-hidden="true">
+                          {isSelected && <span className="pdp-swatch-check">✓</span>}
+                        </span>
+                        <span className="pdp-swatch-label">{option.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="pdp-purchase-row">
+                  <div>
+                    <span className="pdp-config-label">Jumlah</span>
+                    <span className="pdp-config-hint">2 karya = 2 QR vault</span>
+                  </div>
+                  <div className="pdp-qty-stepper" role="group" aria-label="Jumlah karya">
+                    <button
+                      type="button"
+                      onClick={() => setQty(current => clampQty(current - 1))}
+                      disabled={qty <= 1}
+                      aria-label="Kurangi jumlah karya"
+                    >
+                      −
+                    </button>
+                    <span aria-live="polite">{qty}</span>
+                    <button
+                      type="button"
+                      onClick={() => setQty(current => clampQty(current + 1))}
+                      disabled={qty >= 20}
+                      aria-label="Tambah jumlah karya"
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
+
+                <div className="pdp-purchase-row pdp-purchase-row--stack">
+                  <label className="pdp-config-label" htmlFor="pdp-inisial">
+                    Inisial monogram <span className="pdp-config-optional">(opsional)</span>
+                  </label>
+                  <input
+                    id="pdp-inisial"
+                    className="pdp-initial-input"
+                    type="text"
+                    maxLength={10}
+                    value={inisial}
+                    onChange={event => setInisial(event.target.value)}
+                    placeholder="Contoh: A, R, atau 5"
+                    autoComplete="off"
+                  />
+                </div>
+
+                <div className="pdp-subtotal" role="status" aria-live="polite">
+                  <span>Subtotal {qty > 1 ? `(${qty} karya)` : ""}</span>
+                  <strong>{subtotalLabel}</strong>
+                </div>
+                <p className="pdp-purchase-note">
+                  Harga belum termasuk ongkir. Total final dikonfirmasi atelier sebelum produksi.
+                </p>
+              </div>
+
+              <div className="pdp-assurance" aria-label="Informasi pre-order">
+                <div className="pdp-assurance-item">
+                  <span>Ketersediaan</span>
+                  <strong>Pre-order · slot terbatas</strong>
+                </div>
+                <div className="pdp-assurance-item">
+                  <span>Estimasi pengerjaan</span>
+                  <strong>5–7 hari kerja</strong>
+                </div>
+                <div className="pdp-assurance-item">
+                  <span>Pengiriman</span>
+                  <strong>Dari Surabaya · fokus Jawa Timur</strong>
+                </div>
+                <div className="pdp-assurance-item">
+                  <span>Pembayaran</span>
+                  <strong>DP 50% manual via WhatsApp</strong>
+                </div>
+              </div>
+
+              <ol className="pdp-reservation-steps" aria-label="Cara pre-order">
+                <li><span>01</span>Atur warna &amp; jumlah</li>
+                <li><span>02</span>Klik pre-order &amp; isi data</li>
+                <li><span>03</span>Konfirmasi &amp; DP via WhatsApp</li>
+              </ol>
+
+              <div className="pdp-cta-group">
+                <button
+                  type="button"
+                  ref={mainCtaRef}
+                  className="pdp-order-link pdp-order-button"
+                  onClick={handleReserve}
+                >
+                  <span>Pre-Order Sekarang</span>
+                  <span aria-hidden="true">→</span>
+                </button>
+                <a
+                  className="pdp-whatsapp-btn"
+                  href={whatsappUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Tanya via WhatsApp
+                </a>
+              </div>
+
+              <p className="pdp-cta-note">
+                Termasuk Smart QR Memory Vault. Tidak ada pembayaran di halaman ini.
+              </p>
             </div>
+
           </div>
 
           {/* Curated Pairings & Cross-Sell (4-card Grid) */}
           {relatedProducts.length > 0 && (
             <section className="pdp-pairings-section" aria-label="Rekomendasi Karya Terkait">
               <div className="pdp-pairings-header">
-                <span className="section-eyebrow">CURATED PAIRINGS</span>
+                  <span className="section-eyebrow">PILIHAN SERUPA</span>
                 <h2 className="section-title">
-                  You May Also <em>Love</em>
+                  Karya Lain yang <em>Anda Sukai</em>
                 </h2>
               </div>
 
@@ -342,7 +512,7 @@ export default function ProductDetail() {
                       <div className="product-name">{p.nama_produk}</div>
                       <div className="product-footer">
                         <span className="product-price">{formatHarga(p.harga)}</span>
-                        <span className="product-btn">[ View Folio ]</span>
+                        <span className="product-btn">[ Lihat &amp; Atur ]</span>
                       </div>
                     </div>
                   </Link>
@@ -360,11 +530,11 @@ export default function ProductDetail() {
         <div className="pdp-floating-bar" role="toolbar" aria-label="Aksi Cepat Pesan">
           <div className="floating-bar-left">
             <span className="floating-title">{product.nama_produk}</span>
-            <span className="floating-price">{formatHarga(product.harga)}</span>
+            <span className="floating-price">{subtotalLabel}</span>
           </div>
-          <a href={commissionUrl} className="floating-order-btn">
-            Pesan Karya Ini →
-          </a>
+          <button type="button" className="floating-order-btn" onClick={handleReserve}>
+            Pre-Order →
+          </button>
         </div>
       )}
 

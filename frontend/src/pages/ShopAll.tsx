@@ -131,14 +131,14 @@ export default function ShopAll() {
 
       <main className="subpage-main">
         {/* Category Hero Banner */}
-        <section className="shop-hero-banner" aria-label="Catalog Collection Banner">
+        <section className="shop-hero-banner" aria-label="Koleksi karya botani">
           <div className="shop-hero-inner">
             <span className="shop-hero-eyebrow">A Chapter · The Permanent Portfolio</span>
             <h1 className="shop-hero-title">
-              Our Botanical Bouquets: Highest Quality &amp; Sustainable
+              Karya Botani Abadi, Dirangkai dengan Cermat
             </h1>
             <p className="shop-hero-sub">
-              Karya seni botani terpreservasi abadi yang dirangkai manual dengan standar laboratorium. Pilihan berkelanjutan yang bertahan bertahun-tahun.
+              Bunga asli yang diawetkan menjadi karya personal, lengkap dengan Smart QR Memory Vault untuk menyimpan kenangan Anda.
             </p>
           </div>
         </section>
@@ -304,8 +304,8 @@ export default function ShopAll() {
                       <div className="product-info">
                         <div className="product-name">{formatTheTitle(p.nama_produk)}</div>
                         <div className="product-footer">
-                          <span className="product-price">FROM {formatHarga(p.harga)},-</span>
-                          <span className="product-btn">[ View Folio ]</span>
+                          <span className="product-price">{formatHarga(p.harga)}</span>
+                          <span className="product-btn">[ Lihat &amp; Atur ]</span>
                         </div>
                       </div>
                     </>
@@ -329,11 +329,11 @@ export default function ShopAll() {
         {/* Educational SEO & Care Story Block */}
         <section className="shop-seo-section" id="care-guide">
           <div className="shop-seo-inner">
-            <h3 className="shop-seo-title">The Preservation Ethos &amp; Protocol</h3>
+            <h3 className="shop-seo-title">Cara Kami Mengawetkan Bunga</h3>
             <div className="shop-seo-grid">
               <div className="seo-card">
                 <span className="seo-card-num">01</span>
-                <h4 className="seo-card-title">Highest Quality Preserved Botanicals</h4>
+                <h4 className="seo-card-title">Bunga Pilihan</h4>
                 <p className="seo-card-desc">
                   Setiap kuntum bunga diekstraksi kelembapannya secara terukur di laboratorium silica hingga kadar air &lt; 0.02%, mempertahankan integritas seluler dan pigmen alami selama bertahun-tahun.
                 </p>
@@ -341,7 +341,7 @@ export default function ShopAll() {
 
               <div className="seo-card">
                 <span className="seo-card-num">02</span>
-                <h4 className="seo-card-title">Curated Seasonal Floral Drops</h4>
+                <h4 className="seo-card-title">Koleksi Musiman</h4>
                 <p className="seo-card-desc">
                   Kami mengalihfungsikan surplus bunga dari floris lokal berkualitas premium menjadi karya seni abadi. Setiap rilis merupakan edisi terbatas dengan nomor arsip unik.
                 </p>
@@ -349,7 +349,7 @@ export default function ShopAll() {
 
               <div className="seo-card">
                 <span className="seo-card-num">03</span>
-                <h4 className="seo-card-title">Handcrafted UV-Shielded Crystal Bio-Epoxy</h4>
+                <h4 className="seo-card-title">Dibuat dengan Resin Pelindung UV</h4>
                 <p className="seo-card-desc">
                   Dituangkan secara individual dengan formula bio-epoxy bening anti-kuning tingkat optik, bebas gelembung udara, serta tahan terhadap iklim tropis Indonesia.
                 </p>
@@ -395,7 +395,7 @@ export default function ShopAll() {
               product={selectedProduct}
               whatsappUrl={whatsappModalUrl}
               onOrder={() => {
-                window.location.href = `/?product=${encodeURIComponent(selectedProduct.id)}#pesan`;
+                window.location.href = `/products/${encodeURIComponent(selectedProduct.id)}`;
               }}
             />
           </div>

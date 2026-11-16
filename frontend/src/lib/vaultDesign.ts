@@ -176,9 +176,9 @@ export function letterStyleToCss(
 /* ── DP 50% gate ── */
 
 export const DP_ORDER_STATUS_LABEL: Record<string, string> = {
-  waiting_dp: "Menunggu verifikasi DP 50%",
-  new: "Menunggu verifikasi DP 50%",
-  dp_verified: "DP 50% terverifikasi",
+  waiting_dp: "Menunggu pembayaran DP manual",
+  new: "Menunggu konfirmasi atelier",
+  dp_verified: "DP manual terverifikasi",
   in_production: "Sedang diproduksi atelier",
   in_progress: "Sedang diproses atelier",
   completed: "Selesai",
@@ -188,5 +188,5 @@ export const DP_ORDER_STATUS_LABEL: Record<string, string> = {
 
 export function dpStatusLabel(status: unknown): string {
   const normalized = String(status || "").trim().toLowerCase();
-  return DP_ORDER_STATUS_LABEL[normalized] || "Menunggu verifikasi DP 50%";
+  return DP_ORDER_STATUS_LABEL[normalized] || "Menunggu konfirmasi atelier";
 }

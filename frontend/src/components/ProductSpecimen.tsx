@@ -94,7 +94,7 @@ export default function ProductSpecimen({
         {/* Dual Action System */}
         <div className="specimen-actions">
           <button type="button" className="specimen-order-button" onClick={onOrder}>
-            COMMISSION THIS CHAPTER →
+            ATUR WARNA &amp; JUMLAH →
           </button>
           <a
             href={whatsappUrl}

@@ -1,4 +1,4 @@
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useEffect } from "react";
 import { Switch, Route, Router as WouterRouter } from "wouter";
 import Home from "@/pages/Home";
 import NotFound from "@/pages/not-found";
@@ -8,6 +8,7 @@ import ErrorBoundary from "@/components/ErrorBoundary";
 // Home sengaja tetap eager karena merupakan entry point utama.
 const ShopAll = lazy(() => import("@/pages/ShopAll"));
 const ProductDetail = lazy(() => import("@/pages/ProductDetail"));
+const PreOrder = lazy(() => import("@/pages/PreOrder"));
 const Produk = lazy(() => import("@/pages/Produk"));
 const AboutUs = lazy(() => import("@/pages/AboutUs"));
 const SmartQrVault = lazy(() => import("@/pages/SmartQrVault"));
@@ -32,12 +33,24 @@ function LoadingPage() {
   );
 }
 
+// Tautan lama (/reservasi) masih beredar di chat WhatsApp dan bookmark.
+// Teruskan ke halaman pre-order sambil mempertahankan query string.
+function LegacyReservasiRedirect() {
+  useEffect(() => {
+    const { search, hash } = window.location;
+    window.location.replace(`/pre-order${search}${hash}`);
+  }, []);
+  return <LoadingPage />;
+}
+
 function Router() {
   return (
     <Suspense fallback={<LoadingPage />}>
       <Switch>
         <Route path="/" component={Home} />
         <Route path="/shop" component={ShopAll} />
+        <Route path="/pre-order" component={PreOrder} />
+        <Route path="/reservasi" component={LegacyReservasiRedirect} />
         <Route path="/about" component={AboutUs} />
         <Route path="/smart-qr-vault" component={SmartQrVault} />
         <Route path="/vault" component={SmartQrVault} />

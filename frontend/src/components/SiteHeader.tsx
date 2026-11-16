@@ -1,16 +1,35 @@
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import BrandLogo from "@/components/BrandLogo";
+import { fetchWhatsAppNumber } from "@/lib/api";
+import { normalizeWhatsApp } from "@/lib/site";
 
 const navLinks = [
-  { href: "/#chapters", label: "The Chapters" },
+  { href: "/shop", label: "The Chapters" },
+  { href: "/#cara-pre-order", label: "Cara Pre-Order" },
   { href: "/smart-qr-vault", label: "Smart QR Vault" },
 ];
+
+const CONSULTATION_MESSAGE =
+  "Halo Concierge A Chapter, saya ingin berkonsultasi mengenai karya dan pre-order.";
 
 export default function SiteHeader({ variant = "default" }: { variant?: "default" | "overlay" }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [whatsappNumber, setWhatsappNumber] = useState("6285235242425");
   const [location] = useLocation();
+
+  useEffect(() => {
+    let active = true;
+    fetchWhatsAppNumber()
+      .then(number => {
+        if (active) setWhatsappNumber(normalizeWhatsApp(number) || "6285235242425");
+      })
+      .catch(() => undefined);
+    return () => {
+      active = false;
+    };
+  }, []);
 
   useEffect(() => {
     if (variant !== "overlay") return;
@@ -42,6 +61,10 @@ export default function SiteHeader({ variant = "default" }: { variant?: "default
 
   const closeMenu = () => setMenuOpen(false);
 
+  const consultationUrl = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(
+    CONSULTATION_MESSAGE
+  )}`;
+
   return (
     <>
       <nav
@@ -61,11 +84,22 @@ export default function SiteHeader({ variant = "default" }: { variant?: "default
         </ul>
 
         <div className="nav-actions">
-          <a className="nav-commission" href="/#pesan">
-            Commission / Chat
+          <a
+            className="nav-commission"
+            href={consultationUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Konsultasi
           </a>
-          <a className="nav-chat-mobile" href="/#pesan" onClick={closeMenu}>
-            Chat
+          <a
+            className="nav-chat-mobile"
+            href={consultationUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={closeMenu}
+          >
+            Konsultasi
           </a>
           <button
             type="button"
@@ -107,6 +141,20 @@ export default function SiteHeader({ variant = "default" }: { variant?: "default
                 <a href={href} onClick={closeMenu}>{label}</a>
               </li>
             ))}
+            <li>
+              <a href="/pre-order" onClick={closeMenu}>Pre-Order Karya</a>
+            </li>
+            <li>
+              <a
+                href={consultationUrl}
+                className="nav-drawer-cta"
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={closeMenu}
+              >
+                Konsultasi via WhatsApp →
+              </a>
+            </li>
           </ul>
         </div>
       )}

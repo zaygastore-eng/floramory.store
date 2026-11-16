@@ -85,7 +85,7 @@ Deno.serve(async (req: Request) => {
     const setupToken = String(order.vault_setup_token || order.id).trim();
     const vaultUrl = `https://www.achapter.my.id/vault-setup?token=${encodeURIComponent(setupToken)}`;
 
-    const waText = `Terima kasih Kak ${customerName}, pembayaran DP 50% untuk pesanan #${orderNum} telah kami terima.\n\nBunga pilihan Anda saat ini sedang memasuki tahap dehidrasi laboratorium.\nSilakan lengkapi rekaman suara, foto polaroid, dan surat rahasia melalui link privat atelier berikut:\n🔗 ${vaultUrl}\n\nKarya akan mulai dicasting setelah memori selesai Anda susun.`;
+    const waText = `Terima kasih Kak ${customerName}, pembayaran DP 50% manual untuk pesanan #${orderNum} telah kami terima.\n\nBunga pilihan Anda saat ini sedang memasuki tahap dehidrasi laboratorium.\nSilakan lengkapi rekaman suara, foto polaroid, dan surat rahasia melalui link privat atelier berikut:\n🔗 ${vaultUrl}\n\nKarya akan mulai dicasting setelah memori selesai Anda susun.`;
 
     let digits = String(order.whatsapp || "").replace(/\D/g, "");
     if (digits.startsWith("0")) digits = `62${digits.slice(1)}`;
@@ -95,8 +95,8 @@ Deno.serve(async (req: Request) => {
     // Notifikasi email ke atelier (pelanggan tetap dihubungi manual
     // lewat WhatsApp agar tidak melanggar kebijakan akun WA).
     await sendAdminEmail(
-      `DP terverifikasi #${orderNum} — ${String(order.product_name || "").trim()}`,
-      emailLayout("Pembayaran DP terverifikasi", [
+      `DP manual terverifikasi #${orderNum} — ${String(order.product_name || "").trim()}`,
+      emailLayout("Pembayaran DP manual terverifikasi", [
         ["Nomor", escapeHtml(orderNum)],
         ["Pelanggan", escapeHtml(customerName)],
         ["WhatsApp", digits ? `<a href="https://wa.me/${escapeHtml(digits)}">${escapeHtml(digits)}</a>` : "-"],
@@ -113,7 +113,7 @@ Deno.serve(async (req: Request) => {
     return json({
       ok: true,
       waStatus: "manual_ready",
-      message: "Status DP berhasil dikonfirmasi. Gunakan tombol Kirim Link WA di Admin untuk menghubungi pemesan.",
+      message: "Status DP manual berhasil dikonfirmasi. Gunakan tombol Kirim Link WA di Admin untuk menghubungi pemesan.",
       orderNumber: orderNum,
       vaultUrl,
       waMessage: waText,

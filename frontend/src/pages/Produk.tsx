@@ -178,7 +178,7 @@ export default function Produk() {
             product={product}
             whatsappUrl={`https://wa.me/${waDigits}?text=${waMsg}`}
             onOrder={() => {
-              window.location.href = `${pageUrl("/")}?product=${encodeURIComponent(product.id)}#pesan`;
+              window.location.href = pageUrl(`/products/${encodeURIComponent(product.id)}`);
             }}
           />
         )}

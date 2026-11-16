@@ -28,10 +28,20 @@ export function normalizeWhatsApp(raw: string): string {
 
 export function formatHarga(raw: string): string {
   if (!raw) return "";
-  if (!/^\d+$/.test(raw)) return raw;
 
-  const normalized = raw.replace(/^0+(?=\d)/, "");
-  return `Rp${normalized.replace(/\B(?=(\d{3})+(?!\d))/g, ".")}`;
+  const trimmed = String(raw).trim();
+  if (!trimmed) return "";
+
+  // Nilai yang sudah berupa label (mis. "Mulai Rp 1.850.000") dibiarkan.
+  if (/[a-zA-Z]/.test(trimmed)) return trimmed;
+
+  const digits = trimmed.replace(/[^\d]/g, "");
+  if (!digits) return trimmed;
+
+  const amount = Number(digits);
+  if (!Number.isSafeInteger(amount)) return trimmed;
+
+  return `Rp${amount.toLocaleString("id-ID")}`;
 }
 
 export interface GroupCommissionWhatsAppItem {
@@ -48,6 +58,8 @@ export function formatGroupCommissionWhatsApp(params: {
   totalAmount?: number;
   dpAmount?: number;
   isVip?: boolean;
+  shippingCity?: string;
+  shippingAddress?: string;
 }): string {
   const lines = params.items.map((item, index) => {
     const qtyLabel = item.qty > 1 ? `${item.qty}× ` : "";
@@ -57,13 +69,13 @@ export function formatGroupCommissionWhatsApp(params: {
 
   const totalKarya = params.items.reduce((sum, item) => sum + Math.max(1, item.qty), 0);
   const summary: string[] = [
-    `Halo Concierge A Chapter, saya ingin menyegel pre-order:`,
+    `Halo Concierge A Chapter, saya baru mengirim pre-order:`,
     "",
     `• Nama Pemesan: ${params.customerName.trim()}`,
   ];
 
   if (params.groupNumber) {
-    summary.push(`• Nomor Reservasi: ${params.groupNumber}`);
+    summary.push(`• Nomor Pre-Order: ${params.groupNumber}`);
   }
 
   summary.push(`• Jumlah Karya: ${totalKarya}`, "", "RINCIAN KARYA", ...lines, "");
@@ -72,13 +84,18 @@ export function formatGroupCommissionWhatsApp(params: {
     summary.push(`• Total: Rp ${params.totalAmount.toLocaleString("id-ID")}`);
   }
   if (typeof params.dpAmount === "number" && params.dpAmount > 0) {
-    summary.push(`• DP 50%: Rp ${params.dpAmount.toLocaleString("id-ID")}`);
+    summary.push(`• DP 50% (manual): Rp ${params.dpAmount.toLocaleString("id-ID")}`);
   }
+
+  const city = params.shippingCity?.trim();
+  const address = params.shippingAddress?.trim();
+  if (city) summary.push(`• Kota/Kecamatan: ${city}`);
+  if (address) summary.push(`• Alamat: ${address}`);
 
   summary.push(
     `• Status VIP Waiting List: ${params.isVip ? "Ya (Klaim Early-Bird Privilege)" : "Belum Terdaftar"}`,
     "",
-    "Saya sudah melakukan pembayaran DP 50% dan mengunggah bukti transfer. Mohon verifikasi pembayaran serta kirimkan tautan pengisian brankas memori saya. Terima kasih."
+    "Mohon konfirmasi ketersediaan, estimasi pengerjaan, ongkos kirim, dan instruksi pembayaran DP 50% secara manual. Terima kasih."
   );
 
   return summary.join("\n");

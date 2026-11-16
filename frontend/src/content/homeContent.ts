@@ -118,12 +118,11 @@ export const homeContent = {
   brandName: "A Chapter",
   brandTagline: "Atelier of Botanical Keepsakes & Smart Memory Vault",
   navLinks: [
-    { label: "The Chapters", href: "#chapters" },
-    { label: "Single Stems", href: "#single-stems" },
-    { label: "Gift Cards", href: "#gift-cards" },
-    { label: "Smart QR Vault", href: "#vault" },
+    { label: "The Chapters", href: "/shop" },
+    { label: "Cara Pre-Order", href: "/#cara-pre-order" },
+    { label: "Smart QR Vault", href: "/smart-qr-vault" },
   ],
-  navCta: { label: "Commission / Chat", action: "#pesan" },
+  navCta: { label: "Pre-Order", action: "/pre-order" },
   hero: {
     eyebrow: "A Chapter · Botanical Artware",
     headline:
@@ -345,10 +344,10 @@ export const homeContent = {
   concierge: {
     whatsappNumber: "085235242425",
     orderGuidance: [
-      "Pilih karya dan hubungi atelier melalui WhatsApp untuk memulai pre-order.",
-      "Sampaikan nama produk, jumlah, alamat tujuan, serta tanggal yang diharapkan.",
-      "Kirim materi kenangan untuk Smart QR Vault bila ingin menyertakannya.",
-      "Atelier akan mengonfirmasi ketersediaan, estimasi pengerjaan, dan rincian pembayaran sebelum pesanan diproses.",
+      "Pilih karya di halaman produk, atur warna dan jumlah, lalu lanjutkan ke halaman pre-order.",
+      "Lengkapi nama, WhatsApp, serta kota dan alamat pengiriman bila sudah tersedia.",
+      "Kirim pre-order, lalu lanjutkan konfirmasi melalui WhatsApp.",
+      "Atelier akan mengonfirmasi ketersediaan, estimasi pengerjaan, ongkir, dan instruksi pembayaran DP 50% secara manual.",
     ],
   },
 } satisfies HomeContent;

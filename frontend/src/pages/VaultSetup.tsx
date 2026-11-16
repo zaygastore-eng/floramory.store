@@ -181,7 +181,7 @@ export default function VaultSetup() {
         setPageError("");
       }
     } catch (error) {
-      setUploadError(error instanceof Error ? error.message : "Gagal memeriksa status DP.");
+      setUploadError(error instanceof Error ? error.message : "Gagal memeriksa status konfirmasi DP.");
     } finally {
       setRefreshing(false);
     }
@@ -543,7 +543,7 @@ export default function VaultSetup() {
     compressingSlot !== null;
 
   const whatsappHelpUrl = `https://wa.me/6285235242425?text=${encodeURIComponent(
-    `Halo A Chapter Concierge, saya ingin menanyakan status DP 50% untuk pesanan #${orderLabel}.`
+    `Halo A Chapter Concierge, saya ingin menanyakan status konfirmasi DP 50% manual untuk pesanan #${orderLabel}.`
   )}`;
 
   return (
@@ -596,21 +596,21 @@ export default function VaultSetup() {
             </div>
           </section>
         ) : dpRequired ? (
-          /* ── DP 50% GATE: konsol terkunci sampai admin memverifikasi ── */
+          /* ── DP 50% GATE: konsol terkunci sampai admin mengonfirmasi DP manual ── */
           <section className="vault-setup-card vault-dp-card" role="status">
             <div className="vault-dp-seal" aria-hidden="true">
               <span className="wax-seal-circle">
                 <img src="/a-chapter-logo-light.png" alt="" className="wax-seal-logo-img" />
               </span>
             </div>
-            <span className="vault-dp-kicker">MEMORY VAULT · MENUNGGU VERIFIKASI DP</span>
+            <span className="vault-dp-kicker">MEMORY VAULT · MENUNGGU KONFIRMASI DP</span>
             <h2 className="vault-setup-card-title vault-dp-title">
               Konsol Kenangan Terkunci Sementara
             </h2>
             <p className="vault-dp-lead">
               Terima kasih, <strong>{order.customer_name || "Sahabat A Chapter"}</strong>. Konsol pengisian
-              foto, suara, dan surat rahasia terbuka otomatis setelah atelier memverifikasi{" "}
-              <strong>DP 50%</strong> pesanan Anda.
+              foto, suara, dan surat rahasia terbuka otomatis setelah atelier mengonfirmasi{" "}
+              <strong>pembayaran DP 50% manual</strong> pesanan Anda melalui WhatsApp.
             </p>
 
             <div className="vault-dp-meta">
@@ -639,8 +639,8 @@ export default function VaultSetup() {
               <li className="is-active">
                 <span className="vault-dp-step-dot" aria-hidden="true">2</span>
                 <div>
-                  <strong>Verifikasi DP 50%</strong>
-                  <span>Concierge memeriksa bukti transfer Anda (biasanya &lt; 1 × 24 jam).</span>
+                  <strong>Konfirmasi DP 50% manual</strong>
+                  <span>Concierge mengonfirmasi pembayaran DP manual Anda melalui WhatsApp (biasanya &lt; 1 × 24 jam).</span>
                 </div>
               </li>
               <li>
@@ -677,7 +677,7 @@ export default function VaultSetup() {
                 onClick={refreshDpStatus}
                 disabled={refreshing}
               >
-                {refreshing ? "Memeriksa status..." : "Cek Status DP Sekarang"}
+                {refreshing ? "Memeriksa status..." : "Cek Status Konfirmasi"}
               </button>
               <a
                 href={whatsappHelpUrl}
@@ -685,7 +685,7 @@ export default function VaultSetup() {
                 rel="noopener noreferrer"
                 className="hero-cta hero-cta-outline vault-dp-wa"
               >
-                Konfirmasi Bukti DP via WhatsApp
+                Konfirmasi DP via WhatsApp
               </a>
             </div>
           </section>

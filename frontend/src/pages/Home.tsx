@@ -1,193 +1,21 @@
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "wouter";
-import BrandLogo from "@/components/BrandLogo";
 import ProductImage from "@/components/ProductImage";
 import SiteHeader from "@/components/SiteHeader";
 import SiteFooter from "@/components/SiteFooter";
 import {
-  createGroupPreOrder,
-  getPaymentInfo,
-  uploadPaymentProof,
-  fetchQrisImageUrl,
   fetchCatalogProducts,
-  fetchHeroConfig,
-  fetchWhatsAppNumber,
   tierLabel,
   type CatalogProduct,
-  type HeroConfig,
-  type PreOrderItemInput,
 } from "@/lib/api";
 import { homeContent } from "@/content/homeContent";
 import { applyPageMeta } from "@/lib/seo";
-import {
-  pageUrl,
-  normalizeWhatsApp,
-  formatHarga,
-  formatGroupCommissionWhatsApp,
-} from "@/lib/site";
+import { formatHarga, pageUrl } from "@/lib/site";
 import { PHOTOBOOTH_THEMES, type PhotoboothThemeId } from "@/lib/vaultDesign";
-import useToast from "@/hooks/useToast";
 import { useAudioPlayback } from "@/hooks/useAudioPlayback";
 
 type PhotoboothBorderId = PhotoboothThemeId;
 
-export const ATELIER_COLLECTION_GROUPS = [
-  {
-    group: "Keychain",
-    items: [
-      { id: "keychain-scarlet", name: "Keychain — Scarlet Chapter" },
-      { id: "keychain-sapphire", name: "Keychain — Sapphire Memory" },
-    ],
-  },
-  {
-    group: "Bag Charm",
-    items: [
-      { id: "bagcharm-hastings", name: "Bag Charm — The Hastings Red" },
-      { id: "bagcharm-mayfair", name: "Bag Charm — Mayfair Blue" },
-    ],
-  },
-] as const;
-
-export const NUANSA_WARNA_OPTIONS = [
-  {
-    id: "crimson-romance",
-    label: "Crimson Romance",
-    detail: "Nuansa Merah Crimson & Emas",
-    swatch: "#7A222D",
-  },
-  {
-    id: "bridgerton-blue",
-    label: "Bridgerton Blue",
-    detail: "Nuansa Biru Lembut & Mutiara",
-    swatch: "#B4C6E7",
-  },
-  {
-    id: "classic-ivory",
-    label: "Classic Ivory",
-    detail: "Nuansa Krem & Bunga Natural",
-    swatch: "#FAF5EE",
-  },
-] as const;
-
-const ORDER_DRAFT_KEY = "fm_preorder_draft_v1";
-
-interface OrderDraftItem {
-  uid: string;
-  productId: string;
-  qty: number;
-  nuansa: string;
-  inisial: string;
-}
-
-function createOrderDraftItem(productId = "", nuansa = NUANSA_WARNA_OPTIONS[0].id): OrderDraftItem {
-  const uid =
-    typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
-      ? crypto.randomUUID()
-      : `item-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-  return { uid, productId, qty: 1, nuansa, inisial: "" };
-}
-
-function loadOrderDraft(): OrderDraftItem[] {
-  if (typeof window === "undefined") return [createOrderDraftItem()];
-  try {
-    const raw = window.localStorage.getItem(ORDER_DRAFT_KEY);
-    if (!raw) return [createOrderDraftItem()];
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [createOrderDraftItem()];
-    const items = parsed
-      .filter(entry => entry && typeof entry === "object")
-      .map(entry => {
-        const record = entry as Record<string, unknown>;
-        const nuansa = String(record.nuansa || "");
-        return {
-          uid: createOrderDraftItem().uid,
-          productId: String(record.productId || ""),
-          qty: Math.min(20, Math.max(1, Math.floor(Number(record.qty) || 1))),
-          nuansa: NUANSA_WARNA_OPTIONS.some(option => option.id === nuansa)
-            ? nuansa
-            : NUANSA_WARNA_OPTIONS[0].id,
-          inisial: String(record.inisial || "").slice(0, 10),
-        };
-      });
-    return items.length > 0 ? items : [createOrderDraftItem()];
-  } catch {
-    return [createOrderDraftItem()];
-  }
-}
-
-function saveOrderDraft(items: OrderDraftItem[]): void {
-  if (typeof window === "undefined") return;
-  try {
-    window.localStorage.setItem(
-      ORDER_DRAFT_KEY,
-      JSON.stringify(
-        items.map(item => ({
-          productId: item.productId,
-          qty: item.qty,
-          nuansa: item.nuansa,
-          inisial: item.inisial,
-        }))
-      )
-    );
-  } catch {
-    // localStorage bisa diblokir (mode privat); draft cukup hilang.
-  }
-}
-
-function productPriceAmount(raw: unknown): number {
-  const amount = Number(String(raw || "").replace(/\D/g, ""));
-  return Number.isSafeInteger(amount) ? amount : 0;
-}
-
-const PENDING_PAYMENT_STORAGE_KEY = "fm_pending_payment_v1";
-
-interface PendingPaymentState {
-  groupId: string;
-  groupNumber: string;
-  orderNumber: string;
-  paymentToken: string;
-  itemCount: number;
-  totalAmount: number;
-  dpAmount: number;
-  customerName: string;
-  paymentProofUrl?: string;
-  waUrl?: string;
-}
-
-function loadPendingPayment(): PendingPaymentState | null {
-  if (typeof window === "undefined") return null;
-  try {
-    const raw = window.localStorage.getItem(PENDING_PAYMENT_STORAGE_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    if (parsed && typeof parsed === "object" && parsed.groupNumber && parsed.paymentToken) {
-      return parsed as PendingPaymentState;
-    }
-    return null;
-  } catch {
-    return null;
-  }
-}
-
-function savePendingPayment(state: PendingPaymentState | null): void {
-  if (typeof window === "undefined") return;
-  try {
-    if (!state) {
-      window.localStorage.removeItem(PENDING_PAYMENT_STORAGE_KEY);
-    } else {
-      window.localStorage.setItem(PENDING_PAYMENT_STORAGE_KEY, JSON.stringify(state));
-    }
-  } catch {
-    // Mode privat/storage diblokir
-  }
-}
-
-const PHOTOBOOTH_SAMPLE_PHOTOS = [
-  { id: "cut-1", src: "/landing/polaroid-1.webp", alt: "Flower market morning bouquet" },
-  { id: "cut-2", src: "/landing/polaroid-2.webp", alt: "Fragrance of fresh roses" },
-  { id: "cut-3", src: "/landing/polaroid-3.webp", alt: "Candid laughter and joy" },
-  { id: "cut-4", src: "/landing/polaroid-4.webp", alt: "Keepsake flowers framed" },
-];
 
 const WAVEFORM_SEEK_BARS = [
   24, 32, 46, 65, 50, 76, 60, 88, 70, 82, 52, 64, 90, 68, 96, 56,
@@ -195,6 +23,7 @@ const WAVEFORM_SEEK_BARS = [
   85, 94, 60, 48, 70, 84, 52, 66, 90, 74, 44, 60, 78, 88, 58, 46,
   68, 82, 94, 70, 54, 76, 86, 62, 46, 66, 80, 58, 44, 56, 36, 26,
 ];
+
 
 function ProductCard({
   product,
@@ -279,12 +108,13 @@ function ProductCard({
         {product.deskripsi && <div className="product-desc">{product.deskripsi}</div>}
         <div className="product-footer">
           <span className="product-price">{formatHarga(product.harga)}</span>
-          <span className="product-btn">Detail / Reservasi →</span>
+          <span className="product-btn">Lihat &amp; Atur →</span>
         </div>
       </div>
     </button>
   );
 }
+
 
 const faqItems = [
   {
@@ -293,11 +123,11 @@ const faqItems = [
   },
   {
     q: "Bagaimana cara kustomisasi produknya?",
-    a: " Kamu bisa memilih inisial huruf/angka, nuansa palet warna (Crimson Romance atau Bridgerton Blue), serta menyematkan tautan kenangan digital pribadi saat mengisi formulir Pre-Order."
+    a: " Kamu bisa memilih inisial huruf/angka, nuansa palet warna (Crimson Romance atau Bridgerton Blue), serta menyematkan tautan kenangan digital pribadi saat mengisi halaman pre-order."
   },
   {
-    q: "Bagaimana sistem pembayaran dan Pre-Order-nya??",
-    a: "Karena setiap karya dibuat secara khusus (bespoke), kami menerapkan sistem DP (Down Payment) 50% di awal sebagai tanda jadi slot produksi. Pelunasan dilakukan saat karya selesai dan siap dikirim."
+    q: "Bagaimana sistem pembayaran dan pre-order-nya?",
+    a: "Karena setiap karya dibuat secara khusus (bespoke), kami menerapkan sistem DP (Down Payment) 50%. DP dibayarkan secara manual melalui WhatsApp setelah atelier mengonfirmasi ketersediaan dan ongkos kirim. Pelunasan dilakukan saat karya selesai dan siap dikirim."
   },
   {
     q: "Berapa lama proses pembuatan & ke mana pengirimannya?",
@@ -309,74 +139,16 @@ const faqItems = [
   } 
 ];
 
-const defaultHeroConfig: HeroConfig = {
-  eyebrow: homeContent.hero.eyebrow,
-  headline: homeContent.hero.headline,
-  description: homeContent.hero.description,
-  ctaText: homeContent.hero.ctaButton,
-  ctaLink: "#chapters",
-  bgImageUrl: homeContent.hero.bgImage,
-};
-
-function splitHeroHeadline(headline: string): [string, string] {
-  const lines = headline.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
-  if (lines.length > 1) return [lines[0], lines.slice(1).join(" ")];
-
-  const text = lines[0] || "";
-  const commaIndex = text.indexOf(",");
-  if (commaIndex > 0) {
-    return [text.slice(0, commaIndex + 1).trim(), text.slice(commaIndex + 1).trim()];
-  }
-
-  const words = text.split(/\s+/);
-  const midpoint = Math.ceil(words.length / 2);
-  return [words.slice(0, midpoint).join(" "), words.slice(midpoint).join(" ")];
-}
-
-function getCommissionProductGroups(
-  products: CatalogProduct[]
-) {
-  const activeProducts = products.filter(product => !product.isFallback);
-
-  return [
-    {
-      label: "The Chapters (Framed Keepsakes)",
-      products: activeProducts,
-      examples: ["The Rose Garden", "Hydrangea Study", "Meadow Notes", "Custom Frame"],
-    },
-  ];
-}
 
 export default function Home() {
   const [, navigate] = useLocation();
-  const [heroConfig, setHeroConfig] = useState<HeroConfig>(defaultHeroConfig);
-  const [products, setProducts] = useState<CatalogProduct[]>([]);
   const [chapterProducts, setChapterProducts] = useState<CatalogProduct[]>([]);
   const [activeFaq, setActiveFaq] = useState<number | null>(null);
   const toggleFaq = (index: number) => {
     setActiveFaq(current => current === index ? null : index);
   };
-  const { toastMsg, toastVisible, showToast } = useToast(3500);
-  const [orderSubmitting, setOrderSubmitting] = useState(false);
-  const [lastOrderWaUrl, setLastOrderWaUrl] = useState<string | null>(null);
-  const [orderComplete, setOrderComplete] = useState(false);
-  const [submittedOrderId, setSubmittedOrderId] = useState("");
-  const [submittedOrderNumber, setSubmittedOrderNumber] = useState("");
-  const [submittedGroupNumber, setSubmittedGroupNumber] = useState("");
-  const [submittedItemCount, setSubmittedItemCount] = useState(0);
-  const [submittedTotal, setSubmittedTotal] = useState(0);
-  const [submittedDp, setSubmittedDp] = useState(0);
 
-  // Fase Pembayaran QRIS & Bukti Bayar
-  const [paymentPhase, setPaymentPhase] = useState<"form" | "qris" | "confirmed">("form");
-  const [activePayment, setActivePayment] = useState<PendingPaymentState | null>(() => loadPendingPayment());
-  const [qrisImageUrl, setQrisImageUrl] = useState<string>("");
-  const [proofFile, setProofFile] = useState<File | null>(null);
-  const [proofPreviewUrl, setProofPreviewUrl] = useState<string>("");
-  const [isUploadingProof, setIsUploadingProof] = useState(false);
-  const proofInputRef = useRef<HTMLInputElement>(null);
-  const [orderItems, setOrderItems] = useState<OrderDraftItem[]>(() => loadOrderDraft());
-  const [whatsappNumber, setWhatsappNumber] = useState("6285235242425");
+
   const [vaultSimTab, setVaultSimTab] = useState<
     "photograph" | "voice-record" | "letter" | "video"
   >("photograph");
@@ -405,179 +177,7 @@ export default function Home() {
     seekStart: handleAudioSeekStart,
     seekEnd: handleAudioSeekEnd,
   } = useAudioPlayback(131);
-  const [buyerForm, setBuyerForm] = useState({
-    nama: "",
-    wa: "",
-    isVip: false,
-    website: "",
-  });
-  const formStartRef = useRef(Date.now());
-  const commissionPopupRef = useRef<Window | null>(null);
 
-  useEffect(() => {
-    applyPageMeta({
-      title: "A Chapter — Atelier Preserved Flowers & Smart Memory Vault",
-      description:
-        "Karya seni botani abadi dari kelopak bunga asli, dipadukan dengan Smart-QR Memory Vault seumur hidup untuk menyimpan foto, rekaman suara, video, dan surat personal Anda.",
-      path: "/",
-    });
-  }, []);
-
-  useEffect(() => {
-    let active = true;
-    void fetchHeroConfig().then(config => {
-      if (active && config) {
-        setHeroConfig({
-          ...config,
-          bgImageUrl: config.bgImageUrl || defaultHeroConfig.bgImageUrl,
-        });
-      }
-    });
-
-    Promise.all([
-      fetchCatalogProducts(),
-      fetchCatalogProducts("framed"),
-    ])
-      .then(([loadedProducts, framedProducts]) => {
-        setProducts(loadedProducts);
-        setChapterProducts(framedProducts);
-        const validProductIds = new Set(
-          loadedProducts.filter(product => !product.isFallback).map(product => product.id)
-        );
-        setOrderItems(items =>
-          items.map(item =>
-            item.productId && !validProductIds.has(item.productId)
-              ? { ...item, productId: "" }
-              : item
-          )
-        );
-        const preselectedId = new URLSearchParams(window.location.search).get("product");
-        const preselectedProduct = loadedProducts.find(product => (
-          !product.isFallback && product.id === preselectedId
-        ));
-        if (preselectedProduct) {
-          setOrderItems(items => {
-            if (items.length === 1 && !items[0].productId) {
-              return [{ ...items[0], productId: preselectedProduct.id }];
-            }
-            return [...items, createOrderDraftItem(preselectedProduct.id)];
-          });
-          setOrderComplete(false);
-          showToast(`${preselectedProduct.nama_produk} ditambahkan ke daftar karya.`);
-          const url = new URL(window.location.href);
-          url.searchParams.delete("product");
-          window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash || "#pesan"}`);
-          window.setTimeout(() => {
-            document.getElementById("pesan")?.scrollIntoView({ behavior: "smooth" });
-          }, 100);
-        }
-      })
-      .catch(() => {
-        setProducts([]);
-        setChapterProducts([]);
-      });
-    fetchWhatsAppNumber().then(number => {
-      setWhatsappNumber(normalizeWhatsApp(number) || "6285235242425");
-    });
-    fetchQrisImageUrl().then(url => {
-      setQrisImageUrl(url || "/landing/qris-atelier.png");
-    });
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  // Sinkronisasi status tagihan aktif dari pending payment jika ada di localStorage
-  useEffect(() => {
-    if (!activePayment) return;
-    setPaymentPhase("qris");
-    setSubmittedGroupNumber(activePayment.groupNumber);
-    setSubmittedOrderNumber(activePayment.orderNumber);
-    setSubmittedOrderId(activePayment.groupId);
-    setSubmittedItemCount(activePayment.itemCount);
-    setSubmittedTotal(activePayment.totalAmount);
-    setSubmittedDp(activePayment.dpAmount);
-    if (activePayment.waUrl) {
-      setLastOrderWaUrl(activePayment.waUrl);
-    }
-
-    // Refresh info dari backend untuk memastikan status teranyar
-    getPaymentInfo({
-      groupNumber: activePayment.groupNumber,
-      paymentToken: activePayment.paymentToken,
-    })
-      .then(res => {
-        if (!res.ok || !res.group) return;
-        if (res.group.status === "dp_verified" || res.group.status === "completed") {
-          setOrderComplete(true);
-          setPaymentPhase("confirmed");
-          savePendingPayment(null);
-          setActivePayment(null);
-        } else if (res.group.payment_proof_url) {
-          setActivePayment(prev =>
-            prev ? { ...prev, paymentProofUrl: res.group.payment_proof_url } : null
-          );
-        }
-      })
-      .catch(() => {
-        // Abaikan error koneksi latar belakang
-      });
-  }, []);
-
-  // Simpan draft daftar karya agar bisa dilanjutkan dari halaman lain.
-  useEffect(() => {
-    saveOrderDraft(orderItems);
-  }, [orderItems]);
-
-  const selectableProducts = useMemo(
-    () => products.filter(product => !product.isFallback),
-    [products]
-  );
-
-  const productById = useMemo(() => {
-    const map = new Map<string, CatalogProduct>();
-    for (const product of selectableProducts) map.set(product.id, product);
-    return map;
-  }, [selectableProducts]);
-
-  const orderUnitCount = useMemo(
-    () => orderItems.reduce((sum, item) => sum + Math.max(1, item.qty), 0),
-    [orderItems]
-  );
-
-  const orderTotal = useMemo(
-    () =>
-      orderItems.reduce((sum, item) => {
-        const product = productById.get(item.productId);
-        return sum + productPriceAmount(product?.harga) * Math.max(1, item.qty);
-      }, 0),
-    [orderItems, productById]
-  );
-
-  const orderDp = Math.ceil(orderTotal * 0.5);
-
-  const updateOrderItem = (uid: string, patch: Partial<OrderDraftItem>) => {
-    setOrderItems(items => items.map(item => (item.uid === uid ? { ...item, ...patch } : item)));
-  };
-
-  const addOrderItem = () => {
-    setOrderItems(items => [...items, createOrderDraftItem()]);
-  };
-
-  const removeOrderItem = (uid: string) => {
-    setOrderItems(items => {
-      const next = items.filter(item => item.uid !== uid);
-      return next.length > 0 ? next : [createOrderDraftItem()];
-    });
-  };
-
-  const resetOrderDraft = () => {
-    setOrderItems([createOrderDraftItem()]);
-    saveOrderDraft([]);
-  };
-
-  const [heroFirstLine, heroSecondLine] = splitHeroHeadline(heroConfig.headline);
-  const commissionProductGroups = getCommissionProductGroups(products);
 
   const handleVaultTabKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>) => {
     const tabs = ["photograph", "voice-record", "letter", "video"] as const;
@@ -600,7 +200,6 @@ export default function Home() {
     setVaultSimTab(nextTab);
     window.requestAnimationFrame(() => document.getElementById(tabIds[nextTab])?.focus());
   };
-
   const productSliderRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [dragStartX, setDragStartX] = useState(0);
@@ -642,16 +241,50 @@ export default function Home() {
     productSliderRef.current.scrollLeft = dragScrollLeft - walk;
   };
 
-  const addProductToDraft = (productId: string, productName: string) => {
-    setOrderItems(items => {
-      if (items.length === 1 && !items[0].productId) {
-        return [{ ...items[0], productId }];
-      }
-      return [...items, createOrderDraftItem(productId)];
+
+
+  useEffect(() => {
+    // Tautan lama mengarah ke formulir di beranda (/?product=...#pesan).
+    // Teruskan ke halaman pre-order agar bookmark & pesan WhatsApp lama
+    // tetap bekerja.
+    const url = new URL(window.location.href);
+    const legacyProduct = url.searchParams.get("product");
+    if (legacyProduct) {
+      window.location.replace(
+        `${pageUrl("/pre-order")}?product=${encodeURIComponent(legacyProduct)}`
+      );
+      return;
+    }
+    if (url.hash === "#pesan" || url.hash === "#kolom-pengisian") {
+      window.location.replace(pageUrl("/pre-order"));
+    }
+  }, []);
+
+  useEffect(() => {
+    // Anchor lama "#cara-reservasi" masih dipakai tautan yang sudah tersebar.
+    if (window.location.hash !== "#cara-reservasi") return;
+    const frame = window.requestAnimationFrame(() => {
+      document.getElementById("cara-pre-order")?.scrollIntoView({ behavior: "smooth" });
     });
-    setOrderComplete(false);
-    showToast(`${productName} ditambahkan ke daftar karya.`);
-  };
+    return () => window.cancelAnimationFrame(frame);
+  }, []);
+
+  useEffect(() => {
+    applyPageMeta({
+      title: "A Chapter — Atelier Preserved Flowers & Smart Memory Vault",
+      description:
+        "Karya seni botani abadi dari kelopak bunga asli, dipadukan dengan Smart-QR Memory Vault seumur hidup untuk menyimpan foto, rekaman suara, video, dan surat personal Anda.",
+      path: "/",
+    });
+  }, []);
+
+  useEffect(() => {
+    fetchCatalogProducts("framed")
+      .then(items => setChapterProducts(items.filter(product => !product.isFallback)))
+      .catch(() => setChapterProducts([]));
+  }, []);
+
+  const showcaseProducts = chapterProducts;
 
   const renderProductGrid = (items: CatalogProduct[]) => (
     <div className="product-slider-wrapper">
@@ -671,252 +304,15 @@ export default function Home() {
                 if (!hasMoved) navigate(`/products/${product.id}`);
               }}
             />
-            <button
-              type="button"
-              className="product-add-draft"
-              onClick={() => addProductToDraft(product.id, product.nama_produk)}
-            >
-              + Tambah ke Daftar
-            </button>
           </div>
         ))}
       </div>
     </div>
   );
 
-  // Dynamic collection groups: combines database products grouped by category,
-  // with fallback to ATELIER_COLLECTION_GROUPS if database products are empty.
-  const dynamicCollectionGroups = useMemo<{ group: string; items: { id: string; name: string }[] }[]>(() => {
-    const activeDbProducts = products.filter(p => !p.isFallback);
-    if (activeDbProducts.length === 0) {
-      return ATELIER_COLLECTION_GROUPS.map(group => ({
-        group: group.group,
-        items: group.items.map(item => ({ id: item.id, name: item.name })),
-      }));
-    }
-
-    const groupMap = new Map<string, { id: string; name: string }[]>();
-    for (const p of activeDbProducts) {
-      const cat = p.kategori || p.bunga || "Koleksi Lainnya";
-      if (!groupMap.has(cat)) groupMap.set(cat, []);
-      groupMap.get(cat)!.push({
-        id: p.id,
-        name: p.nama_produk,
-      });
-    }
-
-    const result = Array.from(groupMap.entries()).map(([group, items]) => ({
-      group,
-      items,
-    }));
-
-    return result.length > 0
-      ? result
-      : ATELIER_COLLECTION_GROUPS.map(group => ({
-          group: group.group,
-          items: group.items.map(item => ({ id: item.id, name: item.name })),
-        }));
-  }, [products]);
-
-  // Showcase beranda hanya berisi produk riil dari Supabase.
-  const showcaseProducts = chapterProducts;
-
-  const submitOrder = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!buyerForm.nama.trim() || !buyerForm.wa.trim()) {
-      showToast("Isi nama lengkap dan nomor WhatsApp pemesan.");
-      return;
-    }
-
-    const phoneDigits = buyerForm.wa.replace(/\D/g, "");
-    if (!/^(?:08\d{8,11}|628\d{8,11})$/.test(phoneDigits)) {
-      showToast("Nomor WhatsApp tidak valid. Gunakan format 08xx atau 62xx.");
-      return;
-    }
-
-    const missingItem = orderItems.findIndex(item => !item.productId || !item.inisial.trim());
-    if (missingItem !== -1) {
-      showToast(`Karya ${missingItem + 1}: pilih produk dan isi inisial terlebih dahulu.`);
-      return;
-    }
-
-    const wa = normalizeWhatsApp(buyerForm.wa);
-
-    const pricedItems = orderItems.map(item => {
-      const product = productById.get(item.productId);
-      const nuansa = NUANSA_WARNA_OPTIONS.find(option => option.id === item.nuansa)
-        || NUANSA_WARNA_OPTIONS[0];
-      return {
-        productId: item.productId,
-        productName: product?.nama_produk || "",
-        qty: Math.max(1, item.qty),
-        nuansaId: nuansa.id,
-        nuansaLabel: `${nuansa.label} (${nuansa.detail})`,
-        inisial: item.inisial.trim(),
-      };
-    });
-
-    if (pricedItems.some(item => !item.productName)) {
-      showToast("Ada produk yang belum termuat. Muat ulang halaman lalu coba lagi.");
-      return;
-    }
-
-    const payloadItems: PreOrderItemInput[] = pricedItems.map(item => ({
-      product_id: item.productId,
-      product_name: item.productName,
-      qty: item.qty,
-      nuansa: item.nuansaId,
-      inisial: item.inisial,
-    }));
-
-    setLastOrderWaUrl(null);
-    setOrderSubmitting(true);
-    try {
-      const result = await createGroupPreOrder(
-        {
-          customer_name: buyerForm.nama.trim(),
-          whatsapp: wa,
-          is_vip: buyerForm.isVip,
-          items: payloadItems,
-        },
-        {
-          honeypot: buyerForm.website,
-          fillMs: Date.now() - formStartRef.current,
-        }
-      );
-      formStartRef.current = Date.now();
-
-      if (!result.success || !result.groupId) {
-        throw new Error("Permintaan belum tercatat. Silakan coba kembali atau hubungi concierge.");
-      }
-
-      setSubmittedGroupNumber(result.groupNumber);
-      setSubmittedOrderNumber(result.orderNumber);
-      setSubmittedOrderId(result.groupId);
-      setSubmittedItemCount(result.itemCount || orderUnitCount);
-      setSubmittedTotal(result.totalAmount || orderTotal);
-      setSubmittedDp(result.dpAmount || orderDp);
-      saveOrderDraft([]);
-
-      const commissionMessage = formatGroupCommissionWhatsApp({
-        customerName: buyerForm.nama,
-        groupNumber: result.groupNumber,
-        items: pricedItems.map(item => ({
-          productName: item.productName,
-          qty: item.qty,
-          colorPalette: item.nuansaLabel,
-          initial: item.inisial,
-        })),
-        totalAmount: result.totalAmount || orderTotal,
-        dpAmount: result.dpAmount || orderDp,
-        isVip: buyerForm.isVip,
-      });
-      const waDigits = normalizeWhatsApp(whatsappNumber) || "6285235242425";
-      const waUrl = `https://wa.me/${waDigits}?text=${encodeURIComponent(commissionMessage)}`;
-      setLastOrderWaUrl(waUrl);
-
-      const pending: PendingPaymentState = {
-        groupId: result.groupId,
-        groupNumber: result.groupNumber,
-        orderNumber: result.orderNumber,
-        paymentToken: result.paymentToken || "",
-        itemCount: result.itemCount || orderUnitCount,
-        totalAmount: result.totalAmount || orderTotal,
-        dpAmount: result.dpAmount || orderDp,
-        customerName: buyerForm.nama.trim(),
-        waUrl,
-      };
-      savePendingPayment(pending);
-      setActivePayment(pending);
-      setPaymentPhase("qris");
-      showToast("Pesanan tercatat! Silakan selesaikan pembayaran DP 50% via QRIS.");
-      document.getElementById("pesan")?.scrollIntoView({ behavior: "smooth" });
-    } catch (error) {
-      showToast(error instanceof Error ? error.message : "Gagal menyegel pre-order. Silakan coba lagi.");
-    } finally {
-      setOrderSubmitting(false);
-    }
-  };
-
-  const handleProofFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (!file.type.startsWith("image/")) {
-      showToast("File harus berupa gambar (JPG, PNG, atau WEBP).");
-      return;
-    }
-    if (file.size > 8 * 1024 * 1024) {
-      showToast("Ukuran foto maksimal 8 MB.");
-      return;
-    }
-
-    setProofFile(file);
-    const objectUrl = URL.createObjectURL(file);
-    setProofPreviewUrl(objectUrl);
-  };
-
-  const fileToBase64 = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(String(reader.result || ""));
-      reader.onerror = () => reject(new Error("Gagal membaca file"));
-      reader.readAsDataURL(file);
-    });
-  };
-
-  const handleUploadPaymentProofSubmit = async () => {
-    if (!activePayment) return;
-    if (!proofFile && !activePayment.paymentProofUrl) {
-      showToast("Pilih foto bukti transfer terlebih dahulu.");
-      return;
-    }
-
-    setIsUploadingProof(true);
-    try {
-      let finalProofUrl = activePayment.paymentProofUrl || "";
-      if (proofFile) {
-        const base64 = await fileToBase64(proofFile);
-        const res = await uploadPaymentProof({
-          groupNumber: activePayment.groupNumber,
-          paymentToken: activePayment.paymentToken,
-          imageBase64: base64,
-        });
-        finalProofUrl = res.payment_proof_url;
-      }
-
-      const updated = {
-        ...activePayment,
-        paymentProofUrl: finalProofUrl,
-      };
-      savePendingPayment(updated);
-      setActivePayment(updated);
-      showToast("Bukti pembayaran berhasil tersimpan.");
-
-      // Lanjut otomatis ke WhatsApp concierge
-      if (activePayment.waUrl) {
-        window.open(activePayment.waUrl, "_blank", "noopener,noreferrer");
-      }
-    } catch (err) {
-      showToast(err instanceof Error ? err.message : "Gagal mengunggah bukti pembayaran.");
-    } finally {
-      setIsUploadingProof(false);
-    }
-  };
-
-  const handleCancelPaymentPhase = () => {
-    if (window.confirm("Batalkan sesi pembayaran ini dan kembali ke formulir pemesanan?")) {
-      savePendingPayment(null);
-      setActivePayment(null);
-      setPaymentPhase("form");
-      setProofFile(null);
-      setProofPreviewUrl("");
-      showToast("Sesi pembayaran dibatalkan.");
-    }
-  };
 
   return (
+
     <>
       <SiteHeader variant="overlay" />
 
@@ -942,12 +338,12 @@ export default function Home() {
               />
             </h1>
             <p className="lp-hero-sub">
-              The Pre-Order phase is officially open.
+              The pre-order phase is officially open.
               <br />
               Secure your timeless memory piece before <strong>November 20, 2026</strong>.
             </p>
-            <a href="#kolom-pengisian" className="lp-btn lp-btn--wine">
-              Pre Order Now
+            <a href="/shop" className="lp-btn lp-btn--wine">
+              Pilih Karya
             </a>
           </div>
           <a className="lp-hero-scroll" href="#art-of-preserving" aria-label="Gulir ke bawah">
@@ -972,7 +368,7 @@ export default function Home() {
                 hidupmu!
               </p>
               <a href="#chapters" className="lp-btn lp-btn--outline">
-                Explore the Chapters
+                Jelajahi Koleksi
               </a>
             </div>
             <div className="lp-intro-art" aria-hidden="true">
@@ -984,7 +380,7 @@ export default function Home() {
           <section className="lp-products" id="chapters">
             <div className="lp-band">
               <span className="lp-band-line" aria-hidden="true" />
-              <h2 className="lp-band-title">Produk</h2>
+              <h2 className="lp-band-title">Karya Pilihan</h2>
               <span className="lp-band-line" aria-hidden="true" />
             </div>
 
@@ -1026,32 +422,74 @@ export default function Home() {
             </div>
           </section>
 
-          {/* ── CAPTURED MOMENTS / MEMORY VAULT ── */}
+          {/* ── CARA PRE-ORDER ── */}
+          <section className="lp-reserve" id="cara-pre-order">
+            <div className="lp-reserve-inner">
+              <header className="lp-reserve-head">
+                <span className="lp-eyebrow">BESPOKE PRE-ORDER</span>
+                <h2 className="lp-script">Dari karya pilihan hingga ke rumah Anda.</h2>
+                <p>
+                  Pilih karya dan atur warnanya, lalu isi data pemesan di halaman
+                  pre-order. Atelier akan mengonfirmasi ketersediaan, ongkos kirim, dan
+                  pembayaran DP 50% secara manual melalui WhatsApp.
+                </p>
+              </header>
+
+              <ol className="lp-reserve-steps">
+                <li>
+                  <span className="lp-reserve-num">01</span>
+                  <h3>Pilih &amp; atur karya</h3>
+                  <p>Buka halaman karya, pilih nuansa warna, jumlah, dan inisial monogram.</p>
+                  <Link href="/shop" className="lp-reserve-link">Jelajahi koleksi →</Link>
+                </li>
+                <li>
+                  <span className="lp-reserve-num">02</span>
+                  <h3>Klik pre-order &amp; isi data</h3>
+                  <p>Lengkapi nama, WhatsApp, dan data pengiriman opsional di halaman pre-order.</p>
+                  <Link href="/pre-order" className="lp-reserve-link">Buka pre-order →</Link>
+                </li>
+                <li>
+                  <span className="lp-reserve-num">03</span>
+                  <h3>Konfirmasi &amp; DP manual</h3>
+                  <p>Concierge menghubungi Anda via WhatsApp untuk konfirmasi dan instruksi DP 50%.</p>
+                </li>
+              </ol>
+            </div>
+          </section>
+
+          {/* ── PRATINJAU MEMORY VAULT ── */}
           <section className="lp-vault" id="vault">
             <div className="lp-vault-bg" aria-hidden="true" />
             <div className="lp-vault-inner">
               <header className="lp-vault-head">
-                <span className="lp-eyebrow">THE ARCHIVAL MEMORY VAULT</span>
-                <h2 className="lp-script lp-vault-title">Captured Moments</h2>
+                <span className="lp-eyebrow">SMART QR MEMORY VAULT</span>
+                <h2 className="lp-script lp-vault-title">Kenangan, Siap Dibuka Kembali</h2>
                 <p>
                   {homeContent.smartVault.sectionSubtitle} Di balik setiap bingkai, kenangan personal
                   tersimpan aman dan dapat dibuka kembali melalui kamera ponsel.
                 </p>
               </header>
 
-              <article className="vault-simulator-wrap lp-vault-sim" aria-label="Interactive memory vault preview">
+              <article className="vault-simulator-wrap lp-vault-sim" aria-label="Pratinjau interaktif Memory Vault">
                 <div className="vault-simulator-header">
-                  <span className="folio-label-left">FOLIO ARCHIVE NO. 2026-A · SURABAYA ATELIER</span>
+                  <span className="folio-label-left">PRATINJAU MEMORY VAULT</span>
                   <span className="folio-label-right">
-                    PERMANENT CLOUD RECORD · SECURED
+                    DEMO INTERAKTIF
                     <span className="folio-status-dot" aria-hidden="true" />
                   </span>
                 </div>
 
-                <div className="vault-sim-nav" role="tablist" aria-label="Memory Vault preview">
+                <div className="vault-sim-nav" role="tablist" aria-label="Pilih jenis kenangan">
                   {homeContent.smartVault.mediaTabs.map((tab, index) => {
                     const tabId = `vault-tab-${["foto", "audio", "surat", "video"][index]}`;
                     const isSelected = vaultSimTab === tab.kind;
+                    const tabLabel = tab.kind === "photograph"
+                      ? "Foto"
+                      : tab.kind === "voice-record"
+                        ? "Rekaman suara"
+                        : tab.kind === "letter"
+                          ? "Surat"
+                          : "Video";
                     return (
                       <button
                         key={tab.kind}
@@ -1069,7 +507,7 @@ export default function Home() {
                         }}
                         onKeyDown={handleVaultTabKeyDown}
                       >
-                        {["I.", "II.", "III.", "IV."][index]} {tab.title.toUpperCase()}
+                        {tabLabel}
                       </button>
                     );
                   })}
@@ -1099,13 +537,13 @@ export default function Home() {
                               {/* Border / Style Picker */}
                               <div className="photobooth-controls">
                                 <div className="photobooth-control-header">
-                                  <span className="photobooth-control-badge">ARCHIVAL KEEPSAKE</span>
-                                  <h4 className="photobooth-control-title">Pilih Gaya Border Kenangan</h4>
+                                  <span className="photobooth-control-badge">SIMULASI BINGKAI</span>
+                                  <h4 className="photobooth-control-title">Pilih Warna Bingkai</h4>
                                   <p className="photobooth-control-desc">
-                                    Abadikan 1 momen terbaikmu dalam bingkai atelier eksklusif. Pilih warna bordermu sendiri dan simpan abadi di dalam chip QR.
+                                    Coba warna bingkai untuk melihat suasana yang berbeda. Pratinjau ini menunjukkan kenangan yang dapat dibuka melalui Smart QR.
                                   </p>
                                 </div>
-                                <div className="photobooth-theme-chips" role="radiogroup" aria-label="Pilih border foto kenangan">
+                                <div className="photobooth-theme-chips" role="radiogroup" aria-label="Pilih warna bingkai foto kenangan">
                                   {PHOTOBOOTH_THEMES.map((theme) => {
                                     const isSelected = photoboothBorder === theme.id;
                                     return (
@@ -1134,9 +572,9 @@ export default function Home() {
                                   })}
                                 </div>
                                 <div className="photobooth-perks">
-                                  <span className="photobooth-perk-item">✦ Single Keepsake Frame</span>
-                                  <span className="photobooth-perk-item">✦ High-Res Cloud Record</span>
-                                  <span className="photobooth-perk-item">✦ Scan to Relive</span>
+                                  <span className="photobooth-perk-item">✦ Bingkai kenangan personal</span>
+                                  <span className="photobooth-perk-item">✦ Foto dan cerita tersimpan</span>
+                                  <span className="photobooth-perk-item">✦ Buka dengan memindai QR</span>
                                 </div>
                               </div>
 
@@ -1152,7 +590,7 @@ export default function Home() {
                                 >
                                   <div className="photobooth-strip-head">
                                     <span className="strip-atelier-tag">A CHAPTER ATELIER</span>
-                                    <span className="strip-edition">ARCHIVAL MEMORY · KEEPSAKE FRAME</span>
+                                    <span className="strip-edition">BINGKAI KENANGAN</span>
                                   </div>
 
                                   <div className="photobooth-single-frame">
@@ -1167,8 +605,8 @@ export default function Home() {
 
                                   <div className="photobooth-strip-foot">
                                     <div className="strip-foot-meta">
-                                      <span className="strip-date">JUNE 2026 · SURABAYA ATELIER</span>
-                                      <span className="strip-stamp">№ 2026-CH-0482</span>
+                                      <span className="strip-date">CONTOH FOTO · A CHAPTER</span>
+                                      <span className="strip-stamp">KENANGAN ANDA</span>
                                     </div>
                                     <div className="strip-brand-mark" aria-hidden="true">
                                       <img
@@ -1526,495 +964,21 @@ export default function Home() {
               </article>
 
               <div className="lp-vault-copy">
-                <span className="lp-eyebrow">DIGITAL MEMOIR PREVIEW</span>
-                <h3 className="lp-vault-copy-title">A Glimpse Inside Your Secret Vault</h3>
+                <span className="lp-eyebrow">KENALI FITURNYA</span>
+                <h3 className="lp-vault-copy-title">Kenangan Pribadi dalam Satu Bingkai</h3>
                 <p>
                   Ketika penerima memindai micro-chip di dasar bingkai kristal ini, layar gawai mereka
                   langsung membuka lembar arsip eksklusif berisi foto beresolusi tinggi, rekaman suara
                   asli, dan surat cinta personal tanpa perlu menginstal aplikasi.
                 </p>
                 <div className="lp-vault-actions">
-                  <a className="lp-btn lp-btn--wine" href="#pesan">
-                    Commission Your Vault →
-                  </a>
+                  <Link className="lp-btn lp-btn--wine" href="/pre-order">
+                    Pre-Order Karya →
+                  </Link>
                   <Link className="lp-btn lp-btn--outline" href="/smart-qr-vault">
                     Cara Kerja Lengkap →
                   </Link>
                 </div>
-              </div>
-            </div>
-          </section>
-
-          {/* ── KOLOM PENGISIAN ── */}
-          <section className="lp-kolom" id="pesan">
-            <span id="kolom-pengisian" className="lp-anchor" aria-hidden="true" />
-            <div className="lp-kolom-inner">
-              {(orderComplete || paymentPhase !== "form") && (
-                <h2 className="lp-script lp-kolom-title">
-                  {orderComplete || paymentPhase === "confirmed"
-                    ? "Official Archive"
-                    : "Pembayaran DP 50%"}
-                </h2>
-              )}
-
-              <div
-                className={`lp-kolom-card${
-                  orderComplete || paymentPhase !== "form" ? " is-payment-compact" : " is-form-seamless"
-                }`}
-              >
-                {orderComplete || paymentPhase === "confirmed" ? (
-                  <div className="commission-confirmation lp-confirmation" role="status" aria-live="polite">
-                    <div className="certificate-seal" aria-hidden="true">
-                      <img src="/a-chapter-logo-light.png" alt="" className="certificate-seal-logo" />
-                    </div>
-                    <span className="commission-eyebrow">A CHAPTER ATELIER · OFFICIAL ARCHIVE</span>
-                    <h2 className="commission-title">Your Chapter Begins Here.</h2>
-                    <p className="commission-confirmation-copy">
-                      Lembar permintaan Anda telah tercatat. Concierge kami akan membantu memeriksa
-                      ketersediaan dan tahap pengunggahan Memory Vault.
-                    </p>
-                    <p className="commission-reference">
-                      REFERENCE NO. <strong>#{submittedGroupNumber || submittedOrderNumber || submittedOrderId}</strong>
-                    </p>
-                    <div className="commission-summary" role="group" aria-label="Ringkasan reservasi">
-                      <span>{submittedItemCount} karya</span>
-                      <span>Total {formatHarga(String(submittedTotal)) || "—"}</span>
-                      <span>DP 50% {formatHarga(String(submittedDp)) || "—"}</span>
-                    </div>
-                    {lastOrderWaUrl && (
-                      <a
-                        href={lastOrderWaUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="lp-btn lp-btn--wine"
-                      >
-                        Buka WhatsApp Concierge
-                      </a>
-                    )}
-                    <button
-                      type="button"
-                      className="order-reset-link commission-reset"
-                      onClick={() => {
-                        setBuyerForm({
-                          nama: "",
-                          wa: "",
-                          isVip: false,
-                          website: "",
-                        });
-                        resetOrderDraft();
-                        setSubmittedOrderId("");
-                        setSubmittedOrderNumber("");
-                        setSubmittedGroupNumber("");
-                        setSubmittedItemCount(0);
-                        setSubmittedTotal(0);
-                        setSubmittedDp(0);
-                        setLastOrderWaUrl(null);
-                        setOrderComplete(false);
-                        setPaymentPhase("form");
-                        savePendingPayment(null);
-                        setActivePayment(null);
-                        setProofFile(null);
-                        setProofPreviewUrl("");
-                        formStartRef.current = Date.now();
-                      }}
-                    >
-                      Buat permintaan baru
-                    </button>
-                  </div>
-                ) : paymentPhase === "qris" ? (
-                  <div className="payment-stage-card" role="region" aria-label="Tahap Pembayaran QRIS">
-                    <div className="payment-badge-row">
-                      <span className={`payment-badge-status ${activePayment?.paymentProofUrl ? "is-uploaded" : ""}`}>
-                        {activePayment?.paymentProofUrl ? "✓ Bukti Transfer Diunggah" : "Tahap 2: Pembayaran DP 50%"}
-                      </span>
-                      <span className="payment-order-pill">
-                        Order #{submittedGroupNumber || submittedOrderNumber || activePayment?.groupNumber}
-                      </span>
-                    </div>
-
-                    <h3 className="payment-stage-title">Selesaikan Reservasi Karya</h3>
-                    <p className="payment-stage-sub">
-                      Pindai QRIS di bawah ini menggunakan aplikasi mobile banking atau e-wallet (BCA, Mandiri, BRI, BNI, GoPay, OVO, ShopeePay, Dana) untuk menyegel slot pengerjaan.
-                    </p>
-
-                    <div className="payment-grid-layout">
-                      {/* Kolom Kiri: QRIS Frame */}
-                      <div className="payment-qris-col">
-                        <div className="payment-qris-frame">
-                          <img
-                            src={qrisImageUrl || "/landing/qris-atelier.png"}
-                            alt="QRIS A Chapter Atelier"
-                            loading="eager"
-                          />
-                        </div>
-                        <p className="payment-qris-caption">
-                          NMID / Akun: <strong>A CHAPTER ATELIER</strong><br />
-                          PT Floramory Artware
-                        </p>
-                      </div>
-
-                      {/* Kolom Kanan: Rincian & Upload Bukti */}
-                      <div className="payment-info-col">
-                        <div className="payment-amount-strip">
-                          <span className="payment-amount-label">Jumlah Uang Muka (DP 50%)</span>
-                          <strong className="payment-amount-val">{formatHarga(String(submittedDp || activePayment?.dpAmount || 0))}</strong>
-                          <span className="payment-amount-total">
-                            Total Keseluruhan ({submittedItemCount || activePayment?.itemCount || 1} karya): {formatHarga(String(submittedTotal || activePayment?.totalAmount || 0))}
-                          </span>
-                        </div>
-
-                        <div className="payment-upload-zone">
-                          <span className="payment-upload-label">
-                            Unggah Bukti Transfer
-                          </span>
-                          <input
-                            ref={proofInputRef}
-                            id="proof-upload-input"
-                            type="file"
-                            accept="image/jpeg,image/png,image/webp"
-                            style={{ display: "none" }}
-                            onChange={handleProofFileSelect}
-                          />
-
-                          {proofPreviewUrl || activePayment?.paymentProofUrl ? (
-                            <div className="payment-preview-box">
-                              <img
-                                src={proofPreviewUrl || activePayment?.paymentProofUrl}
-                                alt="Bukti Transfer"
-                                className="payment-preview-img"
-                              />
-                              <div className="payment-preview-meta">
-                                <p className="payment-preview-name">
-                                  {proofFile ? proofFile.name : "Bukti transfer telah tersimpan"}
-                                </p>
-                                <span className="payment-preview-size">
-                                  {proofFile
-                                    ? `${(proofFile.size / 1024).toFixed(1)} KB`
-                                    : "Tersimpan di Cloud Storage Atelier"}
-                                </span>
-                              </div>
-                              <button
-                                type="button"
-                                className="order-item-remove"
-                                onClick={() => proofInputRef.current?.click()}
-                              >
-                                Ganti
-                              </button>
-                            </div>
-                          ) : (
-                            <button
-                              type="button"
-                              className="payment-drop-trigger"
-                              onClick={() => proofInputRef.current?.click()}
-                            >
-                              <svg className="payment-drop-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                                <polyline points="17 8 12 3 7 8" />
-                                <line x1="12" y1="3" x2="12" y2="15" />
-                              </svg>
-                              <div className="payment-drop-trigger-texts">
-                                <span className="payment-drop-text">Pilih foto screenshot bukti transfer</span>
-                                <span className="payment-drop-hint">Format JPG, PNG, atau WEBP (maks. 8 MB)</span>
-                              </div>
-                            </button>
-                          )}
-                        </div>
-
-                        <div className="payment-actions-col">
-                          <button
-                            type="button"
-                            className="lp-btn lp-btn--wine"
-                            onClick={handleUploadPaymentProofSubmit}
-                            disabled={isUploadingProof || (!proofFile && !activePayment?.paymentProofUrl)}
-                          >
-                            {isUploadingProof ? "Mengunggah Bukti..." : "Kirim Bukti & Konfirmasi ke WhatsApp →"}
-                          </button>
-
-                          {lastOrderWaUrl && (
-                            <a
-                              href={lastOrderWaUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="lp-btn lp-btn--outline"
-                            >
-                              Buka Chat WhatsApp Concierge Langsung
-                            </a>
-                          )}
-
-                          <button
-                            type="button"
-                            className="payment-cancel-btn"
-                            onClick={handleCancelPaymentPhase}
-                          >
-                            Batalkan pembayaran & edit pesanan
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <>
-                    <header className="lp-form-head">
-                      <span className="commission-eyebrow">BESPOKE BOTANICAL COMMISSION · ATELIER RESERVATION</span>
-                      <h3 className="lp-form-title">Reserve your chapter</h3>
-                      <p className="lp-form-sub">
-                        Setiap karya dirangkai khusus berdasarkan ceritamu. Tambahkan satu atau beberapa
-                        karya sekaligus, masing-masing dengan warna dan inisialnya sendiri.
-                      </p>
-                    </header>
-
-                    <form className="commission-form lp-form" onSubmit={submitOrder}>
-                      <div className="commission-split-grid">
-                        {/* KOLOM KIRI: DAFTAR KARYA */}
-                        <div className="commission-split-left">
-                          <div className="order-items-head">
-                            <span className="order-items-kicker">DAFTAR KARYA</span>
-                            <span className="order-items-count">{orderUnitCount} karya</span>
-                          </div>
-
-                          <div className="order-items-scroll">
-                            {orderItems.map((item, index) => (
-                              <div className="order-item-card" key={item.uid}>
-                                <div className="order-item-head">
-                                  <span className="order-item-index">KARYA {index + 1}</span>
-                                  {orderItems.length > 1 && (
-                                    <button
-                                      type="button"
-                                      className="order-item-remove"
-                                      onClick={() => removeOrderItem(item.uid)}
-                                      aria-label={`Hapus karya ${index + 1}`}
-                                    >
-                                      Hapus
-                                    </button>
-                                  )}
-                                </div>
-
-                                <div className="form-group">
-                                  <label className="form-label" htmlFor={`order-product-${item.uid}`}>
-                                    Produk
-                                  </label>
-                                  <select
-                                    id={`order-product-${item.uid}`}
-                                    className="form-select"
-                                    value={item.productId}
-                                    onChange={event => updateOrderItem(item.uid, { productId: event.target.value })}
-                                  >
-                                    <option value="">Pilih karya</option>
-                                    {dynamicCollectionGroups.map(group => (
-                                      <optgroup label={group.group} key={group.group}>
-                                        {group.items.map(option => (
-                                          <option key={option.id} value={option.id}>
-                                            {option.name}
-                                          </option>
-                                        ))}
-                                      </optgroup>
-                                    ))}
-                                  </select>
-                                </div>
-
-                                <div className="form-group order-item-qty">
-                                  <span className="form-label" id={`order-qty-${item.uid}`}>Jumlah</span>
-                                  <div className="qty-stepper" role="group" aria-labelledby={`order-qty-${item.uid}`}>
-                                    <button
-                                      type="button"
-                                      onClick={() => updateOrderItem(item.uid, { qty: Math.max(1, item.qty - 1) })}
-                                      disabled={item.qty <= 1}
-                                      aria-label="Kurangi jumlah karya"
-                                    >
-                                      −
-                                    </button>
-                                    <span aria-live="polite">{item.qty}</span>
-                                    <button
-                                      type="button"
-                                      onClick={() => updateOrderItem(item.uid, { qty: Math.min(20, item.qty + 1) })}
-                                      disabled={item.qty >= 20}
-                                      aria-label="Tambah jumlah karya"
-                                    >
-                                      +
-                                    </button>
-                                  </div>
-                                  <span className="form-field-hint">
-                                    Jumlah 2 = 2 karya fisik &amp; 2 QR vault.
-                                  </span>
-                                </div>
-
-                                <div className="form-group">
-                                  <span className="form-label">Nuansa warna</span>
-                                  <div
-                                    className="order-item-nuansa"
-                                    role="radiogroup"
-                                    aria-label={`Nuansa warna karya ${index + 1}`}
-                                  >
-                                    {NUANSA_WARNA_OPTIONS.map(nuansa => {
-                                      const isChecked = item.nuansa === nuansa.id;
-                                      return (
-                                        <label
-                                          key={nuansa.id}
-                                          className={`order-nuansa-option ${isChecked ? "active" : ""}`}
-                                        >
-                                          <input
-                                            type="radio"
-                                            name={`nuansa-${item.uid}`}
-                                            value={nuansa.id}
-                                            checked={isChecked}
-                                            onChange={() => updateOrderItem(item.uid, { nuansa: nuansa.id })}
-                                            className="form-nuansa-input"
-                                          />
-                                          <span
-                                            className="form-nuansa-color-pip"
-                                            style={{ backgroundColor: nuansa.swatch }}
-                                            aria-hidden="true"
-                                          />
-                                          <span className="order-nuansa-label">{nuansa.label}</span>
-                                        </label>
-                                      );
-                                    })}
-                                  </div>
-                                </div>
-
-                                <div className="form-group">
-                                  <label className="form-label" htmlFor={`order-inisial-${item.uid}`}>
-                                    Inisial
-                                  </label>
-                                  <input
-                                    id={`order-inisial-${item.uid}`}
-                                    className="form-input"
-                                    type="text"
-                                    placeholder="Contoh: A, R, atau 5"
-                                    maxLength={10}
-                                    value={item.inisial}
-                                    onChange={event => updateOrderItem(item.uid, { inisial: event.target.value })}
-                                  />
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-
-                          <button type="button" className="order-add-item" onClick={addOrderItem}>
-                            + Tambah karya lain
-                          </button>
-                        </div>
-
-                        {/* KOLOM KANAN: DATA PEMESAN & CHECKOUT (Single White Card) */}
-                        <div className="commission-split-right">
-                          <div className="commission-checkout-card">
-                            <div className="buyer-fields-stack">
-                              <div className="form-group">
-                                <label className="form-label" htmlFor="order-nama">Nama lengkap</label>
-                                <input
-                                  id="order-nama"
-                                  className="form-input"
-                                  type="text"
-                                  placeholder="Nama lengkap pemesan"
-                                  maxLength={120}
-                                  autoComplete="name"
-                                  required
-                                  value={buyerForm.nama}
-                                  onChange={event => setBuyerForm(form => ({ ...form, nama: event.target.value }))}
-                                />
-                              </div>
-                              <div className="form-group">
-                                <label className="form-label" htmlFor="order-wa">Nomor WhatsApp</label>
-                                <input
-                                  id="order-wa"
-                                  className="form-input"
-                                  type="tel"
-                                  inputMode="tel"
-                                  placeholder="08xx-xxxx-xxxx"
-                                  maxLength={20}
-                                  autoComplete="tel"
-                                  aria-describedby="order-wa-hint"
-                                  required
-                                  value={buyerForm.wa}
-                                  onChange={event => setBuyerForm(form => ({ ...form, wa: event.target.value }))}
-                                />
-                                <span className="form-field-hint" id="order-wa-hint">
-                                  Gunakan nomor WhatsApp aktif (08xx / 62xx).
-                                </span>
-                              </div>
-                            </div>
-
-                            <div className="form-vip-wrap">
-                              <label className="form-checkbox-label" htmlFor="order-vip">
-                                <input
-                                  id="order-vip"
-                                  type="checkbox"
-                                  className="form-checkbox-input"
-                                  checked={buyerForm.isVip}
-                                  onChange={event => setBuyerForm(form => ({ ...form, isVip: event.target.checked }))}
-                                />
-                                <span className="form-checkbox-box" aria-hidden="true" />
-                                <span className="form-checkbox-caption">
-                                  Terdaftar di VIP Waiting List (Early-Bird Privilege)
-                                </span>
-                              </label>
-                            </div>
-
-                            {/* Separator Aksen Krem Halus */}
-                            <div className="commission-divider-bar" aria-hidden="true" />
-
-                            {/* Total & Uang Muka DP 50% (Tanpa Box Smart-QR) */}
-                            <div className="order-total-v2" role="status" aria-live="polite">
-                              <div className="order-total-line">
-                                <span className="order-total-label">Total {orderUnitCount} karya</span>
-                                <span className="order-total-val">
-                                  {orderTotal > 0 ? formatHarga(String(orderTotal)) : "Rp [HARGA]"}
-                                </span>
-                              </div>
-                              <div className="order-total-line order-dp-line">
-                                <span className="order-dp-label">Uang muka (DP 50%)</span>
-                                <span className="order-dp-val">
-                                  {orderDp > 0 ? formatHarga(String(orderDp)) : "Rp [DP]"}
-                                </span>
-                              </div>
-                            </div>
-
-                            <div className="form-honeypot" aria-hidden="true">
-                              <input
-                                id="order-website"
-                                className="form-input"
-                                type="text"
-                                tabIndex={-1}
-                                autoComplete="off"
-                                value={buyerForm.website}
-                                onChange={event => setBuyerForm(form => ({ ...form, website: event.target.value }))}
-                              />
-                            </div>
-
-                            <button type="submit" className="lp-btn-pill-maroon" disabled={orderSubmitting}>
-                              {orderSubmitting ? (
-                                <>
-                                  <span className="commission-spinner" aria-hidden="true" />
-                                  Menyegel Lembar Pre-Order...
-                                </>
-                              ) : (
-                                <>
-                                  <svg
-                                    width="20"
-                                    height="20"
-                                    viewBox="0 0 24 24"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    strokeWidth="2"
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    aria-hidden="true"
-                                  >
-                                    <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
-                                  </svg>
-                                  <span>Lanjut pembayaran DP 50%</span>
-                                </>
-                              )}
-                            </button>
-                            <p className="commission-note-small">
-                              DP 50% dibayar via QRIS atelier sebagai tanda jadi slot pengerjaan.
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    </form>
-                  </>
-                )}
               </div>
             </div>
           </section>
@@ -2065,10 +1029,6 @@ export default function Home() {
         </main>
 
         <SiteFooter />
-      </div>
-
-      <div className={`fm-toast${toastVisible ? " show" : ""}`} role="status">
-        {toastMsg}
       </div>
     </>
   );

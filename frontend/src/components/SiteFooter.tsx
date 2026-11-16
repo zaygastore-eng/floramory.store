@@ -38,8 +38,8 @@ export default function SiteFooter() {
           <nav className="atelier-footer-col" aria-label="Collections">
             <h2 className="atelier-footer-title">COLLECTIONS</h2>
             <ul className="atelier-footer-links">
-              <li><Link href="/#chapters">The Chapters · Framed Keepsakes</Link></li>
-              <li><Link href="/#pesan">Bespoke Commission</Link></li>
+              <li><Link href="/shop">The Chapters · Framed Keepsakes</Link></li>
+              <li><Link href="/pre-order">Pre-Order Karya</Link></li>
             </ul>
           </nav>
 

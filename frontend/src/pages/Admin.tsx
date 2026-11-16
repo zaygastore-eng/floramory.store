@@ -30,8 +30,6 @@ import {
   fetchHeroConfig,
   fetchProductCategories,
   fetchWhatsAppNumber,
-  fetchQrisImageUrl,
-  updateQrisImageUrl,
   hasSupabaseConfig,
   notifyDpConfirmed,
   restoreProduct,
@@ -77,7 +75,8 @@ const TIER_OPTIONS = [
 ];
 
 const ORDER_STATUSES = [
-  { value: "waiting_dp", label: "Menunggu DP" },
+  { value: "new", label: "Permintaan Baru" },
+  { value: "waiting_dp", label: "Menunggu DP Manual" },
   { value: "dp_verified", label: "DP Diterima (50%)" },
   { value: "completed", label: "Selesai / Terkirim" },
   { value: "cancelled", label: "Dibatalkan" },
@@ -85,7 +84,8 @@ const ORDER_STATUSES = [
 
 function getOrderStatus(status?: string): typeof ORDER_STATUSES[number]["value"] {
   const normalized = (status || "").toLowerCase();
-  if (["new", "waiting_dp"].includes(normalized)) return "waiting_dp";
+  if (normalized === "new") return "new";
+  if (["waiting_dp"].includes(normalized)) return "waiting_dp";
   if (["dp_verified", "in_production", "in_progress"].includes(normalized)) return "dp_verified";
   if (["contacted", "paid", "completed"].includes(normalized)) return "completed";
   return ORDER_STATUSES.find(option => option.value === normalized)?.value || "waiting_dp";
@@ -536,6 +536,7 @@ export default function Admin() {
   const [preOrderOffset, setPreOrderOffset] = useState(0);
   const [hasMorePreOrders, setHasMorePreOrders] = useState(false);
   const [operationalCounts, setOperationalCounts] = useState<PreOrderStatusCounts>({
+    new: 0,
     waiting_dp: 0,
     dp_verified: 0,
     completed: 0,
@@ -551,9 +552,6 @@ export default function Admin() {
   const [toastVisible, setToastVisible] = useState(false);
   const [toastLevel, setToastLevel] = useState<"info" | "success" | "alert">("info");
   const [realtimeConnected, setRealtimeConnected] = useState(false);
-  const [qrisAdminUrl, setQrisAdminUrl] = useState("");
-  const [uploadingQris, setUploadingQris] = useState(false);
-  const qrisUploadRef = useRef<HTMLInputElement>(null);
   const qrRef = useRef<HTMLDivElement>(null);
   const orderQrRef = useRef<HTMLDivElement>(null);
   const produkUploadRef = useRef<HTMLInputElement>(null);
@@ -721,9 +719,6 @@ export default function Admin() {
     fetchProductCategories().then((cats) => {
       setCategories(cats);
     });
-    fetchQrisImageUrl().then((url) => {
-      if (url) setQrisAdminUrl(url);
-    });
   }, [authed]);
 
   useEffect(() => {
@@ -837,16 +832,16 @@ export default function Admin() {
     if (!authed) return;
     setRealtimeConnected(true);
 
-    let prevWaiting = operationalCounts.waiting_dp ?? 0;
+    let prevNew = operationalCounts.new ?? 0;
 
     const syncOrders = async () => {
       try {
         const counts = await fetchPreOrderStatusCounts();
-        const currentWaiting = counts.waiting_dp ?? 0;
-        if (currentWaiting > prevWaiting) {
+        const currentNew = counts.new ?? 0;
+        if (currentNew > prevNew) {
           showToast("🛎️ Ada pre-order baru masuk!", "alert");
         }
-        prevWaiting = currentWaiting;
+        prevNew = currentNew;
         setOperationalCounts(counts);
         // Segarkan daftar pesanan agar status pengisian Memory Vault
         // (PIN, jumlah foto, audio, surat) ikut ter-update tanpa reload manual.
@@ -874,7 +869,7 @@ export default function Admin() {
       document.removeEventListener("visibilitychange", onVisibilityChange);
       setRealtimeConnected(false);
     };
-  }, [authed, showToast, operationalCounts.waiting_dp]);
+  }, [authed, showToast, operationalCounts.new]);
 
   const saveConfig = async () => {
     const clean = (baseUrl || PRODUCTION_SITE_URL).trim().replace(/\/+$/, "");
@@ -882,30 +877,11 @@ export default function Admin() {
     localStorage.setItem(WA_KEY, waNum.trim());
     try {
       await updateWhatsAppNumber(normalizeWhatsApp(waNum) || waNum);
-      if (qrisAdminUrl) {
-        await updateQrisImageUrl(qrisAdminUrl.trim());
-      }
       setConfigSaved(true);
       setTimeout(() => setConfigSaved(false), 2000);
       showToast("Konfigurasi tersimpan");
     } catch (error) {
       showToast(error instanceof Error ? error.message : "Pengaturan tersimpan lokal, tetapi gagal sinkron ke database");
-    }
-  };
-
-  const handleQrisUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setUploadingQris(true);
-    try {
-      const url = await uploadProductImage("site-settings-qris", "produk", file);
-      setQrisAdminUrl(url);
-      await updateQrisImageUrl(url);
-      showToast("Gambar QRIS berhasil diunggah & diperbarui!", "success");
-    } catch (error) {
-      showToast(error instanceof Error ? error.message : "Gagal mengunggah gambar QRIS", "alert");
-    } finally {
-      setUploadingQris(false);
     }
   };
 
@@ -1158,11 +1134,10 @@ export default function Admin() {
     if (!order.id) return;
     const previousStatus = getOrderStatus(order.status);
     const nextStatus = getOrderStatus(status);
-    const isGroupDpVerification = Boolean(order.group_id) && nextStatus === "dp_verified";
     try {
-      // Satu grup = satu reservasi. Verifikasi DP dari dropdown item mana pun
-      // harus membuka gate vault semua karya, bukan hanya item yang dipilih.
-      if (isGroupDpVerification && order.group_id) {
+      // Satu grup = satu pre-order. Semua perubahan status grup harus
+      // meng-cascade ke seluruh karya, bukan hanya item yang dipilih.
+      if (order.group_id) {
         await updatePreOrderGroupStatus(order.group_id, status);
         setPreOrders(orders =>
           orders.map(item =>
@@ -1171,16 +1146,24 @@ export default function Admin() {
         );
         const counts = await fetchPreOrderStatusCounts();
         setOperationalCounts(counts);
-        void notifyDpConfirmed(order.id).catch(error => {
-          console.warn("[DP_NOTIFICATION_AUDIT_ERROR]", error);
-        });
-        const itemCount =
-          order.group_item_count ||
-          preOrders.filter(item => item.group_id === order.group_id).length;
-        showToast(
-          `DP grup ${order.group_number || order.group_id} diverifikasi untuk ${itemCount} karya.`,
-          "success"
-        );
+
+        if (nextStatus === "dp_verified") {
+          void notifyDpConfirmed(order.id).catch(error => {
+            console.warn("[DP_NOTIFICATION_AUDIT_ERROR]", error);
+          });
+          const itemCount =
+            order.group_item_count ||
+            preOrders.filter(item => item.group_id === order.group_id).length;
+          showToast(
+            `DP grup ${order.group_number || order.group_id} dikonfirmasi untuk ${itemCount} karya.`,
+            "success"
+          );
+          return;
+        }
+
+        const groupStatusLabel =
+          ORDER_STATUSES.find(option => option.value === nextStatus)?.label || nextStatus;
+        showToast(`Status grup diperbarui: ${groupStatusLabel}`, "success");
         return;
       }
 
@@ -1193,11 +1176,11 @@ export default function Admin() {
           updated[nextStatus] = counts[nextStatus] + 1;
           return updated;
         });
-        if (previousStatus === "waiting_dp" && (nextStatus === "dp_verified" || nextStatus === "completed")) {
+        if (nextStatus === "dp_verified") {
           void notifyDpConfirmed(order.id).catch(error => {
             console.warn("[DP_NOTIFICATION_AUDIT_ERROR]", error);
           });
-          showToast("DP dikonfirmasi. Gunakan tombol 'Kirim Link WA' untuk mengirim tautan ke pemesan.", "success");
+          showToast("DP manual dikonfirmasi. Gunakan tombol 'Kirim Link WA' untuk mengirim tautan Vault ke pemesan.", "success");
           return;
         }
       }
@@ -1358,6 +1341,8 @@ export default function Admin() {
       "id",
       "customer_name",
       "whatsapp",
+      "shipping_city",
+      "shipping_address",
       "product_name",
       "status",
       "created_at",
@@ -1390,7 +1375,7 @@ export default function Admin() {
   };
 
   const exportFinancialReport = () => {
-    const columns = ["Tanggal", "Nama Pelanggan", "Produk", "Nilai Penuh", "Nilai DP", "Sisa", "Status Pembayaran"];
+    const columns = ["Tanggal", "Nama Pelanggan", "Produk", "Nilai Penuh", "Nilai DP", "Sisa", "Status DP Manual"];
     const escapeCsv = (value: string | number) => {
       const text = String(value);
       const safeText = /^[\t\r ]*[=+\-@]/.test(text) ? `'${text}` : text;
@@ -1969,7 +1954,7 @@ export default function Admin() {
     <div className="admin-panel-card">
       <div className="admin-panel-head">
         <div>
-          <p>{orderStatusCounts.waiting_dp ?? operationalCounts.waiting_dp ?? 0} pesanan menunggu DP.</p>
+          <p>{orderStatusCounts.new ?? operationalCounts.new ?? 0} permintaan baru menunggu konfirmasi.</p>
         </div>
         <div className="admin-panel-head-actions">
           <button className="admin-outline-btn" onClick={exportPreOrders}>
@@ -2067,30 +2052,22 @@ export default function Admin() {
                   )}
                   {Boolean(order.group_total_amount) && (
                     <span className="admin-order-meta admin-order-group-detail">
-                      Total grup {formatHarga(String(order.group_total_amount))} · DP 50% {formatHarga(String(order.group_dp_amount || 0))}
+                      Total grup {formatHarga(String(order.group_total_amount))} · DP 50% manual {formatHarga(String(order.group_dp_amount || 0))}
                     </span>
                   )}
-                  {order.payment_proof_url && (
-                    <div style={{ marginTop: "8px" }}>
-                      <a
-                        href={order.payment_proof_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="admin-outline-btn"
-                        style={{ display: "inline-flex", alignItems: "center", gap: "6px", fontSize: "0.78rem", padding: "4px 10px", borderColor: "#2E7D32", color: "#2E7D32" }}
-                      >
-                        📷 Lihat Bukti Transfer
-                      </a>
-                    </div>
+                  {(order.shipping_city || order.shipping_address) && (
+                    <span className="admin-order-meta admin-order-group-detail">
+                      Kirim: {[order.shipping_city, order.shipping_address].filter(Boolean).join(" · ")}
+                    </span>
                   )}
                 </div>
                 <div className="admin-order-payment">
-                  <span className="admin-status-caption">Status Pembayaran</span>
+                  <span className="admin-status-caption">Status Pre-Order / DP</span>
                   <select
                     className={`admin-order-status-select status-${currentStatus}`}
                     value={currentStatus}
                     disabled={!order.id}
-                    aria-label={`Status pembayaran pesanan ${customerName}`}
+                    aria-label={`Status pre-order pesanan ${customerName}`}
                     onChange={event => void setOrderStatus(order, event.target.value)}
                   >
                     {ORDER_STATUSES.map(status => <option value={status.value} key={status.value}>{status.label}</option>)}
@@ -2175,7 +2152,7 @@ export default function Admin() {
                   aria-label={`Kirim link Vault melalui WhatsApp kepada ${customerName}`}
                   aria-disabled={!order.id}
                   href={`https://wa.me/${normalizeWhatsApp(order.whatsapp)}?text=${encodeURIComponent(
-                    `Halo ${customerName}, DP untuk pesanan ${order.order_number || order.id} sudah dikonfirmasi. Berikut link rahasia Memory Vault A Chapter: ${vaultUrl}`
+                    `Halo ${customerName}, DP manual untuk pesanan ${order.order_number || order.id} sudah dikonfirmasi. Berikut link rahasia Memory Vault A Chapter: ${vaultUrl}`
                   )}`}
                   target="_blank"
                   rel="noopener noreferrer"
@@ -2244,7 +2221,7 @@ export default function Admin() {
         <article className="admin-financial-card">
           <span className="admin-financial-icon is-cash"><Wallet size={20} /></span>
           <div>
-            <p>Kas / DP Diterima</p>
+            <p>DP Manual Diterima</p>
             <strong>{formatCurrency(totalCashIn)}</strong>
             <small className="admin-financial-subtotal">Sisa piutang: {formatCurrency(totalRemaining)}</small>
           </div>
@@ -2347,7 +2324,8 @@ export default function Admin() {
         {tierCounts.map(tier => (
           <div className="admin-stat-card" key={tier.value}><span>{tier.count}</span><p>{tier.label}</p></div>
         ))}
-        <div className="admin-stat-card"><span>{operationalCounts.waiting_dp}</span><p>Menunggu DP</p></div>
+        <div className="admin-stat-card"><span>{operationalCounts.new ?? 0}</span><p>Permintaan Baru</p></div>
+        <div className="admin-stat-card"><span>{operationalCounts.waiting_dp}</span><p>Menunggu DP Manual</p></div>
         <div className="admin-stat-card"><span>{operationalCounts.dp_verified || 0}</span><p>DP Diterima (50%)</p></div>
         <div className="admin-stat-card"><span>{operationalCounts.completed}</span><p>Selesai</p></div>
       </section>
@@ -2433,50 +2411,6 @@ export default function Admin() {
           <label className="admin-form-label">Nomor WhatsApp</label>
           <input className="admin-form-input" type="text" placeholder="6281234567890"
             value={waNum} onChange={e => setWaNum(e.target.value)} />
-        </div>
-
-        <div className="admin-form-group">
-          <label className="admin-form-label">Gambar Barcode QRIS Atelier</label>
-          <p style={{ margin: "0 0 8px", fontSize: "0.8rem", color: "#697099" }}>
-            Gambar barcode QRIS statis yang ditampilkan kepada pemesan saat menyelesaikan reservasi.
-          </p>
-          <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "8px" }}>
-            {qrisAdminUrl ? (
-              <img
-                src={qrisAdminUrl}
-                alt="Barcode QRIS"
-                style={{ width: "64px", height: "64px", objectFit: "contain", borderRadius: "6px", border: "1px solid #ddd", background: "#fff" }}
-              />
-            ) : (
-              <div style={{ width: "64px", height: "64px", background: "#eee", borderRadius: "6px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.7rem", color: "#888" }}>
-                Default
-              </div>
-            )}
-            <div>
-              <input
-                ref={qrisUploadRef}
-                type="file"
-                accept="image/*"
-                style={{ display: "none" }}
-                onChange={handleQrisUpload}
-              />
-              <button
-                type="button"
-                className="admin-outline-btn"
-                disabled={uploadingQris}
-                onClick={() => qrisUploadRef.current?.click()}
-              >
-                {uploadingQris ? "Mengunggah..." : "Unggah Gambar QRIS"}
-              </button>
-            </div>
-          </div>
-          <input
-            className="admin-form-input"
-            type="text"
-            placeholder="https://... atau path gambar /landing/qris-atelier.png"
-            value={qrisAdminUrl}
-            onChange={e => setQrisAdminUrl(e.target.value)}
-          />
         </div>
 
         <button className="btn-generate" onClick={saveConfig}>Simpan Pengaturan</button>
@@ -2722,7 +2656,7 @@ export default function Admin() {
     dashboard: { title: "Dashboard", desc: "Ringkasan katalog dan pesanan A Chapter." },
     produk: { title: "Produk", desc: "Kelola katalog produk A Chapter." },
     pesanan: { title: "Pesanan", desc: "Kelola pre-order dan pakai data Memory Vault pelanggan." },
-    keuangan: { title: "Keuangan", desc: "Pantau Pre-order terkonfirmasi (DP diterima atau lunas)." },
+    keuangan: { title: "Rekap DP Manual", desc: "Pantau pre-order dengan DP manual yang sudah terverifikasi." },
     pengaturan: { title: "Pengaturan", desc: "Atur domain QR dan nomor WhatsApp aktif." },
   };
 

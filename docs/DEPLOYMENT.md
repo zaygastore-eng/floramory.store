@@ -12,6 +12,16 @@ sudah membaca kolom/tabel baru.
    - `20261111000000_vault_security_hardening.sql`
    - `20261112000000_database_integrity.sql`
    - `20261113000000_rate_limit_and_operations.sql`
+   - `20261114000000_product_categories.sql`
+   - `20261114010000_product_gallery_photos.sql`
+   - `20261115000000_preorder_groups.sql`
+   - `20261115010000_preorder_group_number.sql`
+   - `20261115020000_product_kategori.sql`
+   - `20261115030000_rls_cleanup.sql`
+   - `20261115040000_maintenance_cleanup.sql`
+   - `20261115050000_qris_and_payment_proof.sql` (legacy; tidak dipakai UI baru)
+   - `20261115060000_vault_audio_message_and_auto_product.sql`
+   - `20261116000000_reservation_shipping_fields.sql`
 3. **Edge Functions**:
    ```bash
    supabase functions deploy admin

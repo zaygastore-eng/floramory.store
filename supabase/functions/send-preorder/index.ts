@@ -10,8 +10,12 @@
 //   1. Membuat satu baris `preorder_groups` (satu transaksi).
 //   2. Mengekspansi qty menjadi baris `preorder_orders`
 //      (1 baris = 1 karya fisik = 1 QR / 1 Memory Vault).
-//   3. Menghitung total & DP 50% di level grup.
-//   4. Mengirim satu email ringkasan ke atelier.
+//   3. Menghitung total & DP 50% di level grup (DP ditagih manual via WA).
+//   4. Menyimpan kota/alamat pengiriman opsional.
+//   5. Mengirim satu email ringkasan reservasi baru ke atelier.
+//
+// Status awal reservasi adalah `new` (menunggu konfirmasi atelier).
+// Tidak ada QRIS atau unggah bukti pembayaran di fungsi ini.
 //
 // Melindungi dari spam dengan, berlapis:
 //   1. Proteksi bot: user-agent + field honeypot + time-trap
@@ -45,7 +49,7 @@ const MAX_REQUESTS_PER_IP = 6; // per 10 menit (in-memory)
 const IP_WINDOW_MS = 10 * 60 * 1000;
 const PHONE_WINDOW_MS = 24 * 60 * 60 * 1000;
 const MIN_FILL_MS = 1200; // waktu minimal mengisi form (time-trap)
-const MAX_BODY_BYTES = 12 * 1024 * 1024; // 12 MB (mendukung upload bukti transfer foto)
+const MAX_BODY_BYTES = 256 * 1024; // payload reservasi (tanpa upload bukti bayar)
 
 // Batas teknis (bukan batas UI): melindungi server dari payload ekstrem.
 const MAX_GROUP_ITEMS = 50; // baris karya dalam satu daftar
@@ -55,6 +59,8 @@ const MAX_GROUP_UNITS = 80; // total karya fisik setelah qty diekspansi
 const MAX_LENGTH: Record<string, number> = {
   customer_name: 120,
   whatsapp: 20,
+  shipping_city: 100,
+  shipping_address: 300,
   product_id: 120,
   product_name: 160,
   nuansa: 40,
@@ -137,33 +143,6 @@ function createSetupToken(): string {
   const bytes = new Uint8Array(32);
   crypto.getRandomValues(bytes);
   return Array.from(bytes).map((byte) => byte.toString(16).padStart(2, "0")).join("");
-}
-
-function decodeBase64ToUint8Array(base64: string): Uint8Array {
-  const withoutDataUrl = base64.trim().replace(/^data:[^,]*;base64,/i, "");
-  const cleanBase64 = withoutDataUrl
-    .replace(/\s/g, "")
-    .replace(/-/g, "+")
-    .replace(/_/g, "/");
-  if (!cleanBase64 || !/^[A-Za-z0-9+/]*={0,2}$/.test(cleanBase64)) {
-    throw new Error("Invalid base64 data");
-  }
-
-  const unpaddedBase64 = cleanBase64.replace(/=+$/, "");
-  const remainder = unpaddedBase64.length % 4;
-  if (remainder === 1) throw new Error("Invalid base64 length");
-  const padding = (4 - remainder) % 4;
-  const existingPadding = cleanBase64.length - unpaddedBase64.length;
-  if (existingPadding > 0 && (cleanBase64.length % 4 !== 0 || existingPadding !== padding)) {
-    throw new Error("Invalid base64 padding");
-  }
-
-  const binary = atob(unpaddedBase64 + "=".repeat(padding));
-  const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) {
-    bytes[i] = binary.charCodeAt(i);
-  }
-  return bytes;
 }
 
 function getStr(payload: Record<string, unknown>, key: string): string {
@@ -251,9 +230,6 @@ function validatePayload(body: Record<string, unknown>, items: ItemInput[]): str
     if (!item.nuansa || !ALLOWED_NUANSA.has(item.nuansa)) {
       errors.push(`${label}: nuansa warna tidak valid.`);
     }
-    if (!item.inisial) {
-      errors.push(`${label}: inisial wajib diisi.`);
-    }
     totalUnits += item.qty;
   });
 
@@ -276,162 +252,6 @@ function validatePayload(body: Record<string, unknown>, items: ItemInput[]): str
   }
 
   return errors;
-}
-
-async function handleUploadPaymentProof(
-  admin: ReturnType<typeof createClient>,
-  body: Record<string, unknown>
-): Promise<Response> {
-  const token = getStr(body, "payment_token").trim();
-  const groupNumber = getStr(body, "group_number").trim();
-  const groupId = getStr(body, "group_id").trim();
-  const rawImage = getStr(body, "image").trim();
-
-  if (!token || token.length < 16) {
-    return json({ message: "Token pembayaran tidak valid." }, 401);
-  }
-  if (!rawImage) {
-    return json({ message: "Bukti transfer belum dipilih." }, 400);
-  }
-
-  let query = admin
-    .from("preorder_groups")
-    .select("id, group_number, status, payment_token");
-  if (groupNumber) {
-    query = query.eq("group_number", groupNumber);
-  } else if (groupId) {
-    query = query.eq("id", groupId);
-  } else {
-    return json({ message: "Nomor reservasi tidak valid." }, 400);
-  }
-
-  const { data: group, error: groupError } = await query.maybeSingle();
-  if (groupError || !group) {
-    return json({ message: "Reservasi tidak ditemukan." }, 404);
-  }
-  if (group.payment_token && group.payment_token !== token) {
-    return json({ message: "Akses pembayaran tidak diizinkan." }, 403);
-  }
-
-  // Decode base64 gambar
-  let bytes: Uint8Array;
-  try {
-    bytes = decodeBase64ToUint8Array(rawImage);
-  } catch {
-    return json({ message: "Format gambar bukti transfer tidak valid." }, 400);
-  }
-
-  if (bytes.byteLength > 8 * 1024 * 1024) {
-    return json({ message: "Ukuran bukti transfer melebihi batas 8 MB." }, 413);
-  }
-
-  let mimeType = "image/jpeg";
-  let ext = "jpg";
-  const headerMatch = /^data:(image\/[a-zA-Z0-9+.-]+);base64,/i.exec(rawImage);
-  if (headerMatch) {
-    const declared = headerMatch[1].toLowerCase();
-    if (["image/jpeg", "image/jpg"].includes(declared)) {
-      mimeType = "image/jpeg";
-      ext = "jpg";
-    } else if (declared === "image/png") {
-      mimeType = "image/png";
-      ext = "png";
-    } else if (declared === "image/webp") {
-      mimeType = "image/webp";
-      ext = "webp";
-    }
-  }
-
-  const filePath = `payments/${group.group_number}/proof_${Date.now()}.${ext}`;
-  const { error: uploadError } = await admin.storage
-    .from("product-images")
-    .upload(filePath, bytes, { contentType: mimeType, upsert: true });
-
-  if (uploadError) {
-    console.error("[PAYMENT_PROOF_UPLOAD_ERROR]", uploadError.message);
-    return json({ message: "Gagal mengunggah bukti transfer. Coba lagi." }, 502);
-  }
-
-  const { data: pubData } = admin.storage.from("product-images").getPublicUrl(filePath);
-  const publicUrl = pubData.publicUrl;
-  const now = new Date().toISOString();
-
-  await admin
-    .from("preorder_groups")
-    .update({
-      payment_proof_url: publicUrl,
-      payment_submitted_at: now,
-      updated_at: now,
-    })
-    .eq("id", group.id);
-
-  await admin
-    .from("preorder_orders")
-    .update({
-      payment_proof_url: publicUrl,
-      updated_at: now,
-    })
-    .eq("group_id", group.id);
-
-  return json({
-    ok: true,
-    success: true,
-    payment_proof_url: publicUrl,
-    message: "Bukti pembayaran berhasil diunggah.",
-  });
-}
-
-async function handleGetPaymentInfo(
-  admin: ReturnType<typeof createClient>,
-  body: Record<string, unknown>
-): Promise<Response> {
-  const token = getStr(body, "payment_token").trim();
-  const groupNumber = getStr(body, "group_number").trim();
-  const groupId = getStr(body, "group_id").trim();
-
-  let query = admin
-    .from("preorder_groups")
-    .select(
-      "id, group_number, customer_name, whatsapp, total_amount, dp_amount, status, payment_token, payment_proof_url, created_at"
-    );
-
-  if (groupNumber) {
-    query = query.eq("group_number", groupNumber);
-  } else if (groupId) {
-    query = query.eq("id", groupId);
-  } else {
-    return json({ message: "Nomor reservasi tidak valid." }, 400);
-  }
-
-  const { data: group, error } = await query.maybeSingle();
-  if (error || !group) {
-    return json({ message: "Reservasi tidak ditemukan." }, 404);
-  }
-  if (group.payment_token && group.payment_token !== token) {
-    return json({ message: "Token pembayaran tidak valid." }, 403);
-  }
-
-  const { data: orders } = await admin
-    .from("preorder_orders")
-    .select("id, order_number, product_name, nuansa, inisial, total_amount, dp_amount, status")
-    .eq("group_id", group.id)
-    .order("group_item_index", { ascending: true });
-
-  return json({
-    ok: true,
-    group: {
-      id: group.id,
-      group_number: group.group_number,
-      customer_name: group.customer_name,
-      whatsapp: group.whatsapp,
-      total_amount: group.total_amount,
-      dp_amount: group.dp_amount,
-      status: group.status,
-      payment_proof_url: group.payment_proof_url,
-      created_at: group.created_at,
-    },
-    items: orders || [],
-  });
 }
 
 Deno.serve(async (req: Request) => {
@@ -479,14 +299,6 @@ Deno.serve(async (req: Request) => {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 
-  const action = getStr(body, "action").trim();
-  if (action === "upload_payment_proof") {
-    return await handleUploadPaymentProof(admin, body);
-  }
-  if (action === "get_payment_info") {
-    return await handleGetPaymentInfo(admin, body);
-  }
-
   // 4) Field honeypot: hanya diisi bot -> balas sukses palsu, jangan simpan.
   if (getStr(body, "website").trim().length > 0) {
     return json({ ok: true }, 200);
@@ -507,6 +319,8 @@ Deno.serve(async (req: Request) => {
 
   const whatsapp = normalizeWhatsApp(getStr(body, "whatsapp"));
   const customerName = getStr(body, "customer_name").trim();
+  const shippingCity = getStr(body, "shipping_city").trim();
+  const shippingAddress = getStr(body, "shipping_address").trim();
   const isVip = body.is_vip === true;
 
   // 6b) Rate limit per-IP lintas instance (DB). In-memory di atas hanya
@@ -586,20 +400,17 @@ Deno.serve(async (req: Request) => {
     );
   }
 
-  const paymentToken = createSetupToken();
-
   // 10) Simpan grup (service_role melewati RLS).
   const { data: group, error: groupError } = await admin
     .from("preorder_groups")
     .insert({
       group_number: groupNumber,
-      payment_token: paymentToken,
       customer_name: customerName,
       whatsapp,
       is_vip: isVip,
       total_amount: totalAmount,
       dp_amount: dpAmount,
-      status: "waiting_dp",
+      status: "new",
     })
     .select("id")
     .single();
@@ -623,6 +434,8 @@ Deno.serve(async (req: Request) => {
       orderRows.push({
         customer_name: customerName,
         whatsapp,
+        shipping_city: shippingCity,
+        shipping_address: shippingAddress,
         recipient_whatsapp: "",
         product_id: item.product_id,
         product_name: item.product_name,
@@ -638,7 +451,7 @@ Deno.serve(async (req: Request) => {
         group_item_count: totalUnits,
         group_total_amount: totalAmount,
         group_dp_amount: dpAmount,
-        status: "waiting_dp",
+        status: "new",
         order_number: createOrderNumber(),
         total_amount: item.unitAmount,
         dp_amount: Math.ceil(item.unitAmount * 0.5),
@@ -720,24 +533,26 @@ Deno.serve(async (req: Request) => {
     .join("\n");
 
   await sendAdminEmail(
-    `Pre-order grup #${groupNumber} — ${totalUnits} karya`,
-    emailLayout("Pre-order grup baru masuk", [
+    `Permintaan reservasi grup #${groupNumber} — ${totalUnits} karya`,
+    emailLayout("Permintaan reservasi baru masuk", [
       ["Nomor Grup", escapeHtml(groupNumber)],
       ["Pelanggan", escapeHtml(customerName)],
       ["WhatsApp", `<a href="https://wa.me/${escapeHtml(whatsapp)}">${escapeHtml(whatsapp)}</a>`],
+      ["Kota", escapeHtml(shippingCity || "-")],
+      ["Alamat", escapeHtml(shippingAddress || "-")],
       ["Jumlah Karya", escapeHtml(String(totalUnits))],
       ["Rincian", escapeHtml(itemLines).replace(/\n/g, "<br />")],
       ["Total", `Rp ${totalAmount.toLocaleString("id-ID")}`],
-      ["DP 50%", `Rp ${dpAmount.toLocaleString("id-ID")}`],
-    ], "Buka panel Admin untuk memverifikasi pembayaran grup dan memproses semua karya.")
+      ["DP 50% manual", `Rp ${dpAmount.toLocaleString("id-ID")}`],
+    ], "Status masih new. Hubungi pelanggan via WhatsApp untuk mengonfirmasi ketersediaan, ongkir, dan instruksi pembayaran DP 50% secara manual.")
   );
 
   console.log(
-    "[PREORDER_GROUP_CREATED] Group " +
+    "[PREORDER_GROUP_CREATED] Reservation " +
       groupNumber +
       " with " +
       totalUnits +
-      " item(s). Redirecting customer to manual WhatsApp confirmation."
+      " item(s). Awaiting manual WhatsApp confirmation."
   );
 
   return json({
@@ -745,7 +560,6 @@ Deno.serve(async (req: Request) => {
     ok: true,
     groupId: group.id,
     groupNumber,
-    paymentToken,
     id: orderIds[0],
     orderId: orderIds[0],
     orderIds,
