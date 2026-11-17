@@ -59,6 +59,10 @@ const PRODUCT_SELECT = [
   "vault_photos",
   "vault_photobooth_theme",
   "vault_letter_style",
+  "vault_moment",
+  "vault_moment_label",
+  "vault_skin",
+  "vault_hook_id",
   "audio_url",
   "audio_durasi",
   "vault_audio_message",
@@ -190,6 +194,12 @@ function publicProduct(product: ProductRow): Record<string, unknown> {
     // sebelum PIN dimasukkan. Isi surat/media tetap terkunci.
     nama_pembeli: product.nama_pembeli,
     dari: product.dari,
+    // Mode perayaan bukan rahasia: dibutuhkan untuk memilih skin dan
+    // hook sebelum PIN dimasukkan. NULL berarti vault arsip lama.
+    vault_moment: product.vault_moment ?? null,
+    vault_moment_label: product.vault_moment_label ?? "",
+    vault_skin: product.vault_skin ?? "noir",
+    vault_hook_id: product.vault_hook_id ?? "gift-box",
   };
 }
 

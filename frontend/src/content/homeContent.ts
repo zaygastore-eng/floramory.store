@@ -254,7 +254,7 @@ export const homeContent = {
   smartVault: {
     sectionTitle: "Smart QR Vault — Where Living Memories Reside",
     sectionSubtitle:
-      "Edukasi cara kerja memori digital yang ditanam pada bingkai.",
+      "Edukasi cara kerja memori digital yang ditanam pada bingkai, kini dibuka sebagai perayaan.",
     mediaTabs: [
       {
         kind: "photograph",
@@ -263,7 +263,7 @@ export const homeContent = {
           "Simpan potret yang mengingatkanmu pada hari dan orang yang paling berarti.",
         imageUrl: "/landing/memory-photo-1.webp",
         handwrittenCaption: "A day to remember forever · June 2026",
-        archivalStamp: "12 high-res photographs secured",
+        archivalStamp: "Kolase 4 foto resolusi penuh",
       },
       {
         kind: "voice-record",
@@ -302,10 +302,10 @@ export const homeContent = {
           "Token URL acak unik 128-bit yang tidak diindeks oleh mesin pencari Google (No-Index header).",
       },
       {
-        id: "optional-pin",
-        title: "Proteksi PIN 4-Digit",
+        id: "mandatory-pin",
+        title: "PIN 6 Digit Wajib",
         detail:
-          "Pengirim dapat menyetel kode akses opsional untuk mengunci rekaman suara dan surat yang sangat intim.",
+          "Setiap brankas dikunci PIN 6 digit yang dicetak di kartu fisik dalam boks. PIN tidak dapat diubah setelah brankas dikunci; atelier hanya dapat mencetak ulang PIN yang sama.",
       },
       {
         id: "lifetime-hosting",
@@ -323,9 +323,9 @@ export const homeContent = {
     workflowSteps: [
       {
         step: 1,
-        title: "Unggah Memoar via WhatsApp",
+        title: "Pilih Momen & Unggah Memoar",
         description:
-          "Setelah pemesanan disepakati, Anda menerima link formulir privat untuk mengirim foto, rekaman suara, video, dan teks surat langsung dari HP.",
+          "Setelah DP diverifikasi, Anda menerima link privat untuk memilih momen perayaan, skin, dan hook animasi, lalu mengirim hingga empat foto, rekaman suara, video, serta surat dari HP.",
       },
       {
         step: 2,

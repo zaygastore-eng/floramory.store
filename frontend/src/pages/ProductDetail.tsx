@@ -175,7 +175,7 @@ export default function ProductDetail() {
   };
 
   const storyText = product.deskripsi ||
-    "Karya seni botani asli yang dipreservasi abadi melalui standar presisi laboratorium, dituangkan dalam kristal epoxy anti-UV bersama brankas kenangan digital untuk menyimpan suara, surat, dan foto orang tersayang selamanya.";
+    "Karya seni botani asli yang dipreservasi abadi melalui standar presisi laboratorium, dituangkan dalam kristal epoxy anti-UV bersama brankas kenangan digital untuk menyimpan surat, musik, dan kolase empat foto orang tersayang.";
 
   const handleGalleryTouchStart = (event: TouchEvent<HTMLDivElement>) => {
     if (!hasMultipleImages) return;
@@ -465,7 +465,7 @@ export default function ProductDetail() {
               </div>
 
               <p className="pdp-cta-note">
-                Termasuk Smart QR Memory Vault. Tidak ada pembayaran di halaman ini.
+                Termasuk Smart QR Memory Vault dengan PIN 6 digit wajib. Tidak ada pembayaran di halaman ini.
               </p>
             </div>
 

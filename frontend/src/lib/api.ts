@@ -50,6 +50,11 @@ export interface Product extends CatalogProduct {
   vault_photos?: string[];
   vault_photobooth_theme?: string;
   vault_letter_style?: Record<string, unknown>;
+  /** NULL = vault arsip lama; nilai lain = celebration mode. */
+  vault_moment?: string | null;
+  vault_moment_label?: string;
+  vault_skin?: string;
+  vault_hook_id?: string;
   vault_pin?: string;
   is_catalog: boolean;
   recipient_whatsapp?: string;
@@ -86,6 +91,10 @@ export interface PreOrder {
   vault_photos?: string[];
   vault_photobooth_theme?: string;
   vault_letter_style?: Record<string, unknown>;
+  vault_moment?: string | null;
+  vault_moment_label?: string;
+  vault_skin?: string;
+  vault_hook_id?: string;
   audio_url?: string;
   audio_durasi?: number;
   vault_audio_message?: string;
@@ -801,6 +810,10 @@ export async function saveVaultSetup(
     vault_photos?: string[];
     vault_photobooth_theme?: string;
     vault_letter_style?: Record<string, unknown>;
+    vault_moment: string;
+    vault_moment_label?: string;
+    vault_skin?: string;
+    vault_hook_id?: string;
     audio_url: string;
     audio_durasi?: number;
     vault_audio_message?: string;
@@ -997,6 +1010,10 @@ function normalizeProduct(obj: Partial<Product>): Product {
         : record.vault_letter_style && typeof record.vault_letter_style === "object" && !Array.isArray(record.vault_letter_style)
           ? (record.vault_letter_style as Record<string, unknown>)
           : {},
+    vault_moment: String(obj.vault_moment ?? record.vault_moment ?? "").trim() || null,
+    vault_moment_label: String(obj.vault_moment_label ?? record.vault_moment_label ?? "").trim(),
+    vault_skin: String(obj.vault_skin ?? record.vault_skin ?? "").trim(),
+    vault_hook_id: String(obj.vault_hook_id ?? record.vault_hook_id ?? "").trim(),
     vault_pin: String(obj.vault_pin || record.vault_pin || "").trim(),
     is_catalog: Boolean(obj.is_catalog ?? record.is_catalog ?? false),
     recipient_whatsapp: String(obj.recipient_whatsapp || record.recipient_whatsapp || "").trim(),
@@ -1081,6 +1098,10 @@ function normalizePreOrder(obj: Partial<PreOrder> & Record<string, unknown>): Pr
       obj.vault_letter_style && typeof obj.vault_letter_style === "object" && !Array.isArray(obj.vault_letter_style)
         ? (obj.vault_letter_style as Record<string, unknown>)
         : {},
+    vault_moment: String(obj.vault_moment ?? "").trim() || null,
+    vault_moment_label: String(obj.vault_moment_label || "").trim(),
+    vault_skin: String(obj.vault_skin || "").trim(),
+    vault_hook_id: String(obj.vault_hook_id || "").trim(),
     audio_url: String(obj.audio_url || "").trim(),
     audio_durasi: Number(obj.audio_durasi) || 0,
     vault_audio_message: String(obj.vault_audio_message || "").trim(),
@@ -1178,7 +1199,7 @@ export async function fetchCatalogProducts(category?: CatalogCategory): Promise<
 // Kolom eksplisit (bukan select=*). created_at/updated_at terakhir
 // tidak diambil: tidak dipakai UI admin.
 const MANAGED_PRODUCTS_SELECT =
-  "id,nama_produk,tier,harga,bunga,deskripsi,bahan,ukuran,nama_pembeli,dari,pesan_personal,foto_produk,foto_qr,gallery_photos,audio_url,audio_durasi,video_url,foto_vault,vault_pin,is_catalog,recipient_whatsapp,order_id,status,deleted_at";
+  "id,nama_produk,tier,harga,bunga,deskripsi,bahan,ukuran,nama_pembeli,dari,pesan_personal,foto_produk,foto_qr,gallery_photos,audio_url,audio_durasi,video_url,foto_vault,vault_photos,vault_photobooth_theme,vault_letter_style,vault_moment,vault_moment_label,vault_skin,vault_hook_id,vault_pin,is_catalog,recipient_whatsapp,order_id,status,deleted_at";
 
 function invalidateProductCaches() {
   cachedCatalog = null;
@@ -1197,17 +1218,26 @@ export async function fetchManagedProducts(): Promise<Product[]> {
     const queryFor = (select: string) =>
       `select=${select}&order=created_at.desc&limit=${MANAGED_PRODUCTS_PAGE_SIZE}&offset=${offset}`;
     let data: unknown;
-    try {
-      data = await adminRequest("GET", "/rest/v1/products", {
-        query: queryFor(MANAGED_PRODUCTS_SELECT),
-      });
-    } catch (error) {
-      // Fallback sebelum migrasi `gallery_photos` diterapkan.
-      const message = error instanceof Error ? error.message : "";
-      if (!/gallery_photos/i.test(message)) throw error;
-      data = await adminRequest("GET", "/rest/v1/products", {
-        query: queryFor(MANAGED_PRODUCTS_SELECT.split(",").filter(col => col !== "gallery_photos").join(",")),
-      });
+    let select = MANAGED_PRODUCTS_SELECT;
+    for (let attempt = 0; attempt < 5; attempt++) {
+      try {
+        data = await adminRequest("GET", "/rest/v1/products", {
+          query: queryFor(select),
+        });
+        break;
+      } catch (error) {
+        // Fallback sebelum migrasi baru diterapkan: buang hanya kolom
+        // yang belum ada, lalu coba lagi. Jangan sampai panel Admin
+        // kosong hanya karena satu kolom opsional belum dimigrasikan.
+        const message = error instanceof Error ? error.message : "";
+        const match = message.match(/column\s+(?:[\w"]+\.)?([a-z_]+)\s+does not exist/i);
+        const missing = match?.[1] || (/gallery_photos/i.test(message) ? "gallery_photos" : "");
+        if (!missing || !select.split(",").includes(missing)) throw error;
+        select = select.split(",").filter(col => col !== missing).join(",");
+      }
+    }
+    if (data === undefined) {
+      throw new Error("Gagal memuat daftar produk");
     }
     if (!Array.isArray(data)) {
       throw new Error("Gagal memuat daftar produk");
@@ -1514,7 +1544,7 @@ function isTierConstraintError(message: string): boolean {
 
 // Kolom eksplisit (bukan select=*). updated_at tidak dipakai UI.
 const PREORDER_SELECT =
-  "id,order_number,group_id,group_number,group_item_index,group_item_count,group_total_amount,group_dp_amount,total_amount,dp_amount,nuansa,inisial,customer_name,whatsapp,shipping_city,shipping_address,product_id,product_name,custom_request,recipient_name,sender_name,personal_message,recipient_whatsapp,foto_vault,vault_photos,vault_photobooth_theme,vault_letter_style,audio_url,audio_durasi,vault_audio_message,video_url,vault_submitted_at,vault_pin,vault_setup_token,vault_setup_expires_at,vault_locked_at,status,created_at";
+  "id,order_number,group_id,group_number,group_item_index,group_item_count,group_total_amount,group_dp_amount,total_amount,dp_amount,nuansa,inisial,customer_name,whatsapp,shipping_city,shipping_address,product_id,product_name,custom_request,recipient_name,sender_name,personal_message,recipient_whatsapp,foto_vault,vault_photos,vault_photobooth_theme,vault_letter_style,vault_moment,vault_moment_label,vault_skin,vault_hook_id,audio_url,audio_durasi,vault_audio_message,video_url,vault_submitted_at,vault_pin,vault_setup_token,vault_setup_expires_at,vault_locked_at,status,created_at";
 
 export interface PreOrderPage {
   orders: PreOrder[];
@@ -1543,13 +1573,35 @@ export async function fetchPreOrders(offset = 0): Promise<PreOrderPage> {
     return { orders: [], hasMore: false, total: null };
   }
 
-  const { status, data, headers } = await adminCall("proxy", {
-    method: "GET",
-    path: "/rest/v1/preorder_orders",
-    query:
-      `select=${PREORDER_SELECT}&order=created_at.desc&limit=${PREORDER_PAGE_SIZE}&offset=${offset}`,
-    prefer: "count=exact",
-  });
+  const { status, data, headers } = await (async () => {
+    // Sebelum migrasi celebration diterapkan, buang kolom yang belum ada
+    // agar panel Admin tetap bisa dibuka. Kolom tersebut hanya metadata.
+    let select = PREORDER_SELECT;
+    let last = await adminCall("proxy", {
+      method: "GET",
+      path: "/rest/v1/preorder_orders",
+      query: `select=${select}&order=created_at.desc&limit=${PREORDER_PAGE_SIZE}&offset=${offset}`,
+      prefer: "count=exact",
+    });
+    for (let attempt = 0; attempt < 5 && last.status >= 400; attempt++) {
+      const message = String(
+        (last.data as Record<string, unknown> | null)?.message ||
+          (last.data as Record<string, unknown> | null)?.details ||
+          ""
+      );
+      const match = message.match(/column\s+(?:[\w"]+\.)?([a-z_]+)\s+does not exist/i);
+      const missing = match?.[1] || "";
+      if (!missing || !select.split(",").includes(missing)) break;
+      select = select.split(",").filter(col => col !== missing).join(",");
+      last = await adminCall("proxy", {
+        method: "GET",
+        path: "/rest/v1/preorder_orders",
+        query: `select=${select}&order=created_at.desc&limit=${PREORDER_PAGE_SIZE}&offset=${offset}`,
+        prefer: "count=exact",
+      });
+    }
+    return last;
+  })();
 
   if (status === 401) {
     throw new Error("Sesi admin sudah kadaluarsa. Silakan login kembali.");

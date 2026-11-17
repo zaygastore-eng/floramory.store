@@ -102,6 +102,13 @@ Migrasi terbaru (2026-11-09 s/d 2026-11-15)
 - `20261115020000_product_kategori.sql` -> kolom `products.kategori` + grant anon.
 - `20261115030000_rls_cleanup.sql` -> hapus policy legacy longgar (produk personal & preorder) + cabut insert anon.
 - `20261115040000_maintenance_cleanup.sql` -> hapus tabel backup lama, bersihkan OTP kedaluwarsa, cabut insert/delete preorder authenticated, default kategori.
+- `20261116000000_reservation_shipping_fields.sql` -> kolom alamat pengiriman pada reservasi.
+- `20261117090000_vault_celebration.sql` -> mode perayaan Memory Vault: `vault_moment` (nullable; NULL = arsip lama), `vault_moment_label`, `vault_skin`, `vault_hook_id`, constraint whitelist, PIN wajib 6 digit + momen wajib pada `save_vault_setup` (15 argumen).
+
+### Deploy celebration mode
+1. Jalankan migrasi `20261117090000_vault_celebration.sql` lebih dulu. Fungsi RPC lama (7 dan 11 argumen) dihapus agar tidak ada jalur tulis yang melewati validasi.
+2. Deploy ulang Edge Function `vault-setup` lalu `vault-otp`.
+3. Deploy frontend. Pengirim yang masih membuka tab lama harus memuat ulang halaman setup sebelum menyimpan — fungsi baru menolak momen kosong (vault lama tetap aman karena hanya membaca `vault_moment = NULL`).
 
 Notes & safety
 --------------

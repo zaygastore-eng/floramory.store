@@ -41,7 +41,7 @@ export const PHOTOBOOTH_THEMES: readonly PhotoboothTheme[] = [
 ] as const;
 
 export const DEFAULT_PHOTOBOOTH_THEME: PhotoboothThemeId = "cream";
-export const MAX_VAULT_PHOTOS = 1;
+export const MAX_VAULT_PHOTOS = 4;
 
 const THEME_IDS = new Set<string>(PHOTOBOOTH_THEMES.map((theme) => theme.id));
 
@@ -170,6 +170,188 @@ export function letterStyleToCss(
     textAlign: style.align,
     color: style.color,
     lineHeight: style.font === "parisienne" ? 1.5 : 1.8,
+  };
+}
+
+/* ── Celebration mode ──
+ * Vault baru menyimpan `vault_moment`; vault lama yang kolomnya null
+ * tetap dirender sebagai arsip memoar (mode legacy). Momen, skin, dan
+ * hook tidak pernah mengubah isi brankas — hanya cara ia dibuka.
+ */
+
+export type VaultMomentId = "birthday" | "anniversary" | "graduation" | "custom";
+
+export type VaultHookId =
+  | "cake"
+  | "rose"
+  | "graduation"
+  | "gift-box"
+  | "bouquet"
+  | "envelope"
+  | "celebration"
+  | "confetti";
+
+export interface VaultHookOption {
+  id: VaultHookId;
+  name: string;
+  note: string;
+}
+
+export const VAULT_HOOKS: readonly VaultHookOption[] = [
+  { id: "cake", name: "Birthday Cake", note: "Kue dan lilin yang menyala" },
+  { id: "rose", name: "Single Rose", note: "Satu mawar untuk satu rasa" },
+  { id: "graduation", name: "Graduation Cap", note: "Toga untuk babak yang selesai" },
+  { id: "gift-box", name: "Gift Box", note: "Kotak kado yang terbuka perlahan" },
+  { id: "bouquet", name: "Flower Bouquet", note: "Buket untuk merayakan" },
+  { id: "envelope", name: "Love Letter", note: "Amplop dengan surat di dalamnya" },
+  { id: "celebration", name: "Celebration", note: "Dua gelas untuk bersulang" },
+  { id: "confetti", name: "Confetti", note: "Hujan kertas warna" },
+] as const;
+
+export const DEFAULT_VAULT_HOOK: VaultHookId = "gift-box";
+
+export interface VaultMomentOption {
+  id: VaultMomentId;
+  name: string;
+  short: string;
+  note: string;
+  defaultHook: VaultHookId;
+  eyebrow: string;
+  /** `{name}` diganti dengan nama penerima. */
+  title: string;
+}
+
+export const VAULT_MOMENTS: readonly VaultMomentOption[] = [
+  {
+    id: "birthday",
+    name: "Ulang Tahun",
+    short: "Birthday",
+    note: "Lilin, kue, dan satu hari yang sepenuhnya miliknya.",
+    defaultHook: "cake",
+    eyebrow: "SEBUAH HARI ISTIMEWA",
+    title: "Selamat ulang tahun, {name}",
+  },
+  {
+    id: "anniversary",
+    name: "Anniversary",
+    short: "Anniversary",
+    note: "Untuk setiap bab yang sudah dan akan kalian lewati.",
+    defaultHook: "bouquet",
+    eyebrow: "SEBUAH PERJALANAN",
+    title: "Untuk setiap bab yang kita lewati",
+  },
+  {
+    id: "graduation",
+    name: "Wisuda",
+    short: "Graduation",
+    note: "Perayaan untuk kerja keras yang akhirnya selesai.",
+    defaultHook: "graduation",
+    eyebrow: "SEBUAH PENCAPAIAN",
+    title: "Selamat atas wisudamu, {name}",
+  },
+  {
+    id: "custom",
+    name: "Momen Lain",
+    short: "Custom",
+    note: "Tulis sendiri momennya — perpisahan, reuni, atau kejutan kecil.",
+    defaultHook: "gift-box",
+    eyebrow: "SEBUAH MOMEN SPESIAL",
+    title: "Momen untuk {name}",
+  },
+] as const;
+
+export const DEFAULT_VAULT_MOMENT: VaultMomentId = "birthday";
+
+export type VaultSkinId = "noir" | "crayon" | "romance";
+
+export interface VaultSkinOption {
+  id: VaultSkinId;
+  name: string;
+  tagline: string;
+}
+
+export const VAULT_SKINS: readonly VaultSkinOption[] = [
+  { id: "noir", name: "Noir Atelier", tagline: "Hitam anggur, emas redup, dan cahaya lilin." },
+  { id: "crayon", name: "Crayon Party", tagline: "Krem hangat, garis tebal, dan energi tangan." },
+  { id: "romance", name: "Romance Blush", tagline: "Merah muda pudar, renda, dan huruf yang lembut." },
+] as const;
+
+export const DEFAULT_VAULT_SKIN: VaultSkinId = "noir";
+
+const MOMENT_IDS = new Set<string>(VAULT_MOMENTS.map((moment) => moment.id));
+const SKIN_IDS = new Set<string>(VAULT_SKINS.map((skin) => skin.id));
+const HOOK_IDS = new Set<string>(VAULT_HOOKS.map((hook) => hook.id));
+
+/** `null` berarti vault lama tanpa mode perayaan (arsip memoar). */
+export function normalizeVaultMoment(value: unknown): VaultMomentId | null {
+  const raw = String(value || "").trim().toLowerCase();
+  return MOMENT_IDS.has(raw) ? (raw as VaultMomentId) : null;
+}
+
+export function getVaultMoment(value: unknown): VaultMomentOption | null {
+  const id = normalizeVaultMoment(value);
+  return id ? VAULT_MOMENTS.find((moment) => moment.id === id) || null : null;
+}
+
+export function normalizeVaultSkin(value: unknown): VaultSkinId {
+  const raw = String(value || "").trim().toLowerCase();
+  return SKIN_IDS.has(raw) ? (raw as VaultSkinId) : DEFAULT_VAULT_SKIN;
+}
+
+export function getVaultSkin(value: unknown): VaultSkinOption {
+  const id = normalizeVaultSkin(value);
+  return VAULT_SKINS.find((skin) => skin.id === id) || VAULT_SKINS[0];
+}
+
+export function normalizeVaultHook(value: unknown): VaultHookId {
+  const raw = String(value || "").trim().toLowerCase();
+  return HOOK_IDS.has(raw) ? (raw as VaultHookId) : DEFAULT_VAULT_HOOK;
+}
+
+export function getVaultHook(value: unknown): VaultHookOption {
+  const id = normalizeVaultHook(value);
+  return VAULT_HOOKS.find((hook) => hook.id === id) || VAULT_HOOKS[0];
+}
+
+export function vaultMomentLabel(value: unknown): string {
+  return String(value || "").trim().slice(0, 40);
+}
+
+/** Judul hub perayaan, sudah disesuaikan dengan penerima/label custom. */
+export function vaultMomentTitle(
+  moment: VaultMomentOption,
+  recipient: unknown,
+  customLabel: unknown
+): string {
+  const name = String(recipient || "").trim() || "kamu";
+  if (moment.id === "custom") {
+    return vaultMomentLabel(customLabel) || "Sebuah momen untukmu";
+  }
+  return moment.title.replace("{name}", name);
+}
+
+export interface VaultCelebrationConfig {
+  isCelebration: boolean;
+  moment: VaultMomentOption | null;
+  skin: VaultSkinOption;
+  hook: VaultHookOption;
+  label: string;
+}
+
+/** Satu tempat untuk memutuskan celebration vs. archive legacy. */
+export function resolveVaultCelebration(product: {
+  vault_moment?: string | null;
+  vault_moment_label?: string;
+  vault_skin?: string;
+  vault_hook_id?: string;
+} | null | undefined): VaultCelebrationConfig {
+  const moment = getVaultMoment(product?.vault_moment);
+  return {
+    isCelebration: Boolean(moment),
+    moment,
+    skin: getVaultSkin(product?.vault_skin),
+    hook: getVaultHook(product?.vault_hook_id),
+    label: vaultMomentLabel(product?.vault_moment_label),
   };
 }
 

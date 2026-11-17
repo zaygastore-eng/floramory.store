@@ -138,7 +138,8 @@ export default function ShopAll() {
               Karya Botani Abadi, Dirangkai dengan Cermat
             </h1>
             <p className="shop-hero-sub">
-              Bunga asli yang diawetkan menjadi karya personal, lengkap dengan Smart QR Memory Vault untuk menyimpan kenangan Anda.
+              Bunga asli yang diawetkan menjadi karya personal, lengkap dengan Smart QR Memory Vault
+              yang dibuka sebagai perayaan: surat, musik, dan kolase empat foto.
             </p>
           </div>
         </section>

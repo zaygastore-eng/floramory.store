@@ -54,6 +54,7 @@ import BrandLogo from "@/components/BrandLogo";
 import { isSupabaseStorageUrl, productImageUrl, validateImageUrl } from "@/lib/images";
 import { formatHarga, normalizeWhatsApp, PRODUCTION_SITE_URL } from "@/lib/site";
 import { homeContent } from "@/content/homeContent";
+import { getVaultHook, getVaultMoment, getVaultSkin, vaultMomentLabel } from "@/lib/vaultDesign";
 
 const BASE_URL_KEY = "fm_base_url";
 const WA_KEY = "fm_wa";
@@ -911,6 +912,11 @@ export default function Admin() {
   const productFromForm = (): Product => {
     const existing = editingId ? managedProducts.find(p => p.id === editingId) : null;
     const cat = form.kategori.trim();
+    // PIN yang sudah tercetak dan dikirim ke pelanggan tidak boleh berubah
+    // lewat panel Admin. Kalau produk sudah punya PIN, nilai lama dipertahankan
+    // meskipun field di layar tidak sengaja berubah.
+    const existingPin = String(existing?.vault_pin || "").trim();
+    const vaultPin = /^\d{6}$/.test(existingPin) ? existingPin : form.vaultPin.trim();
     return {
       id: form.id.trim().toUpperCase(),
       nama_produk: form.nama,
@@ -933,7 +939,7 @@ export default function Admin() {
       audio_durasi: form.isCatalog ? 0 : (form.audioDurasi || existing?.audio_durasi || 0),
       video_url: form.isCatalog ? "" : form.videoUrl.trim(),
       foto_vault: form.isCatalog ? "" : form.fotoVault.trim(),
-      vault_pin: form.isCatalog ? "" : form.vaultPin.trim(),
+      vault_pin: form.isCatalog ? existingPin : vaultPin,
       is_catalog: form.isCatalog,
     };
   };
@@ -1637,6 +1643,7 @@ export default function Admin() {
                 maxLength={6}
                 placeholder="Contoh: 749201"
                 value={form.vaultPin}
+                disabled={Boolean(editingId && managedProducts.find(p => p.id === editingId)?.vault_pin)}
                 onChange={event => setForm(f => ({
                   ...f,
                   vaultPin: event.target.value.replace(/\D/g, "").slice(0, 6),
@@ -1646,6 +1653,7 @@ export default function Admin() {
               <button
                 type="button"
                 className="admin-outline-btn"
+                disabled={Boolean(editingId && managedProducts.find(p => p.id === editingId)?.vault_pin)}
                 onClick={() => setForm(f => ({
                   ...f,
                   vaultPin: String(Math.floor(100000 + Math.random() * 900000)),
@@ -1655,7 +1663,9 @@ export default function Admin() {
               </button>
             </div>
             <p className="form-hint">
-              PIN rahasia di balik stiker gosok kartu ucapan. Pembeli/penerima memasukkan PIN ini untuk membuka Memory Vault.
+              {editingId && managedProducts.find(p => p.id === editingId)?.vault_pin
+                ? "PIN sudah terkunci dan tidak dapat diubah. Cetak ulang kartu PIN yang sama dari daftar pesanan bila pelanggan kehilangannya."
+                : "PIN rahasia di balik stiker gosok kartu ucapan. Pembeli/penerima memasukkan PIN ini untuk membuka Memory Vault."}
             </p>
           </div>
           <div className="admin-form-row">
@@ -1950,6 +1960,19 @@ export default function Admin() {
     return { submitted, parts, submittedLabel };
   };
 
+  // Vault baru selalu punya momen perayaan; vault lama yang dibuat sebelum
+  // migrasi tidak punya `vault_moment` dan tampil sebagai arsip memoar.
+  const celebrationMetaFor = (order: PreOrder) => {
+    const moment = getVaultMoment(order.vault_moment);
+    if (!moment) return null;
+    const label = vaultMomentLabel(order.vault_moment_label);
+    return {
+      moment: moment.id === "custom" && label ? label : moment.name,
+      skin: getVaultSkin(order.vault_skin).name,
+      hook: getVaultHook(order.vault_hook_id).name,
+    };
+  };
+
   const renderPreOrders = () => (
     <div className="admin-panel-card">
       <div className="admin-panel-head">
@@ -2078,6 +2101,7 @@ export default function Admin() {
                   <div className="admin-order-pin-row">
                     {(() => {
                       const { submitted, parts, submittedLabel } = vaultBadgeFor(order);
+                      const celebration = celebrationMetaFor(order);
                       return (
                         <>
                           <span className={`admin-order-pin-status ${submitted ? "ready" : "pending"}`}>
@@ -2087,6 +2111,11 @@ export default function Admin() {
                             <span className="admin-order-vault-summary">
                               {submittedLabel ? `Diisi ${submittedLabel}` : "Sudah diisi"}
                               {parts.length > 0 ? ` · ${parts.join(" · ")}` : ""}
+                            </span>
+                          )}
+                          {celebration && (
+                            <span className="admin-order-vault-summary">
+                              Perayaan: {celebration.moment} · Skin {celebration.skin} · Hook {celebration.hook}
                             </span>
                           )}
                         </>

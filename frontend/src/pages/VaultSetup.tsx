@@ -1,4 +1,19 @@
-import { useEffect, useState, useRef, type DragEvent, type ChangeEvent, type FormEvent } from "react";
+import { lazy, Suspense, useEffect, useState, useRef, type DragEvent, type ChangeEvent, type FormEvent } from "react";
+import {
+  Cake,
+  Check,
+  Copy,
+  Flower,
+  Flower2,
+  Gift,
+  GraduationCap,
+  Mail,
+  PartyPopper,
+  RefreshCw,
+  ShieldCheck,
+  Wine,
+  type LucideIcon,
+} from "lucide-react";
 import BrandLogo from "@/components/BrandLogo";
 import VaultExperience from "@/pages/VaultExperience";
 import { fetchVaultSetup, saveVaultSetup, uploadVaultMedia, type PreOrder } from "@/lib/api";
@@ -9,22 +24,38 @@ import { pageUrl } from "@/lib/site";
 import {
   DEFAULT_LETTER_STYLE,
   DEFAULT_PHOTOBOOTH_THEME,
+  DEFAULT_VAULT_HOOK,
+  DEFAULT_VAULT_MOMENT,
+  DEFAULT_VAULT_SKIN,
   LETTER_FONT_OPTIONS,
   LETTER_INK_TONES,
   LETTER_SIZE_OPTIONS,
   MAX_VAULT_PHOTOS,
   PHOTOBOOTH_THEMES,
+  VAULT_HOOKS,
+  VAULT_MOMENTS,
+  VAULT_SKINS,
   dpStatusLabel,
   getPhotoboothTheme,
+  getVaultMoment,
+  getVaultSkin,
   letterStyleToCss,
   normalizeLetterStyle,
   normalizePhotoboothTheme,
+  normalizeVaultHook,
+  normalizeVaultMoment,
+  normalizeVaultSkin,
   type LetterAlignId,
   type LetterFontId,
   type LetterSizeId,
   type PhotoboothThemeId,
+  type VaultHookId,
   type VaultLetterStyle,
+  type VaultMomentId,
+  type VaultSkinId,
 } from "@/lib/vaultDesign";
+
+const CelebrationHook = lazy(() => import("@/components/CelebrationHook"));
 
 interface PhotoSlot {
   url: string;
@@ -35,6 +66,23 @@ interface SlotProgress {
   percent: number;
   loaded: number;
   total: number;
+}
+
+const HOOK_ICONS: Record<VaultHookId, LucideIcon> = {
+  cake: Cake,
+  rose: Flower2,
+  graduation: GraduationCap,
+  "gift-box": Gift,
+  bouquet: Flower,
+  envelope: Mail,
+  celebration: Wine,
+  confetti: PartyPopper,
+};
+
+function randomPin(): string {
+  const buffer = new Uint32Array(1);
+  crypto.getRandomValues(buffer);
+  return String(100_000 + (buffer[0] % 900_000));
 }
 
 function emptyPhotoSlots(): PhotoSlot[] {
@@ -65,6 +113,14 @@ export default function VaultSetup() {
   const [videoSource, setVideoSource] = useState<"file" | "youtube">("file");
   const [uploadingVideo, setUploadingVideo] = useState(false);
   const [customPin, setCustomPin] = useState("");
+  const [pinConfirm, setPinConfirm] = useState("");
+
+  // Celebration mode
+  const [vaultMoment, setVaultMoment] = useState<VaultMomentId>(DEFAULT_VAULT_MOMENT);
+  const [momentLabel, setMomentLabel] = useState("");
+  const [vaultSkin, setVaultSkin] = useState<VaultSkinId>(DEFAULT_VAULT_SKIN);
+  const [vaultHook, setVaultHook] = useState<VaultHookId>(DEFAULT_VAULT_HOOK);
+  const [lockConfirmOpen, setLockConfirmOpen] = useState(false);
 
   // Browser voice recorder state
   const [recording, setRecording] = useState(false);
@@ -118,6 +174,10 @@ export default function VaultSetup() {
     );
     setPhotoboothTheme(normalizePhotoboothTheme(result.order.vault_photobooth_theme));
     setLetterStyle(normalizeLetterStyle(result.order.vault_letter_style));
+    setVaultMoment(normalizeVaultMoment(result.order.vault_moment) ?? DEFAULT_VAULT_MOMENT);
+    setMomentLabel(result.order.vault_moment_label || "");
+    setVaultSkin(normalizeVaultSkin(result.order.vault_skin));
+    setVaultHook(normalizeVaultHook(result.order.vault_hook_id));
 
     const existingAudioUrl = result.order.audio_url || "";
     if (classifyMedia(existingAudioUrl).type === "spotify") {
@@ -139,8 +199,9 @@ export default function VaultSetup() {
         ? "youtube"
         : "file"
     );
-    if (result.order.vault_pin) {
+    if (result.order.vault_pin && /^\d{6}$/.test(result.order.vault_pin)) {
       setCustomPin(result.order.vault_pin);
+      setPinConfirm(result.order.vault_pin);
     }
   };
 
@@ -476,22 +537,40 @@ export default function VaultSetup() {
     setLetterStyle(prev => ({ ...prev, [key]: value }));
   };
 
-  const handleSave = async (event: FormEvent) => {
-    event.preventDefault();
-    if (!orderId || saving) return;
+  const validateForLock = (): boolean => {
     if (photos.length === 0) {
-      setUploadError("Unggah minimal satu foto untuk photobooth strip kenangan Anda.");
-      return;
+      setUploadError("Unggah minimal satu foto untuk kolase kenangan Anda.");
+      return false;
+    }
+    if (vaultMoment === "custom" && !momentLabel.trim()) {
+      setUploadError("Tuliskan nama momen custom, misalnya “Perpisahan SMA”.");
+      return false;
+    }
+    if (!/^\d{6}$/.test(customPin)) {
+      setUploadError("PIN rahasia wajib terdiri dari 6 digit angka.");
+      return false;
+    }
+    if (pinConfirm !== customPin) {
+      setUploadError("Ulangi PIN belum sama. Periksa kembali 6 digit PIN Anda.");
+      return false;
     }
     if (audioSource === "spotify" && spotifyUrl.trim() && !parseSpotifyEmbedUrl(spotifyUrl)) {
       setUploadError("Periksa kembali link Spotify. Gunakan tautan track, album, atau playlist yang valid.");
-      return;
+      return false;
     }
-    if (customPin && !/^\d{6}$/.test(customPin)) {
-      setUploadError("PIN rahasia harus terdiri dari 6 digit angka.");
-      return;
-    }
+    setUploadError("");
+    return true;
+  };
 
+  const handleSave = (event: FormEvent) => {
+    event.preventDefault();
+    if (!orderId || saving) return;
+    if (!validateForLock()) return;
+    setLockConfirmOpen(true);
+  };
+
+  const performSave = async () => {
+    if (!orderId || saving) return;
     setSaving(true);
     setUploadError("");
     try {
@@ -501,6 +580,10 @@ export default function VaultSetup() {
         vault_photos: photos,
         vault_photobooth_theme: photoboothTheme,
         vault_letter_style: letterStyle as unknown as Record<string, unknown>,
+        vault_moment: vaultMoment,
+        vault_moment_label: vaultMoment === "custom" ? momentLabel.trim() : "",
+        vault_skin: vaultSkin,
+        vault_hook_id: vaultHook,
         audio_url: audioSource === "spotify" ? spotifyUrl.trim() : audioUrl,
         audio_durasi: audioSource === "spotify" ? 0 : audioDuration,
         vault_audio_message: audioMessage,
@@ -509,20 +592,24 @@ export default function VaultSetup() {
       });
       if (!result.ok) {
         if (result.expired) {
+          setLockConfirmOpen(false);
           setVaultExpired(true);
           setPageError(result.message);
           return;
         }
         if (result.locked) {
+          setLockConfirmOpen(false);
           setVaultLocked(true);
           return;
         }
         if (result.dpRequired) {
+          setLockConfirmOpen(false);
           setDpRequired(true);
           return;
         }
         throw new Error(result.message);
       }
+      setLockConfirmOpen(false);
       setVaultLocked(true);
       setSaved(true);
       setSavedPin(result.pin || customPin.trim() || order?.vault_pin || "");
@@ -532,6 +619,35 @@ export default function VaultSetup() {
       setSaving(false);
     }
   };
+
+  const chooseMoment = (id: VaultMomentId) => {
+    setVaultMoment(id);
+    const option = VAULT_MOMENTS.find(moment => moment.id === id);
+    if (option) setVaultHook(option.defaultHook);
+  };
+
+  const generatePin = () => {
+    const pin = randomPin();
+    setCustomPin(pin);
+    setPinConfirm(pin);
+    setPinCopied(false);
+  };
+
+  const copyPin = () => {
+    if (!customPin) return;
+    void navigator.clipboard
+      .writeText(customPin)
+      .then(() => {
+        setPinCopied(true);
+        window.setTimeout(() => setPinCopied(false), 2200);
+      })
+      .catch(() => setPinCopied(false));
+  };
+
+  const momentOption = getVaultMoment(vaultMoment) || VAULT_MOMENTS[0];
+  const skinOption = getVaultSkin(vaultSkin);
+  const hookOption = VAULT_HOOKS.find(hook => hook.id === vaultHook) || VAULT_HOOKS[0];
+  const HookEmblem = HOOK_ICONS[vaultHook] || Gift;
 
   const orderLabel = order?.order_number || order?.id || orderId;
   const spotifyEmbedPreviewUrl = parseSpotifyEmbedUrl(spotifyUrl);
@@ -751,6 +867,20 @@ export default function VaultSetup() {
                 <li className="vault-item-row">
                   <div className="vault-item-icon-wrap" aria-hidden="true">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M12 2l2.6 6.3L21 9l-5 4.4L17.6 21 12 17.3 6.4 21 8 13.4 3 9l6.4-.7z" />
+                    </svg>
+                  </div>
+                  <span>
+                    {momentOption.name}
+                    {vaultMoment === "custom" && momentLabel.trim() ? ` — ${momentLabel.trim()}` : ""}
+                    {" · "}
+                    {skinOption.name}
+                  </span>
+                </li>
+
+                <li className="vault-item-row">
+                  <div className="vault-item-icon-wrap" aria-hidden="true">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
                       <polyline points="22,6 12,13 2,6" />
                     </svg>
@@ -831,8 +961,8 @@ export default function VaultSetup() {
                 <div className="card-step-badge">STEP 01</div>
                 <h2 className="vault-setup-card-title">Archival Keepsake Photo</h2>
                 <p className="vault-setup-card-sub">
-                  Unggah 1 foto kenangan terbaik, pilih gaya border favoritmu, dan lihat hasilnya persis seperti
-                  bingkai foto kenangan yang akan dibuka penerima lewat chip QR code.
+                  Unggah hingga 4 foto kenangan, pilih gaya border favoritmu, dan lihat hasilnya persis seperti
+                  kolase foto yang akan dibuka penerima lewat chip QR code.
                 </p>
 
                 <div className="vault-photobooth">
@@ -1421,25 +1551,198 @@ export default function VaultSetup() {
                 </div>
               </section>
 
-              {/* OPTIONAL PIN CONFIGURATION */}
+              {/* CARD 4: CELEBRATION MOMENT, SKIN, AND HOOK */}
               <section className="vault-setup-card">
-                <div className="card-step-badge">OPTIONAL SECURITY</div>
-                <h2 className="vault-setup-card-title">Secret PIN Protection</h2>
+                <div className="card-step-badge">STEP 04</div>
+                <h2 className="vault-setup-card-title">Celebration Moment</h2>
                 <p className="vault-setup-card-sub">
-                  Atur 6 digit PIN (opsional): Hanya orang yang tahu kode ini yang dapat membuka brankas memori.
+                  Pilih momen yang dirayakan penerima. Pilihan ini menentukan judul pembuka,
+                  skin penerima, dan animasi yang tampil sebelum isi brankas terbuka.
                 </p>
 
-                <input
-                  type="text"
-                  maxLength={6}
-                  value={customPin}
-                  onChange={e => setCustomPin(e.target.value.replace(/\D/g, ""))}
-                  placeholder="Contoh: 140226"
-                  className="form-input vault-pin-config-input"
-                />
-                <span className="drop-hint">
-                  Jika dikosongkan, sistem akan mengunci dengan PIN acak yang otomatis tertera pada kartu ucapan fisik kado.
-                </span>
+                <div className="vault-moment-grid" role="radiogroup" aria-label="Pilih momen perayaan">
+                  {VAULT_MOMENTS.map(option => {
+                    const isActive = vaultMoment === option.id;
+                    return (
+                      <button
+                        key={option.id}
+                        type="button"
+                        role="radio"
+                        aria-checked={isActive}
+                        className={`vault-moment-card${isActive ? " is-active" : ""}`}
+                        onClick={() => chooseMoment(option.id)}
+                      >
+                        <span className="vault-moment-card-kicker">{option.short}</span>
+                        <strong>{option.name}</strong>
+                        <em>{option.note}</em>
+                        {isActive && <Check className="vault-option-check" aria-hidden="true" />}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {vaultMoment === "custom" && (
+                  <div className="vault-custom-moment-field">
+                    <label htmlFor="vault-moment-label" className="vault-file-label">
+                      Nama momen custom
+                    </label>
+                    <input
+                      id="vault-moment-label"
+                      type="text"
+                      maxLength={40}
+                      value={momentLabel}
+                      onChange={e => setMomentLabel(e.target.value.slice(0, 40))}
+                      placeholder="Contoh: Perpisahan SMA, Reuni 10 Tahun..."
+                      className="form-input"
+                    />
+                    <span className="char-counter">{momentLabel.length} / 40 karakter</span>
+                    <p className="drop-hint">
+                      Untuk momen custom, pilih salah satu hook kurasi di bawah. Animasi yang digambar
+                      khusus bisa diajukan manual ke concierge setelah brankas dikunci.
+                    </p>
+                  </div>
+                )}
+
+                <div className="vault-option-block">
+                  <span className="vault-toolbar-label">SKIN PENERIMA</span>
+                  <div className="vault-skin-grid" role="radiogroup" aria-label="Pilih skin penerima">
+                    {VAULT_SKINS.map(option => {
+                      const isActive = vaultSkin === option.id;
+                      return (
+                        <button
+                          key={option.id}
+                          type="button"
+                          role="radio"
+                          aria-checked={isActive}
+                          className={`vault-skin-card${isActive ? " is-active" : ""}`}
+                          onClick={() => setVaultSkin(option.id)}
+                        >
+                          <span className={`vault-skin-swatch skin-${option.id}`} aria-hidden="true">
+                            <i />
+                            <i />
+                            <i />
+                          </span>
+                          <strong>{option.name}</strong>
+                          <em>{option.tagline}</em>
+                          {isActive && <Check className="vault-option-check" aria-hidden="true" />}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="vault-option-block">
+                  <span className="vault-toolbar-label">HOOK ANIMASI</span>
+                  <div className="vault-hook-stage" data-hook={vaultHook}>
+                    <Suspense
+                      fallback={
+                        <span className="vault-hook-stage-fallback">
+                          <HookEmblem aria-hidden="true" />
+                        </span>
+                      }
+                    >
+                      <CelebrationHook key={vaultHook} hookId={vaultHook} loop />
+                    </Suspense>
+                    <div className="vault-hook-stage-caption">
+                      <strong>{hookOption.name}</strong>
+                      <span>{hookOption.note}</span>
+                    </div>
+                  </div>
+
+                  <div className="vault-hook-grid" role="radiogroup" aria-label="Pilih hook animasi">
+                    {VAULT_HOOKS.map(hook => {
+                      const isActive = vaultHook === hook.id;
+                      const Icon = HOOK_ICONS[hook.id] || Gift;
+                      return (
+                        <button
+                          key={hook.id}
+                          type="button"
+                          role="radio"
+                          aria-checked={isActive}
+                          className={`vault-hook-card${isActive ? " is-active" : ""}`}
+                          onClick={() => setVaultHook(hook.id)}
+                        >
+                          <Icon aria-hidden="true" strokeWidth={1.4} />
+                          <span>{hook.name}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </section>
+
+              {/* MANDATORY PIN */}
+              <section className="vault-setup-card vault-pin-mandatory-card">
+                <div className="card-step-badge">WAJIB · KEAMANAN</div>
+                <h2 className="vault-setup-card-title">PIN Rahasia Penerima</h2>
+                <p className="vault-setup-card-sub">
+                  Setiap brankas wajib punya PIN 6 digit. PIN ini dicetak pada kartu ucapan
+                  fisik di dalam boks kado — tanpa PIN, penerima tidak dapat membuka kenangan.
+                </p>
+
+                <div className="vault-pin-config-grid">
+                  <label htmlFor="vault-pin-input" className="vault-file-label">
+                    PIN 6 digit
+                  </label>
+                  <div className="vault-pin-input-row">
+                    <input
+                      id="vault-pin-input"
+                      type="text"
+                      inputMode="numeric"
+                      autoComplete="new-password"
+                      maxLength={6}
+                      value={customPin}
+                      onChange={e => setCustomPin(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                      placeholder="Contoh: 140226"
+                      className="form-input vault-pin-config-input"
+                    />
+                    <button
+                      type="button"
+                      className="vault-pin-ghost-btn"
+                      onClick={generatePin}
+                      title="Buat PIN acak yang aman"
+                    >
+                      <RefreshCw aria-hidden="true" />
+                      Acak
+                    </button>
+                    <button
+                      type="button"
+                      className="vault-pin-ghost-btn"
+                      onClick={copyPin}
+                      disabled={!customPin}
+                    >
+                      <Copy aria-hidden="true" />
+                      {pinCopied ? "Tersalin" : "Salin"}
+                    </button>
+                  </div>
+
+                  <label htmlFor="vault-pin-confirm" className="vault-file-label">
+                    Ulangi PIN
+                  </label>
+                  <input
+                    id="vault-pin-confirm"
+                    type="text"
+                    inputMode="numeric"
+                    autoComplete="new-password"
+                    maxLength={6}
+                    value={pinConfirm}
+                    onChange={e => setPinConfirm(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                    placeholder="Ketik ulang 6 digit PIN"
+                    className="form-input vault-pin-config-input"
+                  />
+                </div>
+
+                {pinConfirm.length === 6 && customPin.length === 6 && pinConfirm !== customPin && (
+                  <p className="vault-pin-mismatch" role="alert">
+                    PIN belum sama. Periksa kembali kedua kolom sebelum mengunci.
+                  </p>
+                )}
+
+                <p className="drop-hint vault-pin-note">
+                  <ShieldCheck aria-hidden="true" />
+                  PIN tidak dapat diubah setelah brankas dikunci. Atelier hanya dapat mencetak
+                  ulang PIN yang sama dari panel Admin.
+                </p>
               </section>
 
               {/* ERRORS */}
@@ -1517,6 +1820,10 @@ export default function VaultSetup() {
                   vault_photos: photos,
                   vault_photobooth_theme: photoboothTheme,
                   vault_letter_style: letterStyle as unknown as Record<string, unknown>,
+                  vault_moment: vaultMoment,
+                  vault_moment_label: vaultMoment === "custom" ? momentLabel.trim() : "",
+                  vault_skin: vaultSkin,
+                  vault_hook_id: vaultHook,
                   audio_url:
                     audioSource === "spotify"
                       ? spotifyUrl.trim()
@@ -1530,6 +1837,83 @@ export default function VaultSetup() {
                   bunga: order?.product_name || "Hydrangea macrophylla x Gypsophila paniculata",
                 }}
               />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* FINAL LOCK CONFIRMATION */}
+      {lockConfirmOpen && (
+        <div
+          className="modal-overlay open vault-lock-overlay"
+          style={{ zIndex: 520 }}
+          onClick={() => {
+            if (!saving) setLockConfirmOpen(false);
+          }}
+        >
+          <div
+            className="vault-lock-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="vault-lock-title"
+            onClick={e => e.stopPropagation()}
+          >
+            <span className="vault-lock-kicker">KONFIRMASI TERAKHIR</span>
+            <h2 id="vault-lock-title" className="vault-lock-title">Kunci kenangan ini?</h2>
+            <p className="vault-lock-lead">
+              Setelah dikunci, isi brankas dan PIN <strong>tidak dapat diubah lagi</strong>.
+              Periksa sekali lagi apakah semua sudah sesuai.
+            </p>
+
+            <dl className="vault-lock-summary">
+              <div>
+                <dt>Momen</dt>
+                <dd>
+                  {momentOption.name}
+                  {vaultMoment === "custom" && momentLabel.trim() ? ` — ${momentLabel.trim()}` : ""}
+                </dd>
+              </div>
+              <div>
+                <dt>Skin</dt>
+                <dd>{skinOption.name}</dd>
+              </div>
+              <div>
+                <dt>Hook</dt>
+                <dd>{hookOption.name}</dd>
+              </div>
+              <div>
+                <dt>Foto</dt>
+                <dd>{photos.length} foto</dd>
+              </div>
+              <div>
+                <dt>PIN</dt>
+                <dd className="vault-lock-pin">{customPin.replace(/(\d{3})(?=\d)/g, "$1 ")}</dd>
+              </div>
+            </dl>
+
+            {uploadError && (
+              <div className="vault-setup-error" role="alert">
+                {uploadError}
+              </div>
+            )}
+
+            <div className="vault-lock-actions">
+              <button
+                type="button"
+                className="btn-pill btn-pill-secondary"
+                onClick={() => setLockConfirmOpen(false)}
+                disabled={saving}
+              >
+                Kembali periksa
+              </button>
+              <button
+                type="button"
+                className="hero-cta hero-cta-primary vault-lock-submit"
+                onClick={() => void performSave()}
+                disabled={saving}
+              >
+                {saving ? "Mengunci..." : "Ya, kunci sekarang →"}
+              </button>
             </div>
           </div>
         </div>

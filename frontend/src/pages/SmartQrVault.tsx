@@ -86,12 +86,13 @@ export default function SmartQrVault() {
                 Bunga yang menyimpan <em>suara dan cerita</em> Anda.
               </h1>
               <p className="smart-vault-hero-lead">
-                Satu karya botani abadi, satu micro-chip rahasia. Cukup pindai dengan kamera
-                ponsel — foto, rekaman suara, video, dan surat personal terbuka selamanya.
+                Satu karya botani abadi, satu micro-chip rahasia. Pilih momen perayaannya
+                — ulang tahun, anniversary, wisuda, atau momen milikmu — lalu pindai dengan
+                kamera ponsel untuk membuka foto, rekaman suara, video, dan surat personal.
               </p>
               <ul className="smart-vault-hero-points">
                 <li><span>01</span> Tanpa aplikasi tambahan</li>
-                <li><span>02</span> PIN rahasia opsional</li>
+                <li><span>02</span> PIN 6 digit wajib</li>
                 <li><span>03</span> Tersimpan permanen</li>
               </ul>
               <div className="smart-vault-hero-actions">
@@ -140,8 +141,9 @@ export default function SmartQrVault() {
               <span className="vault-eyebrow">DIGITAL MEMOIR SIMULATOR</span>
               <h2 className="vault-title">A Glimpse Inside Your Secret Vault</h2>
               <p className="vault-desc">
-                Coba pengalaman membuka brankas rahasia berikut. Navigasikan 4 tab di bawah untuk melihat bagaimana foto,
-                suara, surat cinta, dan video memoir disajikan secara elegan kepada penerima kado.
+                Coba pengalaman membuka brankas rahasia berikut. Setelah PIN 6 digit dimasukkan,
+                animasi pembuka singkat mengantar ke hub berisi Surat, Musik, dan Foto —
+                empat potong kenangan tersusun dalam satu kolase.
               </p>
             </header>
 

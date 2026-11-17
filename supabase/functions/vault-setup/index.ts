@@ -130,6 +130,10 @@ const ORDER_SELECT = [
   "audio_durasi",
   "vault_audio_message",
   "video_url",
+  "vault_moment",
+  "vault_moment_label",
+  "vault_skin",
+  "vault_hook_id",
   "status",
   "vault_submitted_at",
   "vault_pin",
@@ -154,6 +158,22 @@ const LETTER_SIZES = new Set(["sm", "md", "lg", "xl"]);
 const LETTER_ALIGNS = new Set(["left", "center", "right"]);
 const LETTER_COLORS = new Set(["#531B21", "#2A2523", "#783642"]);
 const MAX_VAULT_PHOTOS = 4;
+
+// Celebration mode. Vault baru wajib punya momen; vault lama yang
+// tersimpan sebelum migrasi tetap `null` dan dirender sebagai arsip.
+const VAULT_MOMENTS = new Set(["birthday", "anniversary", "graduation", "custom"]);
+const VAULT_SKINS = new Set(["noir", "crayon", "romance"]);
+const VAULT_HOOKS = new Set([
+  "cake",
+  "rose",
+  "graduation",
+  "gift-box",
+  "bouquet",
+  "envelope",
+  "celebration",
+  "confetti",
+]);
+const MAX_MOMENT_LABEL = 40;
 
 // Rate limit per-IP (in-memory) untuk mencegah penyalahgunaan token.
 const MAX_REQUESTS_PER_IP = 60;
@@ -246,6 +266,26 @@ function cleanLetterStyle(value: unknown): Record<string, unknown> {
 function cleanPhotoboothTheme(value: unknown): string {
   const theme = String(value || "").trim().toLowerCase();
   return PHOTOBOOTH_THEMES.has(theme) ? theme : "cream";
+}
+
+/** Kosong berarti momen tidak dikirim/tidak dikenal. */
+function cleanVaultMoment(value: unknown): string {
+  const moment = String(value || "").trim().toLowerCase();
+  return VAULT_MOMENTS.has(moment) ? moment : "";
+}
+
+function cleanMomentLabel(value: unknown): string {
+  return cleanText(value, MAX_MOMENT_LABEL);
+}
+
+function cleanVaultSkin(value: unknown): string {
+  const skin = String(value || "").trim().toLowerCase();
+  return VAULT_SKINS.has(skin) ? skin : "noir";
+}
+
+function cleanVaultHook(value: unknown): string {
+  const hook = String(value || "").trim().toLowerCase();
+  return VAULT_HOOKS.has(hook) ? hook : "gift-box";
 }
 
 function normalizePhotoSlot(value: unknown): number {
@@ -630,6 +670,27 @@ async function handleSave(
   const photoboothTheme = cleanPhotoboothTheme(body.vault_photobooth_theme);
   const letterStyle = cleanLetterStyle(body.vault_letter_style);
 
+  // Celebration mode: momen wajib eksplisit. Label yang kosong pada
+  // momen custom juga ditolak agar hub penerima tidak tampil kosong.
+  const moment = cleanVaultMoment(body.vault_moment);
+  if (!moment) {
+    return json(
+      req,
+      { ok: false, message: "Pilih momen perayaan untuk brankas ini sebelum mengunci." },
+      422
+    );
+  }
+  const momentLabel = moment === "custom" ? cleanMomentLabel(body.vault_moment_label) : "";
+  if (moment === "custom" && !momentLabel) {
+    return json(
+      req,
+      { ok: false, message: "Tuliskan nama momen custom (mis. “Perpisahan SMA”)." },
+      422
+    );
+  }
+  const skin = cleanVaultSkin(body.vault_skin);
+  const hookId = cleanVaultHook(body.vault_hook_id);
+
   // Jika klien mengirim URL yang tidak diizinkan, tolak dengan jelas
   // daripada menyimpan tautan asing ke brankas penerima.
   const rawFoto = String(body.foto_vault || "").trim();
@@ -670,6 +731,10 @@ async function handleSave(
     p_photos: photos,
     p_photobooth_theme: photoboothTheme,
     p_letter_style: letterStyle,
+    p_moment: moment,
+    p_moment_label: momentLabel,
+    p_skin: skin,
+    p_hook_id: hookId,
   });
 
   if (rpcError) {
@@ -718,6 +783,12 @@ async function handleSave(
         403
       );
     }
+    if (code === "invalid_pin") {
+      return json(req, { ok: false, message: "PIN wajib terdiri dari 6 digit angka." }, 422);
+    }
+    if (code === "invalid_moment") {
+      return json(req, { ok: false, message: "Momen perayaan tidak valid. Pilih ulang momen." }, 422);
+    }
     if (code === "not_found" || code === "cancelled") {
       return json(req, { ok: false, message: "Pesanan tidak ditemukan atau sudah dibatalkan." }, 404);
     }
@@ -737,6 +808,8 @@ async function handleSave(
       ["Nomor", escapeHtml(orderNumber)],
       ["Penerima", escapeHtml(String(result.order.recipient_name || ""))],
       ["Produk", escapeHtml(String(result.order.product_name || ""))],
+      ["Momen", escapeHtml(moment === "custom" ? `custom — ${momentLabel}` : moment)],
+      ["Skin", escapeHtml(skin)],
       ["PIN kartu", "Tersedia di panel Admin (tidak dikirim lewat email)"],
     ], "Vault terkunci. Cetak PIN fisik dari panel Admin, lalu hubungi pelanggan secara manual.")
   );
@@ -745,6 +818,10 @@ async function handleSave(
     ok: true,
     message: "Kenangan berhasil disimpan dan dikunci ke Memory Vault!",
     pin: String(saveResult.pin || pin),
+    moment,
+    moment_label: momentLabel,
+    skin,
+    hook_id: hookId,
     locked: true,
   });
 }
