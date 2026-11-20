@@ -99,6 +99,7 @@ export function saveReservationDraft(items: ReservationDraftItem[]): void {
   if (typeof window === "undefined") return;
   try {
     window.localStorage.setItem(DRAFT_KEY, JSON.stringify(items));
+    window.dispatchEvent(new CustomEvent("fm-draft-updated"));
   } catch {
     // Storage can be unavailable in private mode. The in-memory page state
     // remains usable, so this is intentionally non-fatal.
@@ -112,6 +113,7 @@ export function clearReservationDraft(): void {
     // The old online-payment flow stored a pending QRIS session. It is no
     // longer used; clear it so stale banners cannot resurface.
     window.localStorage.removeItem("fm_pending_payment_v1");
+    window.dispatchEvent(new CustomEvent("fm-draft-updated"));
   } catch {
     // Ignore storage failures.
   }

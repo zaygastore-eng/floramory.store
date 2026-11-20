@@ -5,6 +5,7 @@ import SiteHeader from "@/components/SiteHeader";
 import SiteFooter from "@/components/SiteFooter";
 import ProductImage from "@/components/ProductImage";
 import ProductSpecimen from "@/components/ProductSpecimen";
+import OrderStickyBar from "@/components/OrderStickyBar";
 import {
   fetchCatalogProducts,
   fetchProductCategories,
@@ -402,6 +403,7 @@ export default function ShopAll() {
           </div>
         </div>
       )}
+      <OrderStickyBar products={products} />
     </div>
   );
 }

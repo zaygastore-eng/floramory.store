@@ -46,10 +46,10 @@ export default function SiteFooter() {
           <nav className="atelier-footer-col" aria-label="Technology and privacy">
             <h2 className="atelier-footer-title">TECHNOLOGY &amp; PRIVACY</h2>
             <ul className="atelier-footer-links">
-              <li><Link href="/smart-qr-vault">Smart QR Memory Vault</Link></li>
-              <li><Link href="/smart-qr-vault#privasi">Private URL &amp; Optional PIN</Link></li>
-              <li><Link href="/smart-qr-vault#privasi">Zero-Subscription Cloud Hosting</Link></li>
-              <li><Link href="/smart-qr-vault#cara-kerja">Camera-Direct Access</Link></li>
+              <li><a href="/#vault">Smart QR Memory Vault</a></li>
+              <li><a href="/#vault">Private URL &amp; Optional PIN</a></li>
+              <li><a href="/#vault">Zero-Subscription Cloud Hosting</a></li>
+              <li><a href="/#vault">Camera-Direct Access</a></li>
             </ul>
           </nav>
 

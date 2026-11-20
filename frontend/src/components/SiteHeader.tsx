@@ -7,7 +7,7 @@ import { normalizeWhatsApp } from "@/lib/site";
 const navLinks = [
   { href: "/shop", label: "The Chapters" },
   { href: "/#cara-pre-order", label: "Cara Pre-Order" },
-  { href: "/smart-qr-vault", label: "Smart QR Vault" },
+  { href: "/#vault", label: "Smart QR Vault" },
 ];
 
 const CONSULTATION_MESSAGE =
