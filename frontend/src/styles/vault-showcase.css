@@ -290,6 +290,10 @@
   gap: 0.5rem;
 }
 
+.vs-strip-grid[data-count="1"] {
+  grid-template-columns: 1fr;
+}
+
 .vs-strip-cell {
   position: relative;
   aspect-ratio: 4 / 5;

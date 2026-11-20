@@ -803,29 +803,53 @@ export default function VaultExperience({
 
   const renderCelebrationGallery = () => {
     const collage = photos.slice(0, 4);
+    const stripBg = stripTheme.id === "crimson" ? "#9E1B32" : stripTheme.bg;
+    const stripBorder = stripTheme.id === "crimson" ? "#B82942" : stripTheme.border;
     return (
       <div className="celebration-gallery" role="tabpanel">
-        <div className="celebration-collage" data-count={collage.length}>
-          {collage.map((photo, index) => (
-            <a
-              key={`${photo}-${index}`}
-              className="celebration-collage-item"
-              href={photo}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <img
-                src={photo}
-                alt={`Kenangan ${index + 1}`}
-                loading={index === 0 ? "eager" : "lazy"}
-              />
-            </a>
-          ))}
+        <div
+          className="vs-strip-card"
+          style={{
+            backgroundColor: stripBg,
+            borderColor: stripBorder,
+            color: stripTheme.text,
+            margin: "0 auto",
+          }}
+        >
+          <div className="vs-frame-head">
+            <span>A CHAPTER ATELIER</span>
+            <span>
+              {collage.length} CUT{collage.length > 1 ? "S" : ""}
+            </span>
+          </div>
+          <div className="vs-strip-grid" data-count={collage.length}>
+            {collage.map((photo, index) => (
+              <a
+                key={`${photo}-${index}`}
+                className="vs-strip-cell"
+                href={photo}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={`Buka foto kenangan ${index + 1}`}
+              >
+                <img
+                  src={photo}
+                  alt={`Kenangan ${index + 1}`}
+                  loading={index === 0 ? "eager" : "lazy"}
+                />
+                <span className="vs-strip-num" aria-hidden="true">
+                  0{index + 1}
+                </span>
+              </a>
+            ))}
+          </div>
+          <div className="vs-frame-foot">
+            <span>ARCHIVAL PHOTOBOOTH</span>
+            <span>KENANGAN ANDA</span>
+          </div>
         </div>
         <p className="celebration-gallery-caption">
-          {collage.length > 1
-            ? "Empat potong kenangan, disusun seperti halaman album."
-            : "Satu potong kenangan yang disimpan untukmu."}
+          Ketuk setiap foto untuk melihat atau menyimpan ukuran penuh.
         </p>
         <a
           className="celebration-gallery-download"
