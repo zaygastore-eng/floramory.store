@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { Suspense, lazy, useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "wouter";
+import { ArrowRight, Camera, Film, Mail, Music } from "lucide-react";
 import ProductImage from "@/components/ProductImage";
 import SiteHeader from "@/components/SiteHeader";
 import SiteFooter from "@/components/SiteFooter";
@@ -11,8 +12,17 @@ import {
 import { homeContent } from "@/content/homeContent";
 import { applyPageMeta } from "@/lib/seo";
 import { formatHarga, pageUrl } from "@/lib/site";
-import { PHOTOBOOTH_THEMES, type PhotoboothThemeId } from "@/lib/vaultDesign";
+import {
+  DEFAULT_VAULT_SKIN,
+  PHOTOBOOTH_THEMES,
+  VAULT_SKINS,
+  type PhotoboothThemeId,
+  type VaultHookId,
+  type VaultSkinId,
+} from "@/lib/vaultDesign";
 import { useAudioPlayback } from "@/hooks/useAudioPlayback";
+
+const CelebrationHook = lazy(() => import("@/components/CelebrationHook"));
 
 type PhotoboothBorderId = PhotoboothThemeId;
 
@@ -23,6 +33,55 @@ const WAVEFORM_SEEK_BARS = [
   85, 94, 60, 48, 70, 84, 52, 66, 90, 74, 44, 60, 78, 88, 58, 46,
   68, 82, 94, 70, 54, 76, 86, 62, 46, 66, 80, 58, 44, 56, 36, 26,
 ];
+
+type VaultSimTab = "photograph" | "voice-record" | "letter" | "video";
+
+const VAULT_TAB_ICONS: Record<VaultSimTab, typeof Camera> = {
+  photograph: Camera,
+  "voice-record": Music,
+  letter: Mail,
+  video: Film,
+};
+
+const VAULT_TAB_HINTS: Record<VaultSimTab, string> = {
+  photograph: "Empat potong kenangan dalam satu kolase",
+  "voice-record": "Dengarkan suara yang direkam untukmu",
+  letter: "Baca kata-kata yang ditulis untukmu",
+  video: "Tonton video kenangan",
+};
+
+/** Lottie pratinjau hanya dipasang saat kartu berada di viewport. */
+function LandingHookPreview({ hookId }: { hookId: VaultHookId }) {
+  const frameRef = useRef<HTMLDivElement>(null);
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    const node = frameRef.current;
+    if (!node) return;
+    if (typeof IntersectionObserver === "undefined") {
+      setVisible(true);
+      return;
+    }
+    const observer = new IntersectionObserver(
+      (entries) => setVisible(entries.some((entry) => entry.isIntersecting)),
+      { rootMargin: "120px" }
+    );
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
+
+  return (
+    <div ref={frameRef} className="lp-hook-preview-frame">
+      {visible ? (
+        <Suspense fallback={<span className="lp-hook-fallback" aria-hidden="true">✦</span>}>
+          <CelebrationHook hookId={hookId} loop className="lp-hero-hook" />
+        </Suspense>
+      ) : (
+        <span className="lp-hook-fallback" aria-hidden="true">✦</span>
+      )}
+    </div>
+  );
+}
 
 
 function ProductCard({
@@ -149,9 +208,8 @@ export default function Home() {
   };
 
 
-  const [vaultSimTab, setVaultSimTab] = useState<
-    "photograph" | "voice-record" | "letter" | "video"
-  >("photograph");
+  const [vaultSimTab, setVaultSimTab] = useState<VaultSimTab>("photograph");
+  const [previewSkin, setPreviewSkin] = useState<VaultSkinId>(DEFAULT_VAULT_SKIN);
   const [photoboothBorder, setPhotoboothBorder] = useState<PhotoboothBorderId>("cream");
   const [letterText, setLetterText] = useState(
     "Untuk Sahabat & Belahan Jiwa yang Terkasih,\n\nWaktu mungkin membawa kita ke persimpangan jalan yang berbeda, namun kenangan yang telah kita ukir bersama takkan pernah lekang oleh jarak dan masa. Sebagaimana kelopak bunga ini yang diawetkan abadi di laboratorium A Chapter, rasa sayang, syukur, dan doa tulusku akan selalu menyertai setiap langkahmu.\n\nIni bukan akhir, melainkan sebuah babak baru. Until we meet again, simpanlah memori ini selamanya.\n\nDengan cinta terdalam,\nSelalu Sahabat Terbaikmu"
@@ -286,6 +344,31 @@ export default function Home() {
 
   const showcaseProducts = chapterProducts;
 
+  const renderSkinSwitcher = (variant: "hero" | "vault") => (
+    <div
+      className={`lp-skin-switcher lp-skin-switcher--${variant}`}
+      role="group"
+      aria-label="Pratinjau tema Celebration"
+    >
+      <span className="lp-skin-switcher-label">Pratinjau tema</span>
+      <div className="lp-skin-switcher-options">
+        {VAULT_SKINS.map((skin) => (
+          <button
+            key={skin.id}
+            type="button"
+            className={`lp-skin-chip${previewSkin === skin.id ? " is-active" : ""}`}
+            aria-pressed={previewSkin === skin.id}
+            title={skin.tagline}
+            onClick={() => setPreviewSkin(skin.id)}
+          >
+            <span className={`lp-skin-swatch skin-${skin.id}`} aria-hidden="true" />
+            <span className="lp-skin-name">{skin.name}</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+
   const renderProductGrid = (items: CatalogProduct[]) => (
     <div className="product-slider-wrapper">
       <div
@@ -312,13 +395,12 @@ export default function Home() {
 
 
   return (
-
-    <>
+    <div className="lp-celebration-root" data-preview-skin={previewSkin}>
       <SiteHeader variant="overlay" />
 
-      <div className="landing-v2">
-        {/* ── HERO ── */}
-        <section className="lp-hero" id="hero">
+      <div className="landing-v2" data-preview-skin={previewSkin}>
+        {/* ── HERO (Celebration preview) ── */}
+        <section className="lp-hero lp-hero--celebration" id="hero">
           <div
             className="lp-hero-bg"
             style={{ backgroundImage: "url('/landing/hero-flowers.webp')" }}
@@ -326,25 +408,33 @@ export default function Home() {
           />
           <div className="lp-hero-veil" aria-hidden="true" />
           <div className="lp-hero-inner">
-            <h1 className="lp-hero-title" aria-label="Where Every Flowers Tells Your Chapter">
-              <img
-                src="/landing/hero-title-lockup.webp"
-                alt="Where Every Flowers Tells Your Chapter"
-                className="lp-hero-title-image"
-                width="2829"
-                height="535"
-                loading="eager"
-                decoding="async"
-              />
-            </h1>
-            <p className="lp-hero-sub">
-              The pre-order phase is officially open.
-              <br />
-              Secure your timeless memory piece before <strong>November 20, 2026</strong>.
-            </p>
-            <a href="/shop" className="lp-btn lp-btn--wine">
-              Pilih Karya
-            </a>
+            <div className="lp-hero-celebration-grid">
+              <div className="lp-hero-celebration-copy">
+                <span className="lp-hero-kicker">A CHAPTER · CELEBRATION MEMORY VAULT</span>
+                <h1 className="lp-celebration-script">
+                  Setiap bunga menyimpan sebuah babak.
+                </h1>
+                <p className="lp-hero-sub">
+                  Karya bunga abadi dengan Smart QR yang membuka surat, foto, suara, dan video
+                  hanya untuk orang yang kamu pilih. Lihat dulu seperti apa tampilannya saat
+                  penerima membukanya.
+                </p>
+                <div className="lp-hero-celebration-cta">
+                  <a href="/shop" className="lp-btn lp-btn--wine">Pilih Karya</a>
+                  <a href="#vault" className="lp-btn lp-btn--ghost">Lihat pratinjau vault →</a>
+                </div>
+                {renderSkinSwitcher("hero")}
+              </div>
+
+              <div className="lp-hero-celebration-preview">
+                <div className="lp-hero-preview-card">
+                  <span className="lp-hero-preview-eyebrow">SEBUAH HARI ISTIMEWA</span>
+                  <span className="lp-hero-preview-script">Selamat ulang tahun, Sayang</span>
+                  <LandingHookPreview hookId="gift-box" />
+                  <span className="lp-hero-preview-foot">Contoh pembuka saat QR dipindai</span>
+                </div>
+              </div>
+            </div>
           </div>
           <a className="lp-hero-scroll" href="#art-of-preserving" aria-label="Gulir ke bawah">
             ⌄
@@ -458,16 +548,20 @@ export default function Home() {
           </section>
 
           {/* ── PRATINJAU MEMORY VAULT ── */}
-          <section className="lp-vault" id="vault">
+          <section className="lp-vault lp-vault--celebration" id="vault">
             <div className="lp-vault-bg" aria-hidden="true" />
             <div className="lp-vault-inner">
               <header className="lp-vault-head">
-                <span className="lp-eyebrow">SMART QR MEMORY VAULT</span>
-                <h2 className="lp-script lp-vault-title">Kenangan, Siap Dibuka Kembali</h2>
+                <span className="lp-eyebrow">CELEBRATION MEMORY VAULT</span>
+                <h2 className="lp-celebration-script lp-vault-title">
+                  Sebuah babak yang bisa dibuka lagi.
+                </h2>
                 <p>
-                  {homeContent.smartVault.sectionSubtitle} Di balik setiap bingkai, kenangan personal
-                  tersimpan aman dan dapat dibuka kembali melalui kamera ponsel.
+                  {homeContent.smartVault.sectionSubtitle} Di balik setiap bingkai, kenangan
+                  tersimpan aman dan dibuka lewat kamera ponsel — lengkap dengan surat, suara,
+                  foto, dan video. Coba pilih tema dan isi vault di bawah.
                 </p>
+                {renderSkinSwitcher("vault")}
               </header>
 
               <article className="vault-simulator-wrap lp-vault-sim" aria-label="Pratinjau interaktif Memory Vault">
@@ -479,15 +573,17 @@ export default function Home() {
                   </span>
                 </div>
 
-                <div className="vault-sim-nav" role="tablist" aria-label="Pilih jenis kenangan">
+                <div className="vault-sim-nav lp-hub-grid" role="tablist" aria-label="Pilih jenis kenangan">
                   {homeContent.smartVault.mediaTabs.map((tab, index) => {
                     const tabId = `vault-tab-${["foto", "audio", "surat", "video"][index]}`;
-                    const isSelected = vaultSimTab === tab.kind;
-                    const tabLabel = tab.kind === "photograph"
+                    const kind = tab.kind as VaultSimTab;
+                    const isSelected = vaultSimTab === kind;
+                    const Icon = VAULT_TAB_ICONS[kind];
+                    const tabLabel = kind === "photograph"
                       ? "Foto"
-                      : tab.kind === "voice-record"
+                      : kind === "voice-record"
                         ? "Rekaman suara"
-                        : tab.kind === "letter"
+                        : kind === "letter"
                           ? "Surat"
                           : "Video";
                     return (
@@ -499,15 +595,20 @@ export default function Home() {
                         aria-controls="vault-panel"
                         aria-selected={isSelected}
                         tabIndex={isSelected ? 0 : -1}
-                        className={`vault-sim-btn${isSelected ? " active" : ""}`}
+                        className={`lp-hub-card${isSelected ? " is-active" : ""}`}
                         onClick={() => {
-                          setVaultSimTab(tab.kind);
-                          if (tab.kind !== "voice-record") pauseAudio();
-                          if (tab.kind !== "video") setIsVideoPlaying(false);
+                          setVaultSimTab(kind);
+                          if (kind !== "voice-record") pauseAudio();
+                          if (kind !== "video") setIsVideoPlaying(false);
                         }}
                         onKeyDown={handleVaultTabKeyDown}
                       >
-                        {tabLabel}
+                        <span className="lp-hub-icon" aria-hidden="true"><Icon /></span>
+                        <span className="lp-hub-copy">
+                          <strong>{tabLabel}</strong>
+                          <em>{VAULT_TAB_HINTS[kind]}</em>
+                        </span>
+                        <ArrowRight className="lp-hub-arrow" aria-hidden="true" />
                       </button>
                     );
                   })}
@@ -1030,6 +1131,6 @@ export default function Home() {
 
         <SiteFooter />
       </div>
-    </>
+    </div>
   );
 }

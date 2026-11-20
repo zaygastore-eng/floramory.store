@@ -316,12 +316,17 @@ export default function VaultExperience({
       if (openedIsCelebration) {
         setCelebrationStage("hook");
         setCelebrationPanel("letter");
+        // Celebration punya ritualnya sendiri (PIN -> hook -> hub).
+        // Jangan picu overlay segel A CHAPTER: di HP hook bisa selesai
+        // di belakang overlay sehingga terasa bertabrakan.
+        setOpeningCeremony("done");
+      } else {
+        const prefersReducedMotion =
+          typeof window !== "undefined" &&
+          window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+        setOpeningCeremony(prefersReducedMotion ? "done" : "opening");
       }
       setVaultUnlocked(true);
-      const prefersReducedMotion =
-        typeof window !== "undefined" &&
-        window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-      setOpeningCeremony(prefersReducedMotion ? "done" : "opening");
     } catch (err) {
       setPinMessage(err instanceof Error ? err.message : "Terjadi kesalahan saat memeriksa PIN.");
     } finally {
@@ -769,12 +774,12 @@ export default function VaultExperience({
 
   return (
     <div
-      className={`vault-memoir-wrapper public-v2 vault-experience${isCelebration ? " is-celebration" : " is-archive"}${openingCeremony === "opening" ? " is-ceremony" : ""}`}
+      className={`vault-memoir-wrapper public-v2 vault-experience${isCelebration ? " is-celebration" : " is-archive"}${!isCelebration && openingCeremony === "opening" ? " is-ceremony" : ""}`}
       data-skin={isCelebration ? celebration.skin.id : undefined}
       data-moment={moment?.id}
       data-hook={isCelebration ? celebration.hook.id : undefined}
     >
-      {openingCeremony === "opening" && (
+      {!isCelebration && openingCeremony === "opening" && (
         <div className="vault-opening-overlay" role="status" aria-live="polite">
           <div className="vault-opening-stage">
             <span className="vault-opening-ring" aria-hidden="true" />
