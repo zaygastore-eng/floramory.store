@@ -55,7 +55,8 @@ export interface Product extends CatalogProduct {
   vault_moment_label?: string;
   vault_skin?: string;
   vault_hook_id?: string;
-  vault_pin?: string;
+  /** Hanya penanda aman; angka PIN tidak pernah dikirim ke UI admin. */
+  vault_pin_set?: boolean;
   is_catalog: boolean;
   recipient_whatsapp?: string;
   order_id?: string | null;
@@ -100,7 +101,8 @@ export interface PreOrder {
   vault_audio_message?: string;
   video_url?: string;
   vault_submitted_at?: string;
-  vault_pin?: string;
+  /** Hanya penanda aman; angka PIN tidak pernah dikirim ke UI admin. */
+  vault_pin_set?: boolean;
   vault_setup_token?: string;
   vault_setup_expires_at?: string;
   vault_locked_at?: string;
@@ -475,6 +477,39 @@ async function adminRequest(
   }
 
   return data;
+}
+
+/** Ambil PIN untuk keperluan cetak. RPC mencatat siapa yang mengakses. */
+export async function revealVaultPin(orderId: string, reason = "print"): Promise<string> {
+  const data = await adminRequest("POST", "/rest/v1/rpc/admin_reveal_vault_pin", {
+    body: { p_order_id: orderId, p_reason: reason },
+  });
+  const result = (data || {}) as Record<string, unknown>;
+  if (result.ok === false) {
+    const code = String(result.code || "");
+    const messages: Record<string, string> = {
+      not_found: "Pesanan tidak ditemukan.",
+      no_pin: "PIN belum tersedia untuk pesanan ini.",
+      invalid_pin: "PIN tersimpan tidak valid.",
+    };
+    throw new Error(messages[code] || "Gagal mengambil PIN kartu.");
+  }
+  const pin = String(result.pin || "").trim();
+  if (!/^\d{6}$/.test(pin)) throw new Error("PIN kartu tidak valid.");
+  return pin;
+}
+
+/** Simpan PIN baru dari panel Admin tanpa mengirim plaintext lewat REST. */
+export async function setAdminProductPin(productId: string, pin: string): Promise<void> {
+  const data = await adminRequest("POST", "/rest/v1/rpc/admin_set_vault_pin", {
+    body: { p_product_id: productId, p_pin: pin },
+  });
+  const result = (data || {}) as Record<string, unknown>;
+  if (result.ok === false) {
+    throw new Error(String(result.code || "") === "invalid_pin"
+      ? "PIN harus terdiri dari 6 digit angka."
+      : "Gagal menyimpan PIN kartu.");
+  }
 }
 
 function extractErrorMessage(data: unknown, fallback: string): string {
@@ -1014,7 +1049,7 @@ function normalizeProduct(obj: Partial<Product>): Product {
     vault_moment_label: String(obj.vault_moment_label ?? record.vault_moment_label ?? "").trim(),
     vault_skin: String(obj.vault_skin ?? record.vault_skin ?? "").trim(),
     vault_hook_id: String(obj.vault_hook_id ?? record.vault_hook_id ?? "").trim(),
-    vault_pin: String(obj.vault_pin || record.vault_pin || "").trim(),
+    vault_pin_set: Boolean(obj.vault_pin_set ?? record.vault_pin_set ?? false),
     is_catalog: Boolean(obj.is_catalog ?? record.is_catalog ?? false),
     recipient_whatsapp: String(obj.recipient_whatsapp || record.recipient_whatsapp || "").trim(),
     order_id: String(obj.order_id || record.order_id || "").trim() || null,
@@ -1049,7 +1084,6 @@ function productPayload(product: Product, status = product.status || "active", u
     is_catalog: Boolean(product.is_catalog),
     recipient_whatsapp: normalizeWhatsApp(product.recipient_whatsapp || ""),
     order_id: product.order_id || null,
-    vault_pin: product.vault_pin || null,
     status,
   };
 
@@ -1107,7 +1141,7 @@ function normalizePreOrder(obj: Partial<PreOrder> & Record<string, unknown>): Pr
     vault_audio_message: String(obj.vault_audio_message || "").trim(),
     video_url: String(obj.video_url || "").trim(),
     vault_submitted_at: String(obj.vault_submitted_at || "").trim(),
-    vault_pin: String(obj.vault_pin || "").trim(),
+    vault_pin_set: Boolean(obj.vault_pin_set ?? false),
     vault_setup_token: String(obj.vault_setup_token || "").trim(),
     vault_setup_expires_at: String(obj.vault_setup_expires_at || "").trim(),
     vault_locked_at: String(obj.vault_locked_at || "").trim(),
@@ -1199,7 +1233,7 @@ export async function fetchCatalogProducts(category?: CatalogCategory): Promise<
 // Kolom eksplisit (bukan select=*). created_at/updated_at terakhir
 // tidak diambil: tidak dipakai UI admin.
 const MANAGED_PRODUCTS_SELECT =
-  "id,nama_produk,tier,harga,bunga,deskripsi,bahan,ukuran,nama_pembeli,dari,pesan_personal,foto_produk,foto_qr,gallery_photos,audio_url,audio_durasi,video_url,foto_vault,vault_photos,vault_photobooth_theme,vault_letter_style,vault_moment,vault_moment_label,vault_skin,vault_hook_id,vault_pin,is_catalog,recipient_whatsapp,order_id,status,deleted_at";
+  "id,nama_produk,tier,harga,bunga,deskripsi,bahan,ukuran,nama_pembeli,dari,pesan_personal,foto_produk,foto_qr,gallery_photos,audio_url,audio_durasi,video_url,foto_vault,vault_photos,vault_photobooth_theme,vault_letter_style,vault_moment,vault_moment_label,vault_skin,vault_hook_id,vault_pin_set,is_catalog,recipient_whatsapp,order_id,status,deleted_at";
 
 function invalidateProductCaches() {
   cachedCatalog = null;
@@ -1544,7 +1578,7 @@ function isTierConstraintError(message: string): boolean {
 
 // Kolom eksplisit (bukan select=*). updated_at tidak dipakai UI.
 const PREORDER_SELECT =
-  "id,order_number,group_id,group_number,group_item_index,group_item_count,group_total_amount,group_dp_amount,total_amount,dp_amount,nuansa,inisial,customer_name,whatsapp,shipping_city,shipping_address,product_id,product_name,custom_request,recipient_name,sender_name,personal_message,recipient_whatsapp,foto_vault,vault_photos,vault_photobooth_theme,vault_letter_style,vault_moment,vault_moment_label,vault_skin,vault_hook_id,audio_url,audio_durasi,vault_audio_message,video_url,vault_submitted_at,vault_pin,vault_setup_token,vault_setup_expires_at,vault_locked_at,status,created_at";
+  "id,order_number,group_id,group_number,group_item_index,group_item_count,group_total_amount,group_dp_amount,total_amount,dp_amount,nuansa,inisial,customer_name,whatsapp,shipping_city,shipping_address,product_id,product_name,custom_request,recipient_name,sender_name,personal_message,recipient_whatsapp,foto_vault,vault_photos,vault_photobooth_theme,vault_letter_style,vault_moment,vault_moment_label,vault_skin,vault_hook_id,audio_url,audio_durasi,vault_audio_message,video_url,vault_submitted_at,vault_pin_set,vault_setup_token,vault_setup_expires_at,vault_locked_at,status,created_at";
 
 export interface PreOrderPage {
   orders: PreOrder[];

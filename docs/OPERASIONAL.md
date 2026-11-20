@@ -420,8 +420,11 @@ tersedia fungsi serverless Vercel `api/produk.ts`:
 - Isi Memory Vault (surat, foto, audio, video, nama penerima) **tidak lagi
   dapat dibaca anon** lewat PostgREST. Hanya Edge Function `vault-otp` yang
   mengembalikannya setelah PIN valid.
-- PIN disimpan sebagai hash (`products.vault_pin_hash`); PIN plaintext hanya
-  dipakai admin untuk mencetak kartu fisik.
+- PIN tidak disimpan sebagai plaintext. Nilai kartu fisik dienkripsi
+  (`vault_pin_encrypted`) dengan kunci di Supabase Vault, sementara verifikasi
+  memakai hash (`products.vault_pin_hash`). Admin tidak melihat angka PIN di
+  dashboard; tombol **Unduh PIN** memanggil RPC yang diaudit dan langsung
+  menggambar kartu PNG.
 - Link `/vault-setup` memakai token acak (`vault_setup_token`), kedaluwarsa
   30 hari, dan terkunci setelah penyimpanan pertama.
 - Setelah 5 percobaan PIN salah, brankas terkunci 15 menit.

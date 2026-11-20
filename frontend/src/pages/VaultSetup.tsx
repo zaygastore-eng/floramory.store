@@ -199,10 +199,8 @@ export default function VaultSetup() {
         ? "youtube"
         : "file"
     );
-    if (result.order.vault_pin && /^\d{6}$/.test(result.order.vault_pin)) {
-      setCustomPin(result.order.vault_pin);
-      setPinConfirm(result.order.vault_pin);
-    }
+    // Angka PIN tidak dikirim ke browser setup. Jika vault sudah dikunci,
+    // RPC hanya mengembalikan PIN sekali saat penyimpanan berhasil.
   };
 
   useEffect(() => {
@@ -612,7 +610,7 @@ export default function VaultSetup() {
       setLockConfirmOpen(false);
       setVaultLocked(true);
       setSaved(true);
-      setSavedPin(result.pin || customPin.trim() || order?.vault_pin || "");
+      setSavedPin(result.pin || customPin.trim());
     } catch (error) {
       setUploadError(error instanceof Error ? error.message : "Gagal menyimpan Memory Vault.");
     } finally {

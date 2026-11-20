@@ -62,6 +62,8 @@ const PROXY_PATHS = new Set([
   "/rest/v1/preorder_orders",
   "/rest/v1/preorder_groups",
   "/rest/v1/app_settings",
+  "/rest/v1/rpc/admin_reveal_vault_pin",
+  "/rest/v1/rpc/admin_set_vault_pin",
   "/functions/v1/notify-dp-confirmed",
 ]);
 const ALLOWED_PROXY_METHODS = new Set(["GET", "POST", "PATCH", "DELETE", "PUT"]);

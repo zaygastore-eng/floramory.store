@@ -67,7 +67,6 @@ const PRODUCT_SELECT = [
   "audio_durasi",
   "vault_audio_message",
   "video_url",
-  "vault_pin",
   "vault_pin_hash",
   "pin_attempts",
   "pin_locked_until",
@@ -219,9 +218,7 @@ function vaultProduct(product: ProductRow): Record<string, unknown> {
 }
 
 function hasPin(product: ProductRow): boolean {
-  const hash = String(product.vault_pin_hash || "").trim();
-  const plain = String(product.vault_pin || "").trim();
-  return Boolean(hash || plain);
+  return Boolean(String(product.vault_pin_hash || "").trim());
 }
 
 function hasVault(product: ProductRow): boolean {
@@ -356,9 +353,7 @@ async function handleOpen(
   let attempts = Number(product.pin_attempts) || 0;
   if (product.pin_locked_until && !isLocked(product)) attempts = 0;
 
-  const storedHash = String(product.vault_pin_hash || "").trim();
-  const legacyPin = String(product.vault_pin || "").trim();
-  const expectedHash = storedHash || (legacyPin ? await hashPin(canonicalId, legacyPin) : "");
+  const expectedHash = String(product.vault_pin_hash || "").trim();
   const submittedHash = await hashPin(canonicalId, pin);
   const isMatch = expectedHash.length === 64 && safeEqual(expectedHash, submittedHash);
 

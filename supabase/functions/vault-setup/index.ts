@@ -136,7 +136,7 @@ const ORDER_SELECT = [
   "vault_hook_id",
   "status",
   "vault_submitted_at",
-  "vault_pin",
+  "vault_pin_set",
   "vault_setup_token",
   "vault_setup_expires_at",
   "vault_locked_at",
@@ -469,8 +469,8 @@ async function handleGet(
   }
 
   const order = { ...result.order };
-  // PIN tidak perlu dikirim balik ke browser; admin membacanya dari panel.
-  Reflect.deleteProperty(order, "vault_pin");
+  // Angka PIN tidak pernah dikirim balik ke browser setup.
+  Reflect.deleteProperty(order, "vault_pin_set");
 
   const closed = rejectIfClosed(req, result.order, false);
   if (closed) return closed;
@@ -650,13 +650,10 @@ async function handleSave(
   if (closed) return closed;
 
   const orderId = String(result.order.id);
-  const existingPin = String(result.order.vault_pin || "").trim();
   const requestedPin = String(body.vault_pin || "").trim();
-  const pin = /^\d{6}$/.test(requestedPin)
-    ? requestedPin
-    : /^\d{6}$/.test(existingPin)
-      ? existingPin
-      : generateSecurePin();
+  // PIN yang sudah diset dipakai ulang oleh RPC; edge hanya perlu
+  // mengirim PIN baru saat vault pertama kali dikunci.
+  const pin = /^\d{6}$/.test(requestedPin) ? requestedPin : generateSecurePin();
 
   const personalMessage = cleanText(body.personal_message, MAX_MESSAGE_LENGTH);
   const audioMessage = cleanText(body.vault_audio_message, 600);

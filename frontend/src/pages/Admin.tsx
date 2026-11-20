@@ -5,7 +5,6 @@ import {
   Box,
   ClipboardList,
   ChevronRight,
-  Copy,
   DollarSign,
   Download,
   LayoutDashboard,
@@ -32,7 +31,9 @@ import {
   fetchWhatsAppNumber,
   hasSupabaseConfig,
   notifyDpConfirmed,
+  revealVaultPin,
   restoreProduct,
+  setAdminProductPin,
   signInAdmin,
   signOutAdmin,
   statusAdminSession,
@@ -55,6 +56,8 @@ import { isSupabaseStorageUrl, productImageUrl, validateImageUrl } from "@/lib/i
 import { formatHarga, normalizeWhatsApp, PRODUCTION_SITE_URL } from "@/lib/site";
 import { homeContent } from "@/content/homeContent";
 import { getVaultHook, getVaultMoment, getVaultSkin, vaultMomentLabel } from "@/lib/vaultDesign";
+import qrCardTemplateUrl from "@/assets/vault/qr-card-template.png";
+import pinCardTemplateUrl from "@/assets/vault/pin-card-template.png";
 
 const BASE_URL_KEY = "fm_base_url";
 const WA_KEY = "fm_wa";
@@ -173,7 +176,8 @@ function productToForm(product: Product): FormState {
     audioDurasi: product.audio_durasi || 0,
     videoUrl: product.video_url || "",
     fotoVault: product.foto_vault || "",
-    vaultPin: product.vault_pin || "",
+    // PIN tersimpan tidak pernah dikirim ke browser admin.
+    vaultPin: "",
     isCatalog: Boolean(product.is_catalog),
   };
 }
@@ -202,195 +206,82 @@ function formatCurrency(value: number): string {
   }).format(value);
 }
 
-function printWhenReady(printWindow: Window): void {
-  let hasPrinted = false;
-  const startPrint = () => {
-    if (hasPrinted || printWindow.closed) return;
-    hasPrinted = true;
-    printWindow.focus();
-    printWindow.print();
-  };
-  const image = printWindow.document.querySelector("img");
-  if (image && !image.complete) {
-    image.addEventListener("load", startPrint, { once: true });
-    image.addEventListener("error", startPrint, { once: true });
-    window.setTimeout(startPrint, 1500);
-    return;
+function loadTemplateImage(src: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => resolve(image);
+    image.onerror = () => reject(new Error("Gagal memuat template kartu."));
+    image.src = src;
+  });
+}
+
+async function buildQrStickerCanvas(qrCanvas: HTMLCanvasElement): Promise<HTMLCanvasElement> {
+  const template = await loadTemplateImage(qrCardTemplateUrl);
+  const output = document.createElement("canvas");
+  output.width = 1200;
+  output.height = 1200;
+  const ctx = output.getContext("2d");
+  if (!ctx) throw new Error("Canvas QR tidak tersedia.");
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
+  ctx.drawImage(template, 0, 0, 1200, 1200);
+  ctx.drawImage(qrCanvas, 80, 80, 1040, 1040);
+  return output;
+}
+
+async function buildPinCardCanvas(pin: string): Promise<HTMLCanvasElement> {
+  if (document.fonts?.load) {
+    try {
+      await document.fonts.load('700 64px "DM Sans"');
+      await document.fonts.ready;
+    } catch {
+      // Fallback ke font sistem bila webfont gagal dimuat.
+    }
   }
-  window.setTimeout(startPrint, 250);
+
+  const template = await loadTemplateImage(pinCardTemplateUrl);
+  const output = document.createElement("canvas");
+  output.width = 877;
+  output.height = 1216;
+  const ctx = output.getContext("2d");
+  if (!ctx) throw new Error("Canvas kartu PIN tidak tersedia.");
+
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
+  ctx.drawImage(template, 0, 0, 877, 1216);
+
+  const formatted = `${pin.slice(0, 3)}  ·  ${pin.slice(3)}`;
+  const chars = Array.from(formatted);
+  const spacing = 20;
+  const centerX = 877 / 2;
+  const centerY = 695.5;
+
+  ctx.fillStyle = "#42161C";
+  ctx.font = '700 64px "DM Sans", Arial, sans-serif';
+  ctx.textBaseline = "alphabetic";
+
+  const widths = chars.map(char => ctx.measureText(char).width);
+  const totalWidth = widths.reduce((sum, width) => sum + width, 0) + spacing * (chars.length - 1);
+  const metrics = ctx.measureText("482917");
+  const glyphHeight = metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent;
+  const baseline = centerY + (metrics.actualBoundingBoxAscent - glyphHeight / 2);
+
+  let x = centerX - totalWidth / 2;
+  chars.forEach((char, index) => {
+    ctx.fillText(char, x, baseline);
+    x += widths[index] + spacing;
+  });
+
+  return output;
 }
 
-function printOrderQrSticker(canvas: HTMLCanvasElement, printWindow: Window): void {
-  const qrImage = canvas.toDataURL("image/png");
-  printWindow.document.open();
-  printWindow.document.write(`<!doctype html>
-    <html lang="id">
-      <head>
-        <meta charset="utf-8">
-        <title>Stiker QR A Chapter</title>
-        <style>
-          @page { size: 20mm 20mm; margin: 0; }
-          * { box-sizing: border-box; }
-          html, body { width: 20mm; height: 20mm; margin: 0; padding: 0; }
-          body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-          .sticker {
-            width: 20mm;
-            height: 20mm;
-            padding: 0.6mm;
-            border: 0.2mm solid #c5a880;
-            border-radius: 2mm;
-            background: #fff;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-          }
-          img { display: block; width: 16.4mm; height: 16.4mm; }
-          .caption {
-            margin-top: 0.25mm;
-            color: #531b21;
-            font: 700 1.15mm/1.2 Arial, sans-serif;
-            letter-spacing: 0.08mm;
-            white-space: nowrap;
-          }
-        </style>
-      </head>
-      <body>
-        <div class="sticker">
-          <img src="${qrImage}" alt="QR Memory Vault">
-          <div class="caption">A CHAPTER · SCAN ME</div>
-        </div>
-      </body>
-    </html>`);
-  printWindow.document.close();
-  printWhenReady(printWindow);
-}
-
-function printOrderPinCard(pin: string, printWindow: Window): void {
-  const formattedPin = `${pin.slice(0, 3)} · ${pin.slice(3)}`;
-  printWindow.document.open();
-  printWindow.document.write(`<!doctype html>
-    <html lang="id">
-      <head>
-        <meta charset="utf-8">
-        <title>Kartu PIN A Chapter</title>
-        <style>
-          @page { size: 65mm 90mm; margin: 0; }
-          * { box-sizing: border-box; }
-          html, body { width: 65mm; height: 90mm; margin: 0; padding: 0; }
-          body {
-            color: #531b21;
-            font-family: "Courier New", monospace;
-            -webkit-print-color-adjust: exact;
-            print-color-adjust: exact;
-          }
-          .card {
-            position: relative;
-            width: 65mm;
-            height: 90mm;
-            padding: 2.2mm;
-            overflow: hidden;
-            background: #fbf8f3;
-          }
-          .frame {
-            width: 100%;
-            height: 100%;
-            border: 0.3mm solid #c5a880;
-            padding: 2.5mm 3.2mm 2mm;
-            text-align: center;
-          }
-          h1 {
-            margin: 0 0 2.5mm;
-            font: 700 2.8mm/1.2 "Courier New", monospace;
-            letter-spacing: 0.15mm;
-          }
-          .step {
-            display: flex;
-            gap: 1.8mm;
-            margin: 0 0 2.2mm;
-            text-align: left;
-            font-size: 1.85mm;
-            line-height: 1.3;
-          }
-          .step-number { flex: 0 0 auto; }
-          .scratch-frame {
-            height: 30mm;
-            margin: 3mm 0 3mm;
-            border: 0.25mm solid #c5a880;
-            padding: 2mm;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-          }
-          .scratch-sticker {
-            width: 40mm;
-            height: 15mm;
-            border: 0.25mm solid #531b21;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-          }
-          .scratch-foil {
-            width: 30mm;
-            height: 5mm;
-            border: 0.2mm solid #aaa7a5;
-            background: repeating-linear-gradient(45deg, #d6d3d0 0 0.45mm, #f3f1ef 0.45mm 0.9mm);
-          }
-          .scratch-label {
-            margin-top: 0.4mm;
-            font: 400 1.8mm/1.15 "Courier New", monospace;
-          }
-          .pin-caption {
-            margin-top: 2.4mm;
-            font-size: 1.8mm;
-            line-height: 1.2;
-          }
-          .pin {
-            margin-top: 0.7mm;
-            font: 700 3.6mm/1.15 "Courier New", monospace;
-            letter-spacing: 1.2mm;
-          }
-          .promise {
-            margin: 0;
-            font-size: 1.8mm;
-            line-height: 1.3;
-            text-align: left;
-          }
-          .footer {
-            position: absolute;
-            right: 0;
-            bottom: 1.6mm;
-            left: 0;
-            font-size: 1.8mm;
-            line-height: 1.2;
-            text-align: center;
-          }
-        </style>
-      </head>
-      <body>
-        <main class="card">
-          <div class="frame">
-            <h1>HOW TO UNLOCK</h1>
-            <p class="step"><span class="step-number">1.</span><span>Pindai kode QR mini yang terpasang pada karya botani fisik Anda menggunakan kamera ponsel.</span></p>
-            <p class="step"><span class="step-number">2.</span><span>Gosok perlahan stiker perak di bawah ini untuk menemukan 6 digit kunci rahasia brankas Anda:</span></p>
-            <section class="scratch-frame">
-              <div class="scratch-sticker">
-                <div class="scratch-foil"></div>
-                <div class="scratch-label">[ GOSOK DENGAN KOIN ]</div>
-              </div>
-              <div class="pin-caption">Di baliknya tercetak angka tajam:</div>
-              <div class="pin">${formattedPin}</div>
-            </section>
-            <p class="promise">“Kenangan, potret, dan suara yang tersimpan di dalamnya akan menjadi milikmu selamanya.”</p>
-            <footer class="footer">www.achapter.my.id · Preserved Forever</footer>
-          </div>
-        </main>
-      </body>
-    </html>`);
-  printWindow.document.close();
-  printWhenReady(printWindow);
+function triggerPngDownload(canvas: HTMLCanvasElement, filename: string): void {
+  const link = document.createElement("a");
+  link.download = filename;
+  link.href = canvas.toDataURL("image/png");
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
 }
 
 function LoginGate({ onLogin, notice }: { onLogin: () => void; notice?: string }) {
@@ -523,10 +414,11 @@ export default function Admin() {
   const [form, setForm] = useState<FormState>(EMPTY);
   const [generatedUrl, setGeneratedUrl] = useState("");
   const [qrVisible, setQrVisible] = useState(false);
-  const [orderQrPrintTarget, setOrderQrPrintTarget] = useState<{
+  const [orderQrDownloadTarget, setOrderQrDownloadTarget] = useState<{
     url: string;
-    printWindow: Window;
+    id: string;
   } | null>(null);
+  const [downloadingPinId, setDownloadingPinId] = useState("");
   const [savingProduct, setSavingProduct] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [uploadingGallery, setUploadingGallery] = useState(false);
@@ -741,17 +633,28 @@ export default function Admin() {
   }, []);
 
   useEffect(() => {
-    if (!orderQrPrintTarget) return;
-    const canvas = orderQrRef.current?.querySelector("canvas");
-    if (!canvas) {
-      orderQrPrintTarget.printWindow.close();
-      showToast("Gagal membuat QR, canvas tidak tersedia.", "alert");
-      setOrderQrPrintTarget(null);
-      return;
-    }
-    printOrderQrSticker(canvas, orderQrPrintTarget.printWindow);
-    setOrderQrPrintTarget(null);
-  }, [orderQrPrintTarget, showToast]);
+    if (!orderQrDownloadTarget) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const canvas = orderQrRef.current?.querySelector("canvas");
+        if (!canvas) throw new Error("Canvas QR tidak tersedia.");
+        const sticker = await buildQrStickerCanvas(canvas);
+        if (cancelled) return;
+        triggerPngDownload(sticker, "QR.png");
+        showToast("Stiker QR (1200×1200 px) berhasil diunduh.", "success");
+      } catch (error) {
+        if (!cancelled) {
+          showToast(error instanceof Error ? error.message : "Gagal membuat stiker QR.", "alert");
+        }
+      } finally {
+        if (!cancelled) setOrderQrDownloadTarget(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [orderQrDownloadTarget, showToast]);
 
   const loadProducts = async () => {
     setLoadingProducts(true);
@@ -912,11 +815,6 @@ export default function Admin() {
   const productFromForm = (): Product => {
     const existing = editingId ? managedProducts.find(p => p.id === editingId) : null;
     const cat = form.kategori.trim();
-    // PIN yang sudah tercetak dan dikirim ke pelanggan tidak boleh berubah
-    // lewat panel Admin. Kalau produk sudah punya PIN, nilai lama dipertahankan
-    // meskipun field di layar tidak sengaja berubah.
-    const existingPin = String(existing?.vault_pin || "").trim();
-    const vaultPin = /^\d{6}$/.test(existingPin) ? existingPin : form.vaultPin.trim();
     return {
       id: form.id.trim().toUpperCase(),
       nama_produk: form.nama,
@@ -939,7 +837,6 @@ export default function Admin() {
       audio_durasi: form.isCatalog ? 0 : (form.audioDurasi || existing?.audio_durasi || 0),
       video_url: form.isCatalog ? "" : form.videoUrl.trim(),
       foto_vault: form.isCatalog ? "" : form.fotoVault.trim(),
-      vault_pin: form.isCatalog ? existingPin : vaultPin,
       is_catalog: form.isCatalog,
     };
   };
@@ -963,8 +860,18 @@ export default function Admin() {
 
     setSavingProduct(true);
     try {
-      if (editingId) await updateProduct(editingId, productFromForm());
-      else await createProduct(productFromForm());
+      const productId = form.id.trim().toUpperCase();
+      const payload = productFromForm();
+      if (editingId) await updateProduct(editingId, payload);
+      else await createProduct(payload);
+
+      // PIN baru dibuat lewat RPC agar plaintext tidak pernah dikirim
+      // lewat REST atau disimpan sebagai kolom biasa.
+      const newPin = form.vaultPin.trim();
+      if (!form.isCatalog && /^\d{6}$/.test(newPin)) {
+        await setAdminProductPin(productId, newPin);
+      }
+
       await loadProducts();
       if (!form.isCatalog) {
         const url = getPreviewUrl();
@@ -1302,44 +1209,46 @@ export default function Admin() {
     return {
       id,
       url: `${base}/produk?id=${encodeURIComponent(id)}`,
-      ready: Boolean(linkedProduct || order.vault_submitted_at || order.vault_pin),
+      ready: Boolean(linkedProduct || order.vault_submitted_at || order.vault_pin_set),
     };
   };
 
-  const startOrderQrPrint = (order: PreOrder) => {
+  const startOrderQrDownload = (order: PreOrder) => {
     const details = getOrderQrDetails(order);
     if (!details) {
       showToast("ID pesanan tidak tersedia, QR tidak dapat dibuat.", "alert");
       return;
     }
     if (!details.ready) {
-      showToast("Simpan konten Memory Vault sebelum mencetak QR.", "alert");
+      showToast("Simpan konten Memory Vault sebelum mengunduh QR.", "alert");
       return;
     }
     if (/^https?:\/\/(localhost|127\.0\.0\.1)(?::\d+)?\//i.test(details.url)) {
       showToast("URL lokal terdeteksi. Jangan cetak QR untuk produk fisik.", "alert");
       return;
     }
-    const printWindow = window.open("", "_blank");
-    if (!printWindow) {
-      showToast("Izinkan pop-up browser untuk mencetak stiker QR.", "alert");
-      return;
-    }
-    setOrderQrPrintTarget({ url: details.url, printWindow });
+    setOrderQrDownloadTarget({ url: details.url, id: details.id });
   };
 
-  const startOrderPinPrint = (order: PreOrder) => {
-    const pin = String(order.vault_pin || "").trim();
-    if (!/^\d{6}$/.test(pin)) {
-      showToast("PIN 6 digit belum tersedia untuk pesanan ini.", "alert");
+  const downloadOrderPin = async (order: PreOrder) => {
+    if (!order.id || !order.vault_pin_set) {
+      showToast("PIN belum tersedia untuk pesanan ini.", "alert");
       return;
     }
-    const printWindow = window.open("", "_blank");
-    if (!printWindow) {
-      showToast("Izinkan pop-up browser untuk mencetak kartu PIN.", "alert");
-      return;
+    setDownloadingPinId(order.id);
+    let pin = "";
+    try {
+      pin = await revealVaultPin(order.id, "print");
+      const card = await buildPinCardCanvas(pin);
+      triggerPngDownload(card, "PIN.png");
+      showToast("Kartu PIN diunduh. Aktivitas pencetakan dicatat.", "success");
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "Gagal mengunduh kartu PIN.", "alert");
+    } finally {
+      // PIN hanya hidup di memori selama proses menggambar.
+      pin = "";
+      setDownloadingPinId("");
     }
-    printOrderPinCard(pin, printWindow);
   };
 
   const exportPreOrders = () => {
@@ -1643,7 +1552,7 @@ export default function Admin() {
                 maxLength={6}
                 placeholder="Contoh: 749201"
                 value={form.vaultPin}
-                disabled={Boolean(editingId && managedProducts.find(p => p.id === editingId)?.vault_pin)}
+                disabled={Boolean(editingId && managedProducts.find(p => p.id === editingId)?.vault_pin_set)}
                 onChange={event => setForm(f => ({
                   ...f,
                   vaultPin: event.target.value.replace(/\D/g, "").slice(0, 6),
@@ -1653,7 +1562,7 @@ export default function Admin() {
               <button
                 type="button"
                 className="admin-outline-btn"
-                disabled={Boolean(editingId && managedProducts.find(p => p.id === editingId)?.vault_pin)}
+                disabled={Boolean(editingId && managedProducts.find(p => p.id === editingId)?.vault_pin_set)}
                 onClick={() => setForm(f => ({
                   ...f,
                   vaultPin: String(Math.floor(100000 + Math.random() * 900000)),
@@ -1663,8 +1572,8 @@ export default function Admin() {
               </button>
             </div>
             <p className="form-hint">
-              {editingId && managedProducts.find(p => p.id === editingId)?.vault_pin
-                ? "PIN sudah terkunci dan tidak dapat diubah. Cetak ulang kartu PIN yang sama dari daftar pesanan bila pelanggan kehilangannya."
+              {editingId && managedProducts.find(p => p.id === editingId)?.vault_pin_set
+                ? "PIN sudah terkunci dan tidak dapat diubah. Unduh ulang kartu PIN yang sama dari daftar pesanan bila pelanggan kehilangannya."
                 : "PIN rahasia di balik stiker gosok kartu ucapan. Pembeli/penerima memasukkan PIN ini untuk membuka Memory Vault."}
             </p>
           </div>
@@ -1938,7 +1847,7 @@ export default function Admin() {
   );
 
   const vaultBadgeFor = (order: PreOrder) => {
-    const submitted = Boolean(order.vault_submitted_at || order.vault_pin);
+    const submitted = Boolean(order.vault_submitted_at || order.vault_pin_set);
     const photoCount =
       (Array.isArray(order.vault_photos) ? order.vault_photos.length : 0) ||
       (order.foto_vault ? 1 : 0);
@@ -2037,7 +1946,7 @@ export default function Admin() {
             orderQrDetails?.ready &&
             !/^https?:\/\/(localhost|127\.0\.0\.1)(?::\d+)?\//i.test(orderQrDetails.url)
           );
-          const canPrintPin = /^\d{6}$/.test(String(order.vault_pin || "").trim());
+          const canDownloadPin = Boolean(order.id && order.vault_pin_set);
           return (
             <div className="admin-list-item admin-order-row" key={order.id || `${order.whatsapp}-${order.created_at}`}>
               <div className="admin-order-main">
@@ -2121,27 +2030,9 @@ export default function Admin() {
                         </>
                       );
                     })()}
-                    {order.vault_pin && (
-                      <span className="admin-order-pin">
-                        PIN Kartu: <strong>{order.vault_pin}</strong>
-                        <button
-                          type="button"
-                          className="admin-order-pin-copy"
-                          aria-label={`Salin PIN kartu pesanan ${order.order_number || order.id || customerName}`}
-                          title="Salin PIN"
-                          onClick={() => void (async () => {
-                            try {
-                              await navigator.clipboard.writeText(order.vault_pin || "");
-                              showToast("PIN kartu berhasil disalin.", "success");
-                            } catch (error) {
-                              console.error("[VAULT_PIN_COPY_ERROR]", error);
-                              showToast("Gagal menyalin PIN. Periksa izin clipboard browser.", "alert");
-                            }
-                          })()}
-                        >
-                          <Copy size={14} aria-hidden="true" />
-                          <span>Salin PIN</span>
-                        </button>
+                    {order.vault_pin_set && (
+                      <span className="admin-order-pin" title="Angka PIN sengaja disembunyikan. Gunakan Unduh PIN untuk kartu fisik.">
+                        PIN tersimpan <strong>••••••</strong>
                       </span>
                     )}
                   </div>
@@ -2192,19 +2083,20 @@ export default function Admin() {
                   type="button"
                   className="admin-order-sync-btn"
                   disabled={!canPrintQr}
-                  aria-label={`Cetak stiker QR untuk pesanan ${order.order_number || order.id || customerName}`}
-                  onClick={() => startOrderQrPrint(order)}
+                  aria-label={`Unduh stiker QR untuk pesanan ${order.order_number || order.id || customerName}`}
+                  onClick={() => startOrderQrDownload(order)}
                 >
-                  Cetak QR
+                  <Download size={14} aria-hidden="true" /> Unduh QR
                 </button>
                 <button
                   type="button"
                   className="admin-order-sync-btn"
-                  disabled={!canPrintPin}
-                  aria-label={`Cetak kartu PIN untuk pesanan ${order.order_number || order.id || customerName}`}
-                  onClick={() => startOrderPinPrint(order)}
+                  disabled={!canDownloadPin || downloadingPinId === order.id}
+                  aria-label={`Unduh kartu PIN untuk pesanan ${order.order_number || order.id || customerName}`}
+                  onClick={() => void downloadOrderPin(order)}
                 >
-                  Cetak PIN
+                  <Download size={14} aria-hidden="true" />
+                  {downloadingPinId === order.id ? "Mengunduh…" : "Unduh PIN"}
                 </button>
               </div>
             </div>
@@ -2219,19 +2111,19 @@ export default function Admin() {
         </div>
       )}
 
-      {orderQrPrintTarget && (
+      {orderQrDownloadTarget && (
         <div
           ref={orderQrRef}
           aria-hidden="true"
           style={{ position: "fixed", left: "-10000px", top: 0 }}
         >
           <QRCode
-            value={orderQrPrintTarget.url}
-            size={512}
+            value={orderQrDownloadTarget.url}
+            size={1040}
             fgColor="#111111"
             bgColor="#ffffff"
             level="H"
-            marginSize={2}
+            marginSize={4}
           />
         </div>
       )}
