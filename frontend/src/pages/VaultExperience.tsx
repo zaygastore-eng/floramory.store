@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState, Suspense, lazy } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState, Suspense, lazy } from "react";
 import { useRoute } from "wouter";
 import { ArrowLeft, ArrowRight, Camera, Film, Mail, Music } from "lucide-react";
 import {
@@ -78,6 +78,10 @@ export default function VaultExperience({
   // ritualnya sendiri (PIN -> hook -> hub) dan tidak memakai segel ini.
   const [sealOpened, setSealOpened] = useState(Boolean(previewData));
   const [autoPlayAudio, setAutoPlayAudio] = useState(false);
+
+  // Efek typewriter untuk isi surat di Memory Vault.
+  const [typedCount, setTypedCount] = useState(0);
+  const [typewriterSkipped, setTypewriterSkipped] = useState(false);
   const [isAudioPlaying, setIsAudioPlaying] = useState(false);
   const audioPlayerRef = useRef<AudioPlayerHandle | null>(null);
 
@@ -220,7 +224,45 @@ export default function VaultExperience({
     };
   }, [vaultId, previewData]);
 
-  // Animasi pembuka brankas: tampil sebentar setelah PIN benar, lalu menyingkap segel.
+  const isLetterVisible =
+    Boolean(product) &&
+    vaultUnlocked &&
+    openingCeremony === "done" &&
+    (isCelebration
+      ? celebrationStage === "content" && celebrationPanel === "letter"
+      : sealOpened && activeTab === "letter");
+
+  const activeLetterText = useMemo(() => {
+    if (!product) return "";
+    return product.pesan_personal && product.pesan_personal.trim()
+      ? product.pesan_personal
+      : "Setiap bunga A Chapter dirangkai untuk menyimpan kenangan abadi. Karya seni botani ini diawetkan dengan cermat di laboratorium agar keindahan dan ketulusan momen istimewa Anda tetap mekar selamanya.";
+  }, [product]);
+
+  useEffect(() => {
+    if (!isLetterVisible || !activeLetterText) return;
+    if (
+      typewriterSkipped ||
+      (typeof window !== "undefined" &&
+        window.matchMedia("(prefers-reduced-motion: reduce)").matches)
+    ) {
+      setTypedCount(activeLetterText.length);
+      return;
+    }
+
+    setTypedCount(0);
+    const interval = window.setInterval(() => {
+      setTypedCount(prev => {
+        if (prev >= activeLetterText.length) {
+          window.clearInterval(interval);
+          return prev;
+        }
+        return prev + 1;
+      });
+    }, 28);
+
+    return () => window.clearInterval(interval);
+  }, [isLetterVisible, activeLetterText, typewriterSkipped]);
   useEffect(() => {
     if (openingCeremony !== "opening") return;
     const previousOverflow = document.body.style.overflow;
@@ -249,7 +291,7 @@ export default function VaultExperience({
   useEffect(() => {
     if (!isCelebration || !vaultUnlocked || openingCeremony !== "done") return;
     if (celebrationStage !== "hook") return;
-    const timer = window.setTimeout(() => setCelebrationStage("hub"), 7000);
+    const timer = window.setTimeout(() => setCelebrationStage("hub"), 3500);
     return () => window.clearTimeout(timer);
   }, [isCelebration, vaultUnlocked, openingCeremony, celebrationStage]);
 
@@ -558,6 +600,14 @@ export default function VaultExperience({
     </div>
   );
 
+  const isTypewriterDone = typedCount >= letterBody.length;
+  const displayedLetter = isTypewriterDone ? letterBody : letterBody.slice(0, typedCount);
+
+  const revealFullLetter = () => {
+    setTypewriterSkipped(true);
+    setTypedCount(letterBody.length);
+  };
+
   const renderLetterPanel = () => (
     <div className="vault-letter-panel" role="tabpanel">
       <div className="vault-lace-sheet">
@@ -567,7 +617,12 @@ export default function VaultExperience({
           className="vault-lace-mat"
           loading="lazy"
         />
-        <div className="vault-lace-parchment">
+        <div
+          className="vault-lace-parchment"
+          onClick={() => {
+            if (!isTypewriterDone) revealFullLetter();
+          }}
+        >
           <div className="vault-lace-letter">
             {!hasCustomLetter && (
               <p className="vault-lace-salutation">
@@ -578,9 +633,12 @@ export default function VaultExperience({
               className="vault-lace-body"
               style={letterStyleToCss(letterStyle, "compact")}
             >
-              {letterBody}
+              {displayedLetter}
+              {!isTypewriterDone && (
+                <span className="vault-typewriter-cursor" aria-hidden="true">|</span>
+              )}
             </p>
-            {!hasCustomLetter && (
+            {!hasCustomLetter && isTypewriterDone && (
               <div className="vault-lace-signoff">
                 <span className="signoff-phrase">With all my love, always yours,</span>
                 <strong className="signoff-author">{product.dari || "Someone Special"}</strong>
@@ -589,6 +647,15 @@ export default function VaultExperience({
           </div>
         </div>
       </div>
+      {!isTypewriterDone && (
+        <button
+          type="button"
+          className="vault-typewriter-skip"
+          onClick={revealFullLetter}
+        >
+          Tampilkan semua tulisan →
+        </button>
+      )}
       <p className="vault-lace-caption">
         Surat ini disimpan di atas papan renda yang sama dengan yang Anda pilih saat meracik kenangan.
       </p>

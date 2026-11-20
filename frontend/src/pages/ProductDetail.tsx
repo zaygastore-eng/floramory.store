@@ -414,35 +414,7 @@ export default function ProductDetail() {
                   <span>Subtotal {qty > 1 ? `(${qty} karya)` : ""}</span>
                   <strong>{subtotalLabel}</strong>
                 </div>
-                <p className="pdp-purchase-note">
-                  Harga belum termasuk ongkir. Total final dikonfirmasi atelier sebelum produksi.
-                </p>
               </div>
-
-              <div className="pdp-assurance" aria-label="Informasi pre-order">
-                <div className="pdp-assurance-item">
-                  <span>Ketersediaan</span>
-                  <strong>Pre-order · slot terbatas</strong>
-                </div>
-                <div className="pdp-assurance-item">
-                  <span>Estimasi pengerjaan</span>
-                  <strong>5–7 hari kerja</strong>
-                </div>
-                <div className="pdp-assurance-item">
-                  <span>Pengiriman</span>
-                  <strong>Dari Surabaya · fokus Jawa Timur</strong>
-                </div>
-                <div className="pdp-assurance-item">
-                  <span>Pembayaran</span>
-                  <strong>DP 50% manual via WhatsApp</strong>
-                </div>
-              </div>
-
-              <ol className="pdp-reservation-steps" aria-label="Cara pre-order">
-                <li><span>01</span>Atur warna &amp; jumlah</li>
-                <li><span>02</span>Klik pre-order &amp; isi data</li>
-                <li><span>03</span>Konfirmasi &amp; DP via WhatsApp</li>
-              </ol>
 
               <div className="pdp-cta-group">
                 <button

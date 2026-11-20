@@ -258,22 +258,39 @@ export default function PreOrder() {
       <span className="reservation-success-seal" aria-hidden="true">
         <img src="/a-chapter-logo-light.png" alt="" />
       </span>
-      <span className="reservation-eyebrow">A CHAPTER ATELIER · PRE-ORDER RECEIVED</span>
-      <h2>Pre-order tercatat.</h2>
+      <span className="reservation-eyebrow">A CHAPTER ATELIER · PESANAN TERCATAT</span>
+      <h2>Pesanan Anda Tercatat</h2>
       <p className="reservation-success-lead">
-        Tim atelier akan mengonfirmasi ketersediaan, estimasi pengerjaan, ongkos
-        kirim, dan instruksi pembayaran DP 50% melalui WhatsApp.
+        Langkah terakhir: klik tombol di bawah untuk mengirim rincian ini ke WhatsApp Atelier agar kami segera mengirimkan instruksi pembayaran DP 50%.
       </p>
 
       <div className="reservation-success-ref">
-        <span>NO. PRE-ORDER</span>
+        <span>NO. PESANAN</span>
         <strong>#{state.groupNumber}</strong>
       </div>
 
-      <div className="reservation-success-summary">
-        <span>{state.itemCount} karya</span>
-        <span>Total {formatHarga(String(state.totalAmount))}</span>
-        <span>DP 50% {formatHarga(String(state.dpAmount))}</span>
+      <div className="reservation-receipt-rows">
+        <div className="reservation-receipt-row">
+          <span>Jumlah Karya</span>
+          <strong>{state.itemCount} karya</strong>
+        </div>
+        <div className="reservation-receipt-row">
+          <span>Estimasi Harga Karya</span>
+          <strong>{formatHarga(String(state.totalAmount))}</strong>
+        </div>
+        <div className="reservation-receipt-row is-highlight">
+          <span>DP 50% (Estimasi Awal)</span>
+          <strong>{formatHarga(String(state.dpAmount))}</strong>
+        </div>
+      </div>
+
+      <div className="reservation-next-steps">
+        <strong>Alur selanjutnya:</strong>
+        <ol>
+          <li>Klik tombol <strong>Bayar DP &amp; Konfirmasi via WhatsApp</strong> di bawah.</li>
+          <li>Atelier mengonfirmasi ongkir &amp; mengirim QRIS / rekening DP 50%.</li>
+          <li>Setelah DP masuk, Anda menerima tautan <em>Vault Setup</em> untuk mengisi foto, suara, dan surat.</li>
+        </ol>
       </div>
 
       <a
@@ -282,25 +299,25 @@ export default function PreOrder() {
         target="_blank"
         rel="noopener noreferrer"
       >
-        Konfirmasi via WhatsApp →
+        Bayar DP &amp; Konfirmasi via WhatsApp →
       </a>
 
-      <p className="reservation-success-note">
-        Pembayaran DP dilakukan manual setelah atelier membalas. Tidak ada
-        pembayaran yang diproses di website ini.
-      </p>
-
-      <button
-        type="button"
-        className="reservation-secondary-btn"
-        onClick={() => {
-          setSuccess(null);
-          setItems([]);
-          clearReservationDraft();
-        }}
-      >
-        Buat pre-order baru
-      </button>
+      <div className="reservation-success-actions">
+        <Link href="/shop" className="reservation-secondary-btn">
+          Jelajahi Koleksi Lain
+        </Link>
+        <button
+          type="button"
+          className="reservation-secondary-btn"
+          onClick={() => {
+            setSuccess(null);
+            setItems([]);
+            clearReservationDraft();
+          }}
+        >
+          Buat Pesanan Baru
+        </button>
+      </div>
     </div>
   );
 
