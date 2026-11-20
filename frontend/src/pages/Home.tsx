@@ -399,8 +399,8 @@ export default function Home() {
       <SiteHeader variant="overlay" />
 
       <div className="landing-v2" data-preview-skin={previewSkin}>
-        {/* ── HERO (Celebration preview) ── */}
-        <section className="lp-hero lp-hero--celebration" id="hero">
+        {/* ── HERO ── */}
+        <section className="lp-hero" id="hero">
           <div
             className="lp-hero-bg"
             style={{ backgroundImage: "url('/landing/hero-flowers.webp')" }}
@@ -408,33 +408,25 @@ export default function Home() {
           />
           <div className="lp-hero-veil" aria-hidden="true" />
           <div className="lp-hero-inner">
-            <div className="lp-hero-celebration-grid">
-              <div className="lp-hero-celebration-copy">
-                <span className="lp-hero-kicker">A CHAPTER · CELEBRATION MEMORY VAULT</span>
-                <h1 className="lp-celebration-script">
-                  Setiap bunga menyimpan sebuah babak.
-                </h1>
-                <p className="lp-hero-sub">
-                  Karya bunga abadi dengan Smart QR yang membuka surat, foto, suara, dan video
-                  hanya untuk orang yang kamu pilih. Lihat dulu seperti apa tampilannya saat
-                  penerima membukanya.
-                </p>
-                <div className="lp-hero-celebration-cta">
-                  <a href="/shop" className="lp-btn lp-btn--wine">Pilih Karya</a>
-                  <a href="#vault" className="lp-btn lp-btn--ghost">Lihat pratinjau vault →</a>
-                </div>
-                {renderSkinSwitcher("hero")}
-              </div>
-
-              <div className="lp-hero-celebration-preview">
-                <div className="lp-hero-preview-card">
-                  <span className="lp-hero-preview-eyebrow">SEBUAH HARI ISTIMEWA</span>
-                  <span className="lp-hero-preview-script">Selamat ulang tahun, Sayang</span>
-                  <LandingHookPreview hookId="gift-box" />
-                  <span className="lp-hero-preview-foot">Contoh pembuka saat QR dipindai</span>
-                </div>
-              </div>
-            </div>
+            <h1 className="lp-hero-title" aria-label="Where Every Flowers Tells Your Chapter">
+              <img
+                src="/landing/hero-title-lockup.webp"
+                alt="Where Every Flowers Tells Your Chapter"
+                className="lp-hero-title-image"
+                width="2829"
+                height="535"
+                loading="eager"
+                decoding="async"
+              />
+            </h1>
+            <p className="lp-hero-sub">
+              The pre-order phase is officially open.
+              <br />
+              Secure your timeless memory piece before <strong>November 20, 2026</strong>.
+            </p>
+            <a href="/shop" className="lp-btn lp-btn--wine">
+              Pilih Karya
+            </a>
           </div>
           <a className="lp-hero-scroll" href="#art-of-preserving" aria-label="Gulir ke bawah">
             ⌄
@@ -562,6 +554,12 @@ export default function Home() {
                   foto, dan video. Coba pilih tema dan isi vault di bawah.
                 </p>
                 {renderSkinSwitcher("vault")}
+                <div className="lp-hero-preview-card lp-vault-preview-card">
+                  <span className="lp-hero-preview-eyebrow">SEBUAH HARI ISTIMEWA</span>
+                  <span className="lp-hero-preview-script">Selamat ulang tahun, Sayang</span>
+                  <LandingHookPreview hookId="gift-box" />
+                  <span className="lp-hero-preview-foot">Contoh pembuka saat QR dipindai</span>
+                </div>
               </header>
 
               <article className="vault-simulator-wrap lp-vault-sim" aria-label="Pratinjau interaktif Memory Vault">

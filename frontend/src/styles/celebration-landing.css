@@ -214,6 +214,10 @@
 
 /* ── SWITCHER TEMA ───────────────────────────────────────── */
 
+.landing-v2 .lp-vault-preview-card {
+  margin: 1.3rem auto 0;
+}
+
 .landing-v2 .lp-skin-switcher {
   margin-top: 1.6rem;
 }
