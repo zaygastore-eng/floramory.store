@@ -1,8 +1,13 @@
 import { useEffect, useState } from "react";
 import { Link } from "wouter";
-import { ShoppingBag } from "lucide-react";
+import { ShoppingBag, X } from "lucide-react";
 import type { CatalogProduct } from "@/lib/api";
-import { loadReservationDraft, parseHargaAmount, type ReservationDraftItem } from "@/lib/reservation";
+import {
+  clearReservationDraft,
+  loadReservationDraft,
+  parseHargaAmount,
+  type ReservationDraftItem,
+} from "@/lib/reservation";
 import { formatHarga } from "@/lib/site";
 
 export default function OrderStickyBar({ products = [] }: { products?: CatalogProduct[] }) {
@@ -47,9 +52,20 @@ export default function OrderStickyBar({ products = [] }: { products?: CatalogPr
             </span>
           </div>
         </div>
-        <Link href="/pre-order" className="esb-sticky-cta">
-          Lanjut Pesan ({totalQty}) →
-        </Link>
+        <div className="esb-sticky-actions">
+          <Link href="/pre-order" className="esb-sticky-cta">
+            Lanjut Pesan ({totalQty}) →
+          </Link>
+          <button
+            type="button"
+            className="esb-sticky-clear"
+            onClick={clearReservationDraft}
+            aria-label="Hapus daftar pesanan"
+            title="Hapus daftar pesanan"
+          >
+            <X size={16} aria-hidden="true" />
+          </button>
+        </div>
       </div>
     </div>
   );

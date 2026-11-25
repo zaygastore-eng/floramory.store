@@ -8,6 +8,7 @@ const navLinks = [
   { href: "/shop", label: "The Chapters" },
   { href: "/#cara-pre-order", label: "Cara Pre-Order" },
   { href: "/#vault", label: "Smart QR Vault" },
+  { href: "/cek-pesanan", label: "Cek Pesanan" },
 ];
 
 const CONSULTATION_MESSAGE =

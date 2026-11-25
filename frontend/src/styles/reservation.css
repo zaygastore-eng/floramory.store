@@ -1007,6 +1007,33 @@
   text-overflow: ellipsis;
 }
 
+.esb-sticky-actions {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.esb-sticky-clear {
+  flex: 0 0 auto;
+  display: inline-grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  border: 1px solid rgba(251, 243, 234, 0.28);
+  background: rgba(255, 255, 255, 0.08);
+  color: #fbf3ea;
+  cursor: pointer;
+  transition: background-color 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
+}
+
+.esb-sticky-clear:hover {
+  background: rgba(255, 255, 255, 0.18);
+  border-color: rgba(251, 243, 234, 0.55);
+  transform: scale(1.04);
+}
+
 .esb-sticky-cta {
   flex: 0 0 auto;
   display: inline-flex;

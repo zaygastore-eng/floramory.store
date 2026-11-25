@@ -1,40 +1,34 @@
-import { useEffect, useRef, useState, lazy, Suspense, type ClipboardEvent, type FormEvent } from "react";
-import { LoaderCircle } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Link } from "wouter";
 import BrandLogo from "@/components/BrandLogo";
 import ProductSpecimen from "@/components/ProductSpecimen";
 import VaultExperience from "@/pages/VaultExperience";
-const AudioPlayer = lazy(() => import("@/components/AudioPlayer"));
 import {
   fetchVaultPreview,
   fetchWhatsAppNumber,
-  verifyVaultPin,
   tierLabel,
-  getVaultAudioUrl,
   type Product,
 } from "@/lib/api";
 import { resolveVaultMedia } from "@/lib/media";
 import { applyProductMeta } from "@/lib/seo";
 import { pageUrl, normalizeWhatsApp } from "@/lib/site";
 
-const WA_FALLBACK = "6281234567890";
+const WA_FALLBACK = "6285235242425";
 
 export default function Produk() {
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [waNumber, setWaNumber] = useState(WA_FALLBACK);
-  const [vaultUnlocked, setVaultUnlocked] = useState(false);
   const [hasVault, setHasVault] = useState(false);
-  const [pinDigits, setPinDigits] = useState<string[]>(() => Array(6).fill(""));
-  const [pinMessage, setPinMessage] = useState("");
-  const [pinLocked, setPinLocked] = useState(false);
-  const [pinBusy, setPinBusy] = useState(false);
-  const pinInputRefs = useRef<Array<HTMLInputElement | null>>([]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const id = params.get("id") || params.get("ID");
-    if (!id) { setError(true); setLoading(false); return; }
+    if (!id) {
+      window.location.replace(pageUrl("/shop"));
+      return;
+    }
 
     fetchWhatsAppNumber().then((value) => {
       if (value) setWaNumber(normalizeWhatsApp(value) || WA_FALLBACK);
@@ -48,7 +42,6 @@ export default function Produk() {
           const p = preview.product;
           setProduct(p);
           setHasVault(preview.hasVault);
-          setVaultUnlocked(preview.unlocked);
           applyProductMeta({
             id: p.id,
             nama_produk: p.nama_produk,
@@ -103,65 +96,15 @@ export default function Produk() {
   const hasPersonalMessage = Boolean(product.pesan_personal && product.pesan_personal.trim());
   const hasMemoir = hasFotoVault || hasVideo || hasAudio || hasPersonalMessage;
 
-  // When a physical QR is scanned pointing to /produk?id=UUID:
-  // If the product has a linked memoir vault or is a custom order, immediately render VaultExperience
+  // Semua QR produk personal langsung didelegasikan ke VaultExperience (Konsep B terpadu).
   if (hasVault || hasMemoir || !product.is_catalog) {
     return <VaultExperience productIdOverride={product.id} />;
   }
 
-  const isVaultEmpty = !hasFotoVault && !hasVideo && !hasAudio && !hasPersonalMessage;
-  const isVaultLocked = !product.is_catalog && !isVaultEmpty && !vaultUnlocked;
   const waDigits = normalizeWhatsApp(waNumber) || WA_FALLBACK;
-
   const waMsg = encodeURIComponent(
     `Hello A Chapter, I'd like to consult on customizing ${product.nama_produk} (ID: ${product.id})`
   );
-
-  const handleVerifyPin = async (event: FormEvent) => {
-    event.preventDefault();
-    const pin = pinDigits.join("");
-    if (!/^\d{6}$/.test(pin)) return;
-    setPinBusy(true);
-    setPinMessage("");
-    setPinLocked(false);
-    try {
-      const result = await verifyVaultPin(product.id, pin);
-      if (!result.ok || !result.verified) {
-        setPinMessage(result.message || "PIN tidak cocok. Silakan coba kembali.");
-        setPinLocked(Boolean(result.locked));
-        return;
-      }
-      try {
-        sessionStorage.setItem(`fm_unlocked_${product.id}`, "true");
-      } catch {
-        // Keep the current view unlocked even when browser storage is unavailable.
-      }
-      setVaultUnlocked(true);
-      setPinMessage("");
-    } catch (verifyError) {
-      setPinMessage(verifyError instanceof Error ? verifyError.message : "Gagal memverifikasi PIN.");
-    } finally {
-      setPinBusy(false);
-    }
-  };
-
-  const updatePinDigit = (index: number, value: string) => {
-    const digits = value.replace(/\D/g, "").slice(0, 1);
-    setPinDigits(current => current.map((digit, digitIndex) => digitIndex === index ? digits : digit));
-    if (digits && index < 5) pinInputRefs.current[index + 1]?.focus();
-    setPinMessage("");
-    setPinLocked(false);
-  };
-
-  const handlePinPaste = (event: ClipboardEvent<HTMLInputElement>) => {
-    const pasted = event.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6);
-    if (!pasted) return;
-    event.preventDefault();
-    setPinDigits([...pasted, ...Array(Math.max(0, 6 - pasted.length)).fill("")].slice(0, 6));
-    pinInputRefs.current[Math.min(pasted.length, 5)]?.focus();
-    setPinMessage("");
-    setPinLocked(false);
-  };
 
   return (
     <div className="produk-page public-v2">
@@ -173,235 +116,27 @@ export default function Produk() {
       </header>
 
       <main className="produk-specimen-page">
-        {product.is_catalog && (
-          <ProductSpecimen
-            product={product}
-            whatsappUrl={`https://wa.me/${waDigits}?text=${waMsg}`}
-            onOrder={() => {
-              window.location.href = pageUrl(`/products/${encodeURIComponent(product.id)}`);
-            }}
-          />
-        )}
+        <ProductSpecimen
+          product={product}
+          whatsappUrl={`https://wa.me/${waDigits}?text=${waMsg}`}
+          onOrder={() => {
+            window.location.href = pageUrl(`/products/${encodeURIComponent(product.id)}`);
+          }}
+        />
 
         <section className="specimen-personal-vault" aria-labelledby="personal-vault-title">
           <div className="specimen-personal-heading">
             <span className="specimen-eyebrow">A private chapter</span>
-            <h2 id="personal-vault-title">The Memory Vault</h2>
-            <p>Kenangan istimewa yang terhubung secara abadi dengan karya botani ini.</p>
-          </div>
-
-          <div className="vault-content-stack">
-            {isVaultLocked ? (
-              <div className="vault-pin-card" role="dialog" aria-label="Verifikasi PIN Brankas">
-                <div className="vault-pin-icon" aria-hidden="true">🔒</div>
-                <h3 className="vault-pin-heading">Kapsul Kenangan Terkunci</h3>
-                <p className="vault-pin-desc">
-                  Gosok stiker perak pada kartu ucapan A Chapter kamu, lalu masukkan 6 digit PIN rahasia untuk membuka kenangan ini.
-                </p>
-                <form onSubmit={handleVerifyPin} className="vault-pin-form">
-                    <div className="vault-pin-inputs">
-                      {Array.from({ length: 6 }, (_, index) => (
-                        <input
-                          key={index}
-                          ref={element => { pinInputRefs.current[index] = element; }}
-                          type="tel"
-                          inputMode="numeric"
-                          autoComplete={index === 0 ? "one-time-code" : "off"}
-                          aria-label={`Digit ${index + 1} PIN`}
-                          value={pinDigits[index]}
-                          maxLength={1}
-                          onChange={event => updatePinDigit(index, event.target.value)}
-                          onKeyDown={event => {
-                            if (event.key === "Backspace" && !pinDigits[index] && index > 0) {
-                              pinInputRefs.current[index - 1]?.focus();
-                            }
-                          }}
-                          onPaste={handlePinPaste}
-                          className="vault-pin-digit"
-                        />
-                      ))}
-                    </div>
-                    <button type="submit" className="hero-cta hero-cta-primary vault-pin-submit" disabled={pinBusy || pinDigits.join("").length !== 6}>
-                      {pinBusy ? <><LoaderCircle size={16} className="vault-pin-spinner" aria-hidden="true" /> Memeriksa PIN...</> : "Buka Memory Vault"}
-                    </button>
-                    {pinMessage && (
-                      <p role="alert" aria-live="polite" className="vault-pin-message">
-                        {pinMessage}
-                      </p>
-                    )}
-                    <a
-                      href={`https://wa.me/${waDigits}?text=${encodeURIComponent("Halo A Chapter, kartu kado saya rusak atau PIN tidak terbaca. Mohon bantu saya.")}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="vault-pin-help-link"
-                    >
-                      Kartu rusak atau PIN tidak terbaca? Hubungi WhatsApp A Chapter
-                    </a>
-                </form>
-              </div>
-            ) : (
-              <div className={vaultUnlocked ? "order-step-content" : undefined}>
-            {/* Component A: Personal Memory Photo (Polaroid Capsule) */}
-            {hasFotoVault && (
-              <div className="vault-polaroid-wrap">
-                <figure className="vault-polaroid-card">
-                  <div className="vault-polaroid-pin" aria-hidden="true">✦</div>
-                  <div className="vault-polaroid-img-box">
-                    <img
-                      src={product.foto_vault}
-                      alt={`Momen kenangan ${product.nama_pembeli || product.nama_produk}`}
-                      className="vault-polaroid-img"
-                      loading="lazy"
-                      onError={(e) => {
-                        (e.currentTarget as HTMLImageElement).style.display = "none";
-                      }}
-                    />
-                  </div>
-                  <figcaption className="vault-polaroid-caption">
-                    <span className="vault-polaroid-title">
-                      {product.nama_pembeli ? `Untuk ${product.nama_pembeli}` : "Kapsul Kenangan"}
-                    </span>
-                    <span className="vault-polaroid-sub">Captured with love · A Chapter Keepsake</span>
-                  </figcaption>
-                </figure>
-              </div>
-            )}
-
-            {/* Component B: Responsive Video Embed */}
-            {hasVideo && videoMedia.type === "youtube" && videoMedia.embedUrl && (
-              <div className="vault-video-block">
-                <div className="vault-video-frame">
-                  <iframe
-                    src={videoMedia.embedUrl}
-                    title="Video Kenangan A Chapter"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    allowFullScreen
-                    className="vault-video-iframe"
-                  />
-                </div>
-              </div>
-            )}
-            {hasVideo && videoMedia.type === "direct_video" && (
-              <div className="vault-video-block">
-                <div className="vault-video-frame">
-                  <video
-                    controls
-                    playsInline
-                    preload="metadata"
-                    src={videoMedia.url}
-                    className="vault-video-player"
-                  >
-                    Browser Anda tidak mendukung pemutar video.
-                  </video>
-                </div>
-              </div>
-            )}
-
-            {/* Component C: Voice Note Player */}
-            {hasAudio && audioMedia.type === "spotify" && audioMedia.embedUrl && (
-              <div className="vault-audio-block">
-                <div className="vault-audio-badge">
-                  <span>✦</span> Lagu Kenangan
-                </div>
-                <iframe
-                  style={{ borderRadius: "14px", border: "none" }}
-                  src={audioMedia.embedUrl}
-                  width="100%"
-                  height="352"
-                  className="vault-spotify-embed"
-                  allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-                  loading="lazy"
-                  title="Lagu Kenangan Spotify"
-                />
-                <a
-                  className="spotify-open-link"
-                  href={product.audio_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  Buka langsung di Spotify ↗
-                </a>
-                {hasPersonalMessage && (
-                  <blockquote className="vault-audio-quote">
-                    <p>“{product.pesan_personal.trim()}”</p>
-                    <footer>— {product.dari || "Atelier Keepsake"}</footer>
-                  </blockquote>
-                )}
-              </div>
-            )}
-            {hasAudio && audioMedia.type === "direct_audio" && (
-              <div className="vault-audio-block">
-                <div className="vault-audio-badge">
-                  <span>✦</span> Dengarkan Pesan Suara Khusus
-                </div>
-                <Suspense
-                  fallback={
-                    <div
-                      className="achapter-audio-card"
-                      style={{ height: "80px", display: "flex", alignItems: "center", justifyContent: "center" }}
-                    >
-                      <span className="audio-spinner" style={{ borderColor: "rgba(105, 112, 153, 0.2)", borderTopColor: "var(--sage)" }} />
-                    </div>
-                  }
-                >
-                  <AudioPlayer
-                    src={getVaultAudioUrl(audioMedia.url)}
-                    initialDuration={product.audio_durasi}
-                    title={`Pesan Suara untuk ${product.nama_pembeli || "Anda"}`}
-                  />
-                </Suspense>
-              </div>
-            )}
-
-            {/* Component D: Personal Letter */}
-            {hasPersonalMessage && (
-              <div className="vault-letter-card">
-                <div className="vault-letter-header">
-                  <div className="vault-letter-seal" aria-hidden="true">✦</div>
-                  <div className="vault-letter-meta">
-                    <span className="vault-letter-label">Surat Personal</span>
-                    {product.nama_pembeli && (
-                      <h3 className="vault-letter-salutation">
-                        Untuk {product.nama_pembeli}
-                      </h3>
-                    )}
-                  </div>
-                </div>
-                <div className="vault-letter-body">
-                  <p className="vault-letter-text">{product.pesan_personal}</p>
-                  <div className="vault-letter-sign">
-                    <span>Dengan penuh cinta,</span>
-                    <strong>{product.dari || "A Chapter"}</strong>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Fallback State: Empty / Standard Bouquet */}
-            {isVaultEmpty && (
-              <div className="vault-letter-card vault-letter-story">
-                <div className="vault-letter-header">
-                  <div className="vault-letter-seal" aria-hidden="true">🌿</div>
-                  <div className="vault-letter-meta">
-                    <span className="vault-letter-label">Botanical Keepsake Blessing</span>
-                    <h3 className="vault-letter-salutation">
-                      {product.nama_pembeli ? `Untuk ${product.nama_pembeli}` : "Karya Kenangan A Chapter"}
-                    </h3>
-                  </div>
-                </div>
-                <div className="vault-letter-body">
-                  <p className="vault-letter-text">
-                    “Setiap bunga A Chapter dirangkai untuk menyimpan kenangan abadi. Karya seni botani ini diawetkan dengan cermat di laboratorium agar keindahan dan ketulusan momen istimewa Anda tetap mekar selamanya.”
-                  </p>
-                  <div className="vault-letter-sign">
-                    <span>Dengan penuh kehangatan,</span>
-                    <strong>Atelier A Chapter</strong>
-                  </div>
-                </div>
-              </div>
-            )}
-              </div>
-            )}
+            <h2 id="personal-vault-title">Dilengkapi Smart QR Memory Vault</h2>
+            <p>
+              Setiap pesanan karya ini mencakup brankas digital pribadi untuk menyimpan kaset rekaman suara,
+              surat papan renda, photobooth 4-cut, dan video memoir seumur hidup.
+            </p>
+            <div style={{ marginTop: "1rem" }}>
+              <Link href="/smart-qr-vault" className="hero-cta hero-cta-primary">
+                Lihat Simulasi Memory Vault →
+              </Link>
+            </div>
           </div>
         </section>
       </main>

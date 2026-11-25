@@ -1,6 +1,5 @@
-import { Suspense, lazy, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "wouter";
-import { ArrowRight, Camera, Film, Mail, Music } from "lucide-react";
 import ProductImage from "@/components/ProductImage";
 import SiteHeader from "@/components/SiteHeader";
 import SiteFooter from "@/components/SiteFooter";
@@ -8,68 +7,13 @@ import VaultShowcase from "@/components/VaultShowcase";
 import OrderStickyBar from "@/components/OrderStickyBar";
 import {
   fetchCatalogProducts,
+  fetchHeroConfig,
   tierLabel,
   type CatalogProduct,
+  type HeroConfig,
 } from "@/lib/api";
 import { applyPageMeta } from "@/lib/seo";
 import { formatHarga, pageUrl } from "@/lib/site";
-import {
-  DEFAULT_VAULT_SKIN,
-  VAULT_SKINS,
-  type VaultHookId,
-  type VaultSkinId,
-} from "@/lib/vaultDesign";
-
-const CelebrationHook = lazy(() => import("@/components/CelebrationHook"));
-
-type VaultSimTab = "photograph" | "voice-record" | "letter" | "video";
-
-const VAULT_TAB_ICONS: Record<VaultSimTab, typeof Camera> = {
-  photograph: Camera,
-  "voice-record": Music,
-  letter: Mail,
-  video: Film,
-};
-
-const VAULT_TAB_HINTS: Record<VaultSimTab, string> = {
-  photograph: "Empat potong kenangan dalam satu kolase",
-  "voice-record": "Dengarkan suara yang direkam untukmu",
-  letter: "Baca kata-kata yang ditulis untukmu",
-  video: "Tonton video kenangan",
-};
-
-/** Lottie pratinjau hanya dipasang saat kartu berada di viewport. */
-function LandingHookPreview({ hookId }: { hookId: VaultHookId }) {
-  const frameRef = useRef<HTMLDivElement>(null);
-  const [visible, setVisible] = useState(false);
-
-  useEffect(() => {
-    const node = frameRef.current;
-    if (!node) return;
-    if (typeof IntersectionObserver === "undefined") {
-      setVisible(true);
-      return;
-    }
-    const observer = new IntersectionObserver(
-      (entries) => setVisible(entries.some((entry) => entry.isIntersecting)),
-      { rootMargin: "120px" }
-    );
-    observer.observe(node);
-    return () => observer.disconnect();
-  }, []);
-
-  return (
-    <div ref={frameRef} className="lp-hook-preview-frame">
-      {visible ? (
-        <Suspense fallback={<span className="lp-hook-fallback" aria-hidden="true">✦</span>}>
-          <CelebrationHook hookId={hookId} loop className="lp-hero-hook" />
-        </Suspense>
-      ) : (
-        <span className="lp-hook-fallback" aria-hidden="true">✦</span>
-      )}
-    </div>
-  );
-}
 
 
 function ProductCard({
@@ -194,7 +138,7 @@ export default function Home() {
   const toggleFaq = (index: number) => {
     setActiveFaq(current => current === index ? null : index);
   };
-  const [previewSkin, setPreviewSkin] = useState<VaultSkinId>(DEFAULT_VAULT_SKIN);
+  const [heroConfig, setHeroConfig] = useState<HeroConfig | null>(null);
   const productSliderRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [dragStartX, setDragStartX] = useState(0);
@@ -277,34 +221,42 @@ export default function Home() {
     fetchCatalogProducts("framed")
       .then(items => setChapterProducts(items.filter(product => !product.isFallback)))
       .catch(() => setChapterProducts([]));
+    fetchHeroConfig()
+      .then(config => {
+        if (config) setHeroConfig(config);
+      })
+      .catch(() => undefined);
+  }, []);
+
+  useEffect(() => {
+    const nodes = Array.from(document.querySelectorAll<HTMLElement>(".lp-reveal"));
+    if (nodes.length === 0) return;
+
+    if (
+      typeof IntersectionObserver === "undefined" ||
+      window.matchMedia?.("(prefers-reduced-motion: reduce)").matches
+    ) {
+      nodes.forEach(node => node.classList.add("is-inview"));
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      entries => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add("is-inview");
+            observer.unobserve(entry.target);
+          }
+        });
+      },
+      { threshold: 0.14, rootMargin: "0px 0px -40px 0px" }
+    );
+
+    nodes.forEach(node => observer.observe(node));
+    return () => observer.disconnect();
   }, []);
 
   const showcaseProducts = chapterProducts;
-
-  const renderSkinSwitcher = (variant: "hero" | "vault") => (
-    <div
-      className={`lp-skin-switcher lp-skin-switcher--${variant}`}
-      role="group"
-      aria-label="Pratinjau tema Celebration"
-    >
-      <span className="lp-skin-switcher-label">Pratinjau tema</span>
-      <div className="lp-skin-switcher-options">
-        {VAULT_SKINS.map((skin) => (
-          <button
-            key={skin.id}
-            type="button"
-            className={`lp-skin-chip${previewSkin === skin.id ? " is-active" : ""}`}
-            aria-pressed={previewSkin === skin.id}
-            title={skin.tagline}
-            onClick={() => setPreviewSkin(skin.id)}
-          >
-            <span className={`lp-skin-swatch skin-${skin.id}`} aria-hidden="true" />
-            <span className="lp-skin-name">{skin.name}</span>
-          </button>
-        ))}
-      </div>
-    </div>
-  );
 
   const renderProductGrid = (items: CatalogProduct[]) => (
     <div className="product-slider-wrapper">
@@ -331,38 +283,61 @@ export default function Home() {
   );
 
 
+  const heroBgUrl = heroConfig?.bgImageUrl?.trim() || "/landing/hero-flowers.webp";
+  const heroCtaText =
+    heroConfig?.ctaText?.trim() && heroConfig.ctaText.trim() !== "EXPLORE ALL CHAPTERS ↓"
+      ? heroConfig.ctaText.trim()
+      : "Pilih Karya";
+  const heroCtaLink =
+    heroConfig?.ctaLink?.trim() && heroConfig.ctaLink.trim() !== "#chapters"
+      ? heroConfig.ctaLink.trim()
+      : "/shop";
+  const hasCustomHeadline = Boolean(
+    heroConfig?.headline?.trim() &&
+    heroConfig.headline.trim() !== "Every flower holds a moment,\nevery life deserves an eternal chapter."
+  );
+
   return (
-    <div className="lp-celebration-root" data-preview-skin={previewSkin}>
+    <div className="lp-celebration-root">
       <SiteHeader variant="overlay" />
 
-      <div className="landing-v2" data-preview-skin={previewSkin}>
+      <div className="landing-v2">
         {/* ── HERO ── */}
         <section className="lp-hero" id="hero">
           <div
             className="lp-hero-bg"
-            style={{ backgroundImage: "url('/landing/hero-flowers.webp')" }}
+            style={{ backgroundImage: `url('${heroBgUrl}')` }}
             aria-hidden="true"
           />
           <div className="lp-hero-veil" aria-hidden="true" />
+          <div className="lp-hero-particles" aria-hidden="true">
+            {Array.from({ length: 14 }, (_, idx) => (
+              <span key={idx} className={`lp-firefly f${idx + 1}`}>
+                <span className="lp-firefly-core" />
+              </span>
+            ))}
+          </div>
           <div className="lp-hero-inner">
-            <h1 className="lp-hero-title" aria-label="Where Every Flowers Tells Your Chapter">
-              <img
-                src="/landing/hero-title-lockup.webp"
-                alt="Where Every Flowers Tells Your Chapter"
-                className="lp-hero-title-image"
-                width="2829"
-                height="535"
-                loading="eager"
-                decoding="async"
-              />
-            </h1>
-            <p className="lp-hero-sub">
-              The pre-order phase is officially open.
-              <br />
-              Secure your timeless memory piece before <strong>November 20, 2026</strong>.
-            </p>
-            <a href="/shop" className="lp-btn lp-btn--wine">
-              Pilih Karya
+            {hasCustomHeadline && heroConfig ? (
+              <>
+                {heroConfig.eyebrow && <span className="lp-hero-kicker">{heroConfig.eyebrow}</span>}
+                <h1 className="lp-hero-title lp-hero-title-text">{heroConfig.headline}</h1>
+              </>
+            ) : (
+              <h1 className="lp-hero-title" aria-label="Where Every Flowers Tells Your Chapter">
+                <img
+                  src="/landing/hero-title-lockup.webp"
+                  alt="Where Every Flowers Tells Your Chapter"
+                  className="lp-hero-title-image"
+                  width="2829"
+                  height="535"
+                  loading="eager"
+                  decoding="async"
+                />
+              </h1>
+            )}
+            <a href={heroCtaLink} className="lp-btn lp-btn--wine lp-hero-cta">
+              {heroCtaText}
             </a>
           </div>
           <a className="lp-hero-scroll" href="#art-of-preserving" aria-label="Gulir ke bawah">
@@ -373,7 +348,7 @@ export default function Home() {
         <main className="lp-main">
           {/* ── INTRO / THE ART OF PRESERVING MEMORIES ── */}
           <section className="lp-intro" id="art-of-preserving">
-            <div className="lp-intro-copy">
+            <div className="lp-intro-copy lp-reveal">
               <span className="lp-eyebrow">THE ART OF PRESERVING MEMORIES</span>
               <h2 className="lp-intro-title">Some memories are too precious to let wilt.</h2>
               <p>
@@ -390,13 +365,13 @@ export default function Home() {
                 Jelajahi Koleksi
               </a>
             </div>
-            <div className="lp-intro-art" aria-hidden="true">
+            <div className="lp-intro-art lp-reveal" aria-hidden="true">
               <img src="/landing/intro-collage.webp" alt="" loading="lazy" />
             </div>
           </section>
 
           {/* ── PRODUK ── */}
-          <section className="lp-products" id="chapters">
+          <section className="lp-products lp-reveal" id="chapters">
             <div className="lp-band">
               <span className="lp-band-line" aria-hidden="true" />
               <h2 className="lp-band-title">Karya Pilihan</h2>
@@ -442,7 +417,7 @@ export default function Home() {
           </section>
 
           {/* ── CARA PRE-ORDER ── */}
-          <section className="lp-reserve" id="cara-pre-order">
+          <section className="lp-reserve lp-reveal" id="cara-pre-order">
             <div className="lp-reserve-inner">
               <header className="lp-reserve-head">
                 <span className="lp-eyebrow">BESPOKE PRE-ORDER</span>
@@ -480,7 +455,7 @@ export default function Home() {
           <VaultShowcase />
 
           {/* ── FAQ ── */}
-          <section className="lp-faq" id="faq" aria-label="Pertanyaan Umum Atelier">
+          <section className="lp-faq lp-reveal" id="faq" aria-label="Pertanyaan Umum Atelier">
             <div className="lp-faq-inner">
               <div className="lp-faq-head">
                 <span className="lp-eyebrow">FREQUENTLY ASKED QUESTIONS</span>

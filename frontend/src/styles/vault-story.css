@@ -1,0 +1,1565 @@
+/* ============================================================
+   A Chapter — Unified Concept B Story Experience (VaultStoryExperience)
+   Dipakai bersama oleh halaman hasil scan (/vault/:id) dan simulator
+   landing page (VaultShowcase) agar tampilan 100% konsisten.
+   ============================================================ */
+
+.vsx-root {
+  position: relative;
+  width: 100%;
+  min-height: 100%;
+  isolation: isolate;
+  color: var(--vsx-text, #3a161b);
+  font-family: var(--font-body, 'DM Sans', sans-serif);
+}
+
+/* ── Skin Tokens ── */
+.vsx-root[data-vsx-skin="atelier"] {
+  --vsx-bg: linear-gradient(168deg, #FBF8F3 0%, #F5EDE1 55%, #FBF8F3 100%);
+  --vsx-card: rgba(255, 255, 255, 0.9);
+  --vsx-card-border: rgba(197, 168, 128, 0.42);
+  --vsx-text: #2A1E20;
+  --vsx-muted: #756C64;
+  --vsx-accent: #531B21;
+  --vsx-accent-text: #FBF3E8;
+  --vsx-gold: #C5A880;
+  --vsx-cassette-shell: #F2E6D4;
+  --vsx-cassette-border: #531B21;
+  --vsx-cassette-label: #FFFDF8;
+  --vsx-cassette-stripe: linear-gradient(90deg, #531B21, #C5A880, #B5CCEC);
+  --vsx-envelope: #EFE2CE;
+  --vsx-envelope-flap: #E4D2B8;
+  --vsx-dock-bg: rgba(251, 248, 243, 0.92);
+  --vsx-particle-color: rgba(197, 168, 128, 0.45);
+  background: var(--vsx-bg);
+}
+
+.vsx-root[data-vsx-skin="noir"] {
+  --vsx-bg: radial-gradient(circle at 18% 8%, rgba(197, 168, 128, 0.16), transparent 44%),
+            radial-gradient(circle at 84% 88%, rgba(110, 32, 42, 0.38), transparent 58%),
+            #17100F;
+  --vsx-card: rgba(34, 24, 23, 0.88);
+  --vsx-card-border: rgba(197, 168, 128, 0.32);
+  --vsx-text: #F6ECDC;
+  --vsx-muted: rgba(243, 233, 218, 0.68);
+  --vsx-accent: #C5A880;
+  --vsx-accent-text: #1B1110;
+  --vsx-gold: #C5A880;
+  --vsx-cassette-shell: #2A201E;
+  --vsx-cassette-border: #C5A880;
+  --vsx-cassette-label: #F7EBDA;
+  --vsx-cassette-stripe: linear-gradient(90deg, #531B21, #C5A880, #8E3B47);
+  --vsx-envelope: #2D1F21;
+  --vsx-envelope-flap: #3D292C;
+  --vsx-dock-bg: rgba(29, 20, 19, 0.9);
+  --vsx-particle-color: rgba(197, 168, 128, 0.36);
+  background: var(--vsx-bg);
+}
+
+.vsx-root[data-vsx-skin="crayon"] {
+  --vsx-bg: radial-gradient(circle at 12% 14%, rgba(255, 198, 112, 0.3), transparent 40%),
+            radial-gradient(circle at 86% 12%, rgba(139, 197, 255, 0.28), transparent 44%),
+            radial-gradient(circle at 50% 94%, rgba(255, 143, 163, 0.24), transparent 48%),
+            #FBF3E4;
+  --vsx-card: #FFFDF8;
+  --vsx-card-border: #2B2622;
+  --vsx-text: #2B2622;
+  --vsx-muted: #6B5647;
+  --vsx-accent: #A2492F;
+  --vsx-accent-text: #FFFDF8;
+  --vsx-gold: #F4A940;
+  --vsx-cassette-shell: #FFE2A8;
+  --vsx-cassette-border: #2B2622;
+  --vsx-cassette-label: #FFFFFF;
+  --vsx-cassette-stripe: linear-gradient(90deg, #FF8FA3, #FFC670, #8BC5FF);
+  --vsx-envelope: #F9D4DC;
+  --vsx-envelope-flap: #F2B8C4;
+  --vsx-dock-bg: rgba(255, 253, 248, 0.94);
+  --vsx-particle-color: rgba(255, 162, 112, 0.45);
+  background: var(--vsx-bg);
+}
+
+.vsx-root[data-vsx-skin="romance"] {
+  --vsx-bg: radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.86), transparent 54%),
+            radial-gradient(circle at 15% 82%, rgba(233, 178, 187, 0.34), transparent 48%),
+            linear-gradient(165deg, #FBEAEC 0%, #F6DDE1 48%, #FDF6EE 100%);
+  --vsx-card: rgba(255, 255, 255, 0.82);
+  --vsx-card-border: rgba(164, 90, 100, 0.26);
+  --vsx-text: #5A2A30;
+  --vsx-muted: rgba(90, 42, 48, 0.72);
+  --vsx-accent: #8E3B47;
+  --vsx-accent-text: #FFFFFF;
+  --vsx-gold: #D39AA4;
+  --vsx-cassette-shell: #F6DDE1;
+  --vsx-cassette-border: #8E3B47;
+  --vsx-cassette-label: #FFFDFB;
+  --vsx-cassette-stripe: linear-gradient(90deg, #8E3B47, #E9B2BB, #F3D5C0);
+  --vsx-envelope: #F3CBD3;
+  --vsx-envelope-flap: #E9B5C0;
+  --vsx-dock-bg: rgba(255, 250, 251, 0.9);
+  --vsx-particle-color: rgba(212, 128, 142, 0.38);
+  background: var(--vsx-bg);
+}
+
+/* ── Ambient Floating Particles ── */
+.vsx-ambient {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.vsx-particle {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  border-radius: 50% 2px 50% 50%;
+  background: var(--vsx-particle-color);
+  opacity: 0;
+  animation: vsxFloatParticle 11s ease-in-out infinite;
+}
+
+.vsx-particle.p1 { left: 10%; top: 14%; animation-delay: 0s; }
+.vsx-particle.p2 { left: 82%; top: 18%; width: 7px; height: 7px; animation-delay: -2.2s; }
+.vsx-particle.p3 { left: 16%; top: 52%; width: 12px; height: 12px; animation-delay: -4.6s; }
+.vsx-particle.p4 { left: 88%; top: 60%; animation-delay: -6.4s; }
+.vsx-particle.p5 { left: 28%; top: 82%; width: 8px; height: 8px; animation-delay: -8.1s; }
+.vsx-particle.p6 { left: 72%; top: 84%; width: 11px; height: 11px; animation-delay: -3.4s; }
+
+@keyframes vsxFloatParticle {
+  0%, 100% {
+    transform: translateY(10px) rotate(0deg) scale(0.8);
+    opacity: 0;
+  }
+  25%, 75% {
+    opacity: 0.72;
+  }
+  50% {
+    transform: translateY(-22px) rotate(130deg) scale(1.1);
+    opacity: 0.45;
+  }
+}
+
+/* ── Shared Typography ── */
+.vsx-eyebrow {
+  display: inline-block;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--vsx-accent);
+}
+
+.vsx-step-tag {
+  display: inline-block;
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--vsx-accent);
+  margin-bottom: 0.25rem;
+}
+
+/* ═════════ TAMPILAN 1: OPENING HOOK ═════════ */
+.vsx-opening {
+  position: relative;
+  z-index: 1;
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: clamp(1.8rem, 5vw, 3.2rem) clamp(1.1rem, 4vw, 2rem);
+  animation: vsxFadeUp 420ms ease both;
+}
+
+.vsx-mode-vault .vsx-opening {
+  min-height: 100dvh;
+}
+
+.vsx-opening-visual {
+  margin: 0.85rem auto 0.65rem;
+  display: grid;
+  place-items: center;
+}
+
+.vsx-opening-hook {
+  width: min(56vw, 230px);
+  aspect-ratio: 1;
+}
+
+.vsx-mode-demo .vsx-opening-hook {
+  width: 158px;
+}
+
+.vsx-wax-hero {
+  position: relative;
+  width: 124px;
+  height: 124px;
+  display: grid;
+  place-items: center;
+}
+
+.vsx-wax-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 1px solid var(--vsx-gold);
+  opacity: 0.45;
+  animation: vsxPulseRing 2.6s ease-out infinite;
+}
+
+.vsx-wax-ring.r2 {
+  animation-delay: 1.3s;
+}
+
+@keyframes vsxPulseRing {
+  0% { transform: scale(0.84); opacity: 0.65; }
+  100% { transform: scale(1.24); opacity: 0; }
+}
+
+.vsx-wax-badge {
+  width: 82px;
+  height: 82px;
+  border-radius: 50%;
+  background: #531B21;
+  border: 2px solid #C5A880;
+  box-shadow: 0 12px 28px rgba(83, 27, 33, 0.28);
+  display: grid;
+  place-items: center;
+  animation: vsxGentleFloat 3.6s ease-in-out infinite;
+}
+
+.vsx-wax-badge img {
+  width: 60%;
+  height: auto;
+  object-fit: contain;
+}
+
+@keyframes vsxGentleFloat {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
+.vsx-opening-title {
+  margin: 0.2rem 0 0.4rem;
+  font-family: "Parisienne", var(--font-script), cursive;
+  font-weight: 400;
+  font-size: clamp(2rem, 7vw, 3.3rem);
+  line-height: 1.1;
+  color: var(--vsx-text);
+  overflow-wrap: anywhere;
+}
+
+.vsx-root[data-vsx-skin="crayon"] .vsx-opening-title,
+.vsx-root[data-vsx-skin="crayon"] .vsx-story-title {
+  font-family: "Patrick Hand", "DM Sans", sans-serif;
+}
+
+.vsx-mode-demo .vsx-opening-title {
+  font-size: 1.85rem;
+}
+
+.vsx-opening-for {
+  margin: 0;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--vsx-accent);
+}
+
+.vsx-opening-from {
+  margin: 0.4rem 0 1.35rem;
+  font-size: 0.82rem;
+  color: var(--vsx-muted);
+}
+
+.vsx-open-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  padding: 0.82rem 1.5rem;
+  border-radius: 999px;
+  border: 1.5px solid var(--vsx-accent);
+  background: var(--vsx-accent);
+  color: var(--vsx-accent-text);
+  font-family: var(--font-body);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.14);
+  transition: transform 180ms ease, box-shadow 180ms ease;
+}
+
+.vsx-root[data-vsx-skin="crayon"] .vsx-open-btn {
+  border: 2px solid #2B2622;
+  box-shadow: 3px 4px 0 #2B2622;
+}
+
+.vsx-open-btn:hover {
+  transform: translateY(-2px);
+}
+
+.vsx-opening-hint {
+  margin: 0.85rem 0 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.68rem;
+  color: var(--vsx-muted);
+}
+
+/* ═════════ TAMPILAN 2+: SCROLLABLE STORY ═════════ */
+.vsx-story {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 660px;
+  margin: 0 auto;
+  padding: 0.75rem clamp(0.9rem, 3vw, 1.4rem) 4.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 2.4rem;
+}
+
+.vsx-mode-demo .vsx-story {
+  padding: 0.65rem 0.85rem 4.2rem;
+  gap: 1.9rem;
+}
+
+/* ── Discreet Corner Audio Pill (suara latar, bukan tampilan utama) ── */
+.vsx-audio-corner-wrap {
+  position: sticky;
+  top: 0.55rem;
+  z-index: 45;
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: -1.4rem;
+  pointer-events: none;
+}
+
+.vsx-audio-pill {
+  pointer-events: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.34rem 0.52rem 0.34rem 0.38rem;
+  border-radius: 999px;
+  border: 1px solid var(--vsx-card-border);
+  background: var(--vsx-dock-bg);
+  color: var(--vsx-text);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.14);
+  cursor: pointer;
+  transition: transform 160ms ease, border-color 160ms ease;
+}
+
+.vsx-audio-pill:hover {
+  transform: translateY(-1px);
+  border-color: var(--vsx-accent);
+}
+
+.vsx-mini-reel {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--vsx-accent);
+  color: var(--vsx-accent-text);
+  flex: 0 0 auto;
+}
+
+.vsx-mini-reel.is-spinning {
+  animation: vsxSpin 3.2s linear infinite;
+}
+
+.vsx-audio-pill-copy {
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+  line-height: 1.1;
+}
+
+.vsx-audio-pill-copy strong {
+  font-size: 0.64rem;
+  font-weight: 700;
+}
+
+.vsx-audio-pill-copy em {
+  font-style: normal;
+  font-size: 0.56rem;
+  color: var(--vsx-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.vsx-audio-pill-icon {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: rgba(120, 90, 80, 0.12);
+  color: var(--vsx-accent);
+}
+
+.vsx-spotify-compact {
+  background: var(--vsx-card);
+  border: 1px solid var(--vsx-card-border);
+  border-radius: 14px;
+  padding: 0.65rem 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.vsx-spotify-compact-head {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--vsx-accent);
+}
+
+.vsx-soft-quote {
+  margin: 0.9rem auto 0;
+  max-width: 44ch;
+  padding: 0.4rem 0.85rem;
+  border-left: 2.5px solid var(--vsx-gold);
+  font-family: var(--font-display);
+  font-size: 0.96rem;
+  font-style: italic;
+  color: var(--vsx-muted);
+  text-align: left;
+}
+
+.vsx-section-photos.is-waiting {
+  opacity: 0.18;
+  transform: translateY(18px);
+  transition: opacity 550ms ease, transform 550ms ease;
+}
+
+.vsx-section-photos.is-revealed {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 620ms ease, transform 620ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* ── Section Heads ── */
+.vsx-story-top-head {
+  text-align: center;
+  margin-bottom: 1rem;
+}
+
+.vsx-story-title {
+  margin: 0.25rem 0 0.25rem;
+  font-family: "Parisienne", var(--font-script), cursive;
+  font-weight: 400;
+  font-size: clamp(1.9rem, 6vw, 2.8rem);
+  line-height: 1.1;
+  color: var(--vsx-text);
+}
+
+.vsx-mode-demo .vsx-story-title {
+  font-size: 1.65rem;
+}
+
+.vsx-story-sub {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--vsx-muted);
+}
+
+.vsx-section {
+  scroll-margin-top: 4.5rem;
+}
+
+.vsx-section-head {
+  text-align: center;
+  margin-bottom: 1rem;
+}
+
+.vsx-section-title {
+  margin: 0;
+  font-family: var(--font-display, 'Cormorant Garamond', Georgia, serif);
+  font-size: clamp(1.4rem, 4vw, 1.9rem);
+  font-weight: 600;
+  color: var(--vsx-text);
+}
+
+.vsx-mode-demo .vsx-section-title {
+  font-size: 1.3rem;
+}
+
+/* ── SECTION 1: RETRO CASSETTE CARD ── */
+.vsx-cassette-card {
+  background: var(--vsx-card);
+  border: 1px solid var(--vsx-card-border);
+  border-radius: 18px;
+  padding: clamp(1rem, 3vw, 1.45rem);
+  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.vsx-root[data-vsx-skin="crayon"] .vsx-cassette-card,
+.vsx-root[data-vsx-skin="crayon"] .vsx-ending-card {
+  border-width: 2px;
+  box-shadow: 4px 5px 0 #2B2622;
+}
+
+.vsx-card-kicker {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--vsx-accent);
+}
+
+/* Cassette tape illustration */
+.vsx-cassette {
+  position: relative;
+  width: min(100%, 330px);
+  margin: 0.25rem auto 0;
+  padding-top: 0.75rem;
+}
+
+.vsx-cassette-notes {
+  position: absolute;
+  top: -0.35rem;
+  right: 0.5rem;
+  width: 72px;
+  height: 46px;
+  pointer-events: none;
+}
+
+.vsx-note {
+  position: absolute;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--vsx-accent);
+  opacity: 0;
+}
+
+.vsx-cassette.is-playing .vsx-note.n1 {
+  right: 8px;
+  bottom: 0;
+  animation: vsxNoteFloat 2.4s ease-out infinite;
+}
+
+.vsx-cassette.is-playing .vsx-note.n2 {
+  right: 28px;
+  bottom: 2px;
+  font-size: 1.15rem;
+  animation: vsxNoteFloat 2.8s ease-out 0.8s infinite;
+}
+
+.vsx-cassette.is-playing .vsx-note.n3 {
+  right: 46px;
+  bottom: 0;
+  font-size: 0.85rem;
+  animation: vsxNoteFloat 2.2s ease-out 1.5s infinite;
+}
+
+@keyframes vsxNoteFloat {
+  0% { transform: translateY(6px) scale(0.75) rotate(-8deg); opacity: 0; }
+  30% { opacity: 0.95; }
+  100% { transform: translateY(-28px) scale(1.1) rotate(12deg); opacity: 0; }
+}
+
+.vsx-cassette-shell {
+  position: relative;
+  border-radius: 14px;
+  padding: 0.85rem 0.9rem 0.65rem;
+  background: var(--vsx-cassette-shell);
+  border: 2px solid var(--vsx-cassette-border);
+  box-shadow: 0 12px 26px rgba(0, 0, 0, 0.14), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+}
+
+.vsx-screw {
+  position: absolute;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: rgba(120, 100, 90, 0.45);
+  border: 1px solid rgba(0, 0, 0, 0.25);
+}
+.vsx-screw.s-tl { top: 6px; left: 6px; }
+.vsx-screw.s-tr { top: 6px; right: 6px; }
+.vsx-screw.s-bl { bottom: 6px; left: 6px; }
+.vsx-screw.s-br { bottom: 6px; right: 6px; }
+
+.vsx-cassette-label {
+  border-radius: 8px;
+  padding: 0.55rem 0.7rem 0.5rem;
+  background: var(--vsx-cassette-label);
+  border: 1px solid rgba(0, 0, 0, 0.14);
+  color: #2A1E20;
+}
+
+.vsx-cassette-label-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
+  font-size: 0.62rem;
+  font-weight: 700;
+}
+
+.vsx-side-badge {
+  padding: 0.1rem 0.35rem;
+  border-radius: 3px;
+  background: #531B21;
+  color: #FAF3E8;
+  font-size: 0.54rem;
+  letter-spacing: 0.08em;
+}
+
+.vsx-cassette-title {
+  font-family: "Patrick Hand", var(--font-display), cursive;
+  font-size: 0.88rem;
+  color: #3A161B;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.vsx-cassette-dur {
+  font-size: 0.56rem;
+  opacity: 0.6;
+}
+
+.vsx-cassette-stripe {
+  height: 4px;
+  border-radius: 2px;
+  margin: 0.32rem 0 0.45rem;
+  background: var(--vsx-cassette-stripe);
+}
+
+.vsx-cassette-window {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.45rem;
+  padding: 0.38rem 0.65rem;
+  border-radius: 999px;
+  background: #1E1718;
+  border: 1.5px solid rgba(197, 168, 128, 0.45);
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.6);
+}
+
+.vsx-reel {
+  position: relative;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: #FAF3E8;
+  border: 2px solid #C5A880;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  animation: vsxSpin 2.6s linear infinite;
+  animation-play-state: paused;
+}
+
+.vsx-cassette.is-playing .vsx-reel {
+  animation-play-state: running;
+}
+
+.vsx-reel-spokes {
+  position: absolute;
+  inset: 3px;
+  border-radius: 50%;
+  border: 2px dashed #531B21;
+}
+
+.vsx-reel-core {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #23191A;
+}
+
+.vsx-tape-bridge {
+  flex: 1 1 auto;
+  height: 18px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.06);
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+}
+
+.vsx-tape-ribbon {
+  width: 100%;
+  height: 6px;
+  background: repeating-linear-gradient(
+    90deg,
+    #3d2825 0px,
+    #3d2825 8px,
+    #5a3b36 8px,
+    #5a3b36 14px
+  );
+  opacity: 0.85;
+}
+
+.vsx-cassette.is-playing .vsx-tape-ribbon {
+  animation: vsxTapeMove 1.4s linear infinite;
+}
+
+@keyframes vsxTapeMove {
+  from { transform: translateX(0); }
+  to { transform: translateX(-14px); }
+}
+
+@keyframes vsxSpin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.vsx-cassette-sub {
+  margin-top: 0.35rem;
+  text-align: center;
+  font-size: 0.62rem;
+  color: #6B5647;
+  letter-spacing: 0.04em;
+}
+
+.vsx-cassette-bottom-trapezoid {
+  width: 56%;
+  height: 10px;
+  margin: 0.45rem auto 0;
+  border-radius: 4px 4px 0 0;
+  background: rgba(0, 0, 0, 0.16);
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+}
+
+.vsx-capstan {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.45);
+}
+
+/* Audio Controls */
+.vsx-audio-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.vsx-waveform-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.55rem 0.75rem;
+  border-radius: 10px;
+  background: rgba(120, 90, 80, 0.07);
+  border: 1px solid var(--vsx-card-border);
+}
+
+.vsx-waveform-bars {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  height: 30px;
+  cursor: pointer;
+}
+
+.vsx-wbar {
+  flex: 1 1 0;
+  min-width: 2px;
+  border-radius: 999px;
+  background: var(--vsx-muted);
+  opacity: 0.35;
+  transition: opacity 150ms ease, background-color 150ms ease;
+}
+
+.vsx-wbar.is-played {
+  background: var(--vsx-accent);
+  opacity: 1;
+}
+
+.vsx-time {
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--vsx-muted);
+  flex: 0 0 auto;
+}
+
+.vsx-audio-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.vsx-play-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 1.15rem;
+  border-radius: 999px;
+  border: 0;
+  background: var(--vsx-accent);
+  color: var(--vsx-accent-text);
+  font-size: 0.76rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.vsx-rate-pill {
+  padding: 0.48rem 0.75rem;
+  border-radius: 999px;
+  border: 1px solid var(--vsx-card-border);
+  background: transparent;
+  color: var(--vsx-text);
+  font-size: 0.74rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.vsx-spotify-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.vsx-spotify-iframe {
+  border: 0;
+  border-radius: 12px;
+}
+
+.vsx-spotify-tip {
+  margin: 0;
+  text-align: center;
+  font-size: 0.7rem;
+  color: var(--vsx-muted);
+}
+
+.vsx-audio-quote {
+  margin: 0;
+  padding: 0.4rem 0 0.4rem 0.85rem;
+  border-left: 2.5px solid var(--vsx-gold);
+  font-family: var(--font-display);
+  font-size: 0.98rem;
+  font-style: italic;
+  color: var(--vsx-text);
+}
+
+.vsx-audio-quote footer {
+  margin-top: 0.2rem;
+  font-family: var(--font-body);
+  font-size: 0.72rem;
+  font-style: normal;
+  color: var(--vsx-muted);
+}
+
+.vsx-empty-muted,
+.vsx-audio-err {
+  margin: 0;
+  text-align: center;
+  font-size: 0.78rem;
+  color: var(--vsx-muted);
+}
+
+.vsx-scroll-cue {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  margin: 0.9rem auto 0;
+  border: 0;
+  background: transparent;
+  color: var(--vsx-muted);
+  font-size: 0.72rem;
+  cursor: pointer;
+}
+
+.vsx-bounce {
+  animation: vsxBounce 1.8s ease-in-out infinite;
+}
+
+@keyframes vsxBounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(4px); }
+}
+
+/* ── SECTION 2: ANIMATED ENVELOPE & LACE LETTER ── */
+.vsx-envelope-stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.vsx-envelope-closed-btn {
+  width: min(100%, 300px);
+  border: 0;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+}
+
+.vsx-envelope-body {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  border-radius: 12px;
+  background: var(--vsx-envelope);
+  border: 1.5px solid var(--vsx-card-border);
+  box-shadow: 0 18px 36px rgba(0, 0, 0, 0.14);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  transition: transform 220ms ease;
+}
+
+.vsx-envelope-closed-btn:hover .vsx-envelope-body {
+  transform: translateY(-3px) scale(1.01);
+}
+
+.vsx-envelope-flap {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 55%;
+  background: var(--vsx-envelope-flap);
+  clip-path: polygon(0 0, 100% 0, 50% 100%);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.vsx-envelope-seal {
+  position: relative;
+  z-index: 2;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: #6B1F2A;
+  color: #FAF3E8;
+  border: 2px solid #C5A880;
+  display: grid;
+  place-items: center;
+  box-shadow: 0 6px 16px rgba(83, 27, 33, 0.35);
+  animation: vsxGentleFloat 2.8s ease-in-out infinite;
+}
+
+.vsx-envelope-caption {
+  position: relative;
+  z-index: 2;
+  margin-top: 0.7rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--vsx-text);
+  opacity: 0.82;
+}
+
+.vsx-letter-reveal {
+  display: none;
+  width: 100%;
+  flex-direction: column;
+  align-items: center;
+}
+
+.vsx-letter-reveal.is-open {
+  display: flex;
+  animation: vsxLetterSlideOut 680ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes vsxLetterSlideOut {
+  0% {
+    opacity: 0;
+    transform: translateY(34px) scale(0.94);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.vsx-envelope-pocket-top {
+  width: min(100%, 340px);
+  height: 22px;
+  margin-bottom: -12px;
+  border-radius: 12px 12px 0 0;
+  background: var(--vsx-envelope);
+  border: 1px solid var(--vsx-card-border);
+  border-bottom: 0;
+  position: relative;
+  z-index: 0;
+  overflow: hidden;
+}
+
+.vsx-pocket-flap {
+  position: absolute;
+  inset: 0;
+  background: var(--vsx-envelope-flap);
+  opacity: 0.85;
+}
+
+.vsx-lace-sheet {
+  position: relative;
+  z-index: 2;
+  width: min(100%, 380px);
+  aspect-ratio: 804 / 848;
+  border-radius: 10px;
+  box-shadow: 0 20px 44px rgba(0, 0, 0, 0.16);
+}
+
+.vsx-mode-demo .vsx-lace-sheet {
+  width: min(100%, 300px);
+}
+
+.vsx-lace-mat {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
+  border-radius: 10px;
+  background: #FFFFFF;
+  pointer-events: none;
+}
+
+.vsx-lace-parchment {
+  position: absolute;
+  top: 17.7%;
+  bottom: 13.8%;
+  left: 16%;
+  right: 16%;
+  z-index: 1;
+  padding: 0.45rem 0.55rem;
+  overflow-y: auto;
+  cursor: pointer;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(83, 27, 33, 0.24) transparent;
+}
+
+.vsx-lace-salutation {
+  margin: 0 0 0.35rem;
+  font-family: var(--font-display);
+  font-size: 0.92rem;
+  font-weight: 600;
+  font-style: italic;
+  color: #6d5943;
+  text-align: center;
+}
+
+.vsx-lace-body {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+}
+
+.vsx-lace-signoff {
+  margin-top: 0.7rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  font-size: 0.8rem;
+  color: #232B38;
+}
+
+.vsx-lace-signoff span {
+  font-family: var(--font-script), "Pinyon Script", cursive;
+  font-size: 1.15rem;
+  color: #531B21;
+}
+
+.vsx-letter-actions {
+  display: flex;
+  justify-content: center;
+  margin-top: 0.75rem;
+}
+
+.vsx-text-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border: 0;
+  background: transparent;
+  color: var(--vsx-accent);
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+/* ── SECTION 3: PHOTOBOOTH STRIP 4-CUT ── */
+.vsx-photobooth-stage {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  padding: 0.4rem 0;
+}
+
+.vsx-strip-deco {
+  position: absolute;
+  color: var(--vsx-gold);
+  pointer-events: none;
+  animation: vsxGentleFloat 3.4s ease-in-out infinite;
+}
+.vsx-strip-deco.d1 { top: -0.2rem; left: 8%; }
+.vsx-strip-deco.d2 { bottom: 0.4rem; right: 8%; font-size: 1.15rem; animation-delay: -1.5s; }
+
+.vsx-strip-card {
+  width: min(100%, 340px);
+  padding: 0.85rem;
+  border-radius: 12px;
+  border: 2px solid transparent;
+  box-shadow: 0 20px 44px rgba(0, 0, 0, 0.16);
+  transition: background-color 250ms ease, border-color 250ms ease, color 250ms ease;
+}
+
+.vsx-mode-demo .vsx-strip-card {
+  width: min(100%, 288px);
+  padding: 0.72rem;
+}
+
+.vsx-strip-head,
+.vsx-strip-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+}
+
+.vsx-strip-head { margin-bottom: 0.55rem; opacity: 0.9; }
+.vsx-strip-foot { margin-top: 0.65rem; opacity: 0.9; }
+
+.vsx-strip-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.48rem;
+}
+
+.vsx-strip-grid[data-count="1"] {
+  grid-template-columns: 1fr;
+}
+
+.vsx-strip-cell {
+  position: relative;
+  aspect-ratio: 4 / 5;
+  padding: 0;
+  border: 0;
+  border-radius: 5px;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.1);
+  cursor: pointer;
+  opacity: 0;
+  transform: translateY(14px) scale(0.95);
+}
+
+.vsx-section-photos.is-revealed .vsx-strip-cell {
+  animation: vsxPhotoPop 520ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+@keyframes vsxPhotoPop {
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.vsx-strip-cell img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 240ms ease;
+}
+
+.vsx-strip-cell:hover img {
+  transform: scale(1.04);
+}
+
+.vsx-strip-num {
+  position: absolute;
+  right: 0.32rem;
+  bottom: 0.3rem;
+  padding: 0.08rem 0.34rem;
+  border-radius: 4px;
+  background: rgba(25, 10, 12, 0.65);
+  color: #FFFFFF;
+  font-size: 0.62rem;
+  font-weight: 700;
+}
+
+.vsx-photo-hint {
+  margin: 0.85rem auto 0;
+  text-align: center;
+  font-size: 0.72rem;
+  color: var(--vsx-muted);
+}
+
+/* ── SECTION 4: VIDEO MEMOIR (MANUAL PLAY ONLY) ── */
+.vsx-video-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.vsx-video-poster-box,
+.vsx-video-cover-btn {
+  position: relative;
+  width: min(100%, 300px);
+  aspect-ratio: 9 / 14;
+  border-radius: 16px;
+  overflow: hidden;
+  border: 2px solid var(--vsx-card-border);
+  background: #1B0D10;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.22);
+  padding: 0;
+  cursor: pointer;
+}
+
+.vsx-mode-demo .vsx-video-poster-box {
+  width: min(100%, 230px);
+}
+
+.vsx-video-poster-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform 6s ease;
+}
+
+.vsx-video-poster-box.is-playing .vsx-video-poster-img {
+  transform: scale(1.08);
+}
+
+.vsx-video-scrim {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(20, 8, 10, 0.16) 0%, rgba(20, 8, 10, 0.56) 100%);
+  pointer-events: none;
+}
+
+.vsx-video-pill {
+  position: absolute;
+  top: 0.7rem;
+  left: 0.7rem;
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+  background: rgba(20, 8, 10, 0.75);
+  color: #FAF3E8;
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+
+.vsx-video-play-btn,
+.vsx-video-play-circle {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(255, 255, 255, 0.72);
+  background: rgba(83, 27, 33, 0.88);
+  color: #FFFFFF;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.35);
+}
+
+.vsx-video-mute-btn {
+  position: absolute;
+  right: 0.7rem;
+  bottom: 1.1rem;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  background: rgba(20, 8, 10, 0.7);
+  color: #FFFFFF;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+
+.vsx-video-cover-label {
+  position: absolute;
+  left: 0.8rem;
+  right: 0.8rem;
+  bottom: 0.85rem;
+  text-align: center;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #FAF3E8;
+  line-height: 1.4;
+}
+
+.vsx-video-demo-progress {
+  position: absolute;
+  left: 0.75rem;
+  right: 0.75rem;
+  bottom: 0.5rem;
+  height: 3px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.25);
+  overflow: hidden;
+}
+
+.vsx-video-demo-progress span {
+  display: block;
+  width: 0;
+  height: 100%;
+  background: #E8CBA0;
+}
+
+.vsx-video-poster-box.is-playing .vsx-video-demo-progress span {
+  animation: vsxVideoProgress 14s linear infinite;
+}
+
+@keyframes vsxVideoProgress {
+  from { width: 0%; }
+  to { width: 100%; }
+}
+
+.vsx-video-iframe,
+.vsx-video-player {
+  width: min(100%, 540px);
+  aspect-ratio: 16 / 9;
+  border-radius: 14px;
+  border: 1.5px solid var(--vsx-card-border);
+  background: #0E090A;
+}
+
+.vsx-video-caption {
+  margin: 0;
+  text-align: center;
+  font-size: 0.72rem;
+  color: var(--vsx-muted);
+}
+
+/* ── SECTION 5: ENDING CHOICE CARD ── */
+.vsx-ending-card {
+  background: var(--vsx-card);
+  border: 1px solid var(--vsx-card-border);
+  border-radius: 18px;
+  padding: 1.35rem 1rem;
+  text-align: center;
+  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.08);
+}
+
+.vsx-ending-title {
+  margin: 0.15rem 0 0.25rem;
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  font-weight: 600;
+  color: var(--vsx-text);
+}
+
+.vsx-ending-sub {
+  margin: 0 0 1rem;
+  font-size: 0.76rem;
+  color: var(--vsx-muted);
+}
+
+.vsx-ending-grid {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.vsx-ending-choice {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+  width: 68px;
+  height: 68px;
+  border-radius: 14px;
+  border: 1px solid var(--vsx-card-border);
+  background: rgba(120, 90, 80, 0.06);
+  color: var(--vsx-text);
+  font-size: 0.7rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 160ms ease, border-color 160ms ease, background-color 160ms ease;
+}
+
+.vsx-ending-choice:hover {
+  transform: translateY(-2px);
+  border-color: var(--vsx-accent);
+}
+
+.vsx-replay-opening-btn {
+  margin-top: 1rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border: 0;
+  background: transparent;
+  color: var(--vsx-muted);
+  font-size: 0.72rem;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+/* ── STICKY FLOATING BOTTOM DOCK ── */
+.vsx-bottom-dock {
+  position: sticky;
+  bottom: 0.65rem;
+  z-index: 40;
+  align-self: center;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.32rem;
+  border-radius: 999px;
+  border: 1px solid var(--vsx-card-border);
+  background: var(--vsx-dock-bg);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.16);
+}
+
+.vsx-dock-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.42rem 0.72rem;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--vsx-muted);
+  font-size: 0.7rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 160ms ease, color 160ms ease;
+}
+
+.vsx-dock-btn.is-active {
+  background: var(--vsx-accent);
+  color: var(--vsx-accent-text);
+}
+
+.vsx-mode-demo .vsx-dock-btn {
+  padding: 0.35rem 0.56rem;
+  font-size: 0.64rem;
+}
+
+/* ── PHOTO LIGHTBOX ── */
+.vsx-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 800;
+  background: rgba(15, 9, 10, 0.82);
+  backdrop-filter: blur(6px);
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+}
+
+.vsx-lightbox-card {
+  width: min(100%, 440px);
+  background: #FAF4EB;
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
+}
+
+.vsx-lightbox-card img {
+  display: block;
+  width: 100%;
+  max-height: 70dvh;
+  object-fit: contain;
+  background: #1A1214;
+}
+
+.vsx-lightbox-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  color: #3A161B;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.vsx-lightbox-btns {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.vsx-lightbox-dl,
+.vsx-lightbox-close {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.4rem 0.75rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.vsx-lightbox-dl {
+  background: #531B21;
+  color: #FAF3E8;
+  border: 0;
+}
+
+.vsx-lightbox-close {
+  border: 1px solid rgba(58, 22, 27, 0.25);
+  background: #FFFFFF;
+  color: #3A161B;
+}
+
+@keyframes vsxFadeUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vsx-particle,
+  .vsx-wax-ring,
+  .vsx-wax-badge,
+  .vsx-note,
+  .vsx-reel,
+  .vsx-tape-ribbon,
+  .vsx-mini-reel,
+  .vsx-bounce,
+  .vsx-envelope-seal,
+  .vsx-strip-deco {
+    animation: none !important;
+  }
+
+  .vsx-strip-cell {
+    opacity: 1;
+    transform: none;
+    animation: none !important;
+  }
+}

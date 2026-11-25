@@ -856,6 +856,159 @@
   width: 82%;
 }
 
+/* ── CONCEPT B SPLIT SHOWCASE + PHONE SIMULATOR ── */
+.vs-concept-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+  gap: clamp(1.5rem, 3.5vw, 3rem);
+  align-items: center;
+}
+
+.vs-concept-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.vs-concept-info .vs-panel-heading {
+  margin-bottom: 0.15rem;
+}
+
+.vs-concept-info .vs-panel-desc {
+  margin-bottom: 0.2rem;
+}
+
+.vs-control-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.vs-control-label {
+  font-family: var(--font-body);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #6b1f2a;
+}
+
+.vs-control-label strong {
+  color: #3a161b;
+  text-transform: none;
+  letter-spacing: 0.02em;
+}
+
+.vs-skin-pills,
+.vs-jump-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.vs-skin-pill,
+.vs-jump-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.44rem 0.78rem;
+  border-radius: 999px;
+  border: 1px solid rgba(83, 27, 33, 0.2);
+  background: #ffffff;
+  color: #3a161b;
+  font-family: var(--font-body);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 160ms ease, background-color 160ms ease, color 160ms ease, transform 160ms ease;
+}
+
+.vs-skin-pill:hover,
+.vs-jump-btn:hover {
+  border-color: #531b21;
+  transform: translateY(-1px);
+}
+
+.vs-skin-pill.is-active,
+.vs-jump-btn.is-active {
+  background: #531b21;
+  border-color: #531b21;
+  color: #fbf3ea;
+}
+
+.vs-skin-pill-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 1px solid rgba(0, 0, 0, 0.22);
+  flex: 0 0 auto;
+}
+
+.vs-phone-stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.vs-phone-frame {
+  width: min(100%, 350px);
+  height: 590px;
+  border-radius: 38px;
+  padding: 10px;
+  background: linear-gradient(155deg, #2d2022 0%, #170e10 100%);
+  border: 2px solid rgba(197, 168, 128, 0.45);
+  box-shadow: 0 26px 56px rgba(24, 9, 12, 0.28);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.vs-phone-top-bezel {
+  flex: 0 0 auto;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 4px;
+}
+
+.vs-phone-notch {
+  width: 74px;
+  height: 10px;
+  border-radius: 999px;
+  background: #0d0708;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.vs-phone-screen {
+  flex: 1 1 auto;
+  min-height: 0;
+  border-radius: 28px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(120, 90, 80, 0.35) transparent;
+}
+
+.vs-phone-screen::-webkit-scrollbar {
+  width: 5px;
+}
+
+.vs-phone-screen::-webkit-scrollbar-thumb {
+  background: rgba(120, 90, 80, 0.32);
+  border-radius: 999px;
+}
+
+.vs-phone-caption {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: 0.78rem;
+  color: #6d5a52;
+  text-align: center;
+}
+
 /* ── PANEL CTA BAR ── */
 .vs-panel-cta {
   display: flex;
@@ -890,8 +1043,13 @@
   .vs-audio-grid,
   .vs-letter-layout,
   .vs-letter-customer-grid,
-  .vs-video-grid {
+  .vs-video-grid,
+  .vs-concept-grid {
     grid-template-columns: 1fr;
+  }
+
+  .vs-phone-frame {
+    height: 540px;
   }
 
   .vs-stage {

@@ -121,6 +121,11 @@ export default async function handler(req: Req, res: Res): Promise<void> {
   const id = url.searchParams.has("id")
     ? url.searchParams.get("id") || ""
     : url.searchParams.get("ID") || "";
+  if (!id) {
+    res.setHeader("Location", "/shop");
+    res.status(302).send("");
+    return;
+  }
   if (!/^[a-zA-Z0-9_-]{1,64}$/.test(id)) {
     res.setHeader("Content-Type", "application/json; charset=utf-8");
     res.status(400).send(JSON.stringify({ error: "Invalid id parameter." }));

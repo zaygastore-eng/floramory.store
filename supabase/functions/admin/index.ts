@@ -38,8 +38,12 @@
 // Jangan deploy dengan --no-verify-jwt (frontend mengirim anon key sbg JWT).
 // ============================================================
 
+import { createClient } from "jsr:@supabase/supabase-js@2";
+import { checkDbRateLimit } from "../_shared/rate-limit.ts";
+
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "";
 const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") || "";
+const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
 
 const ACCESS_COOKIE = "fm_at";
 const REFRESH_COOKIE = "fm_rt";
@@ -62,6 +66,7 @@ const PROXY_PATHS = new Set([
   "/rest/v1/preorder_orders",
   "/rest/v1/preorder_groups",
   "/rest/v1/app_settings",
+  "/rest/v1/site_settings",
   "/rest/v1/rpc/admin_reveal_vault_pin",
   "/rest/v1/rpc/admin_set_vault_pin",
   "/functions/v1/notify-dp-confirmed",
@@ -355,8 +360,24 @@ async function handleLogin(req: Request, body: Record<string, unknown>): Promise
   const password = typeof body.password === "string" ? body.password : "";
   if (!email || !password) return json({ message: "Email dan password wajib diisi." }, 400);
 
-  if (isLoginRateLimited(getClientIp(req))) {
+  const clientIp = getClientIp(req);
+  if (isLoginRateLimited(clientIp)) {
     return json({ message: "Terlalu banyak percobaan login. Coba lagi nanti." }, 429);
+  }
+  if (SERVICE_ROLE_KEY) {
+    const adminClient = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+    const allowedByDb = await checkDbRateLimit(
+      adminClient,
+      "admin-login-ip",
+      clientIp,
+      MAX_LOGIN_ATTEMPTS,
+      Math.floor(LOGIN_WINDOW_MS / 1000)
+    );
+    if (!allowedByDb) {
+      return json({ message: "Terlalu banyak percobaan login. Coba lagi nanti." }, 429);
+    }
   }
 
   try {

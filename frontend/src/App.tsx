@@ -13,6 +13,7 @@ const Produk = lazy(() => import("@/pages/Produk"));
 const AboutUs = lazy(() => import("@/pages/AboutUs"));
 const SmartQrVault = lazy(() => import("@/pages/SmartQrVault"));
 const VaultExperience = lazy(() => import("@/pages/VaultExperience"));
+const OrderTracking = lazy(() => import("@/pages/OrderTracking"));
 
 // Admin panel — loaded as a separate chunk only when /admin route is visited.
 // All admin logic, CRUD operations, lucide-react, qrcode.react, and Supabase
@@ -50,6 +51,7 @@ function Router() {
         <Route path="/" component={Home} />
         <Route path="/shop" component={ShopAll} />
         <Route path="/pre-order" component={PreOrder} />
+        <Route path="/cek-pesanan" component={OrderTracking} />
         <Route path="/reservasi" component={LegacyReservasiRedirect} />
         <Route path="/about" component={AboutUs} />
         <Route path="/smart-qr-vault" component={SmartQrVault} />

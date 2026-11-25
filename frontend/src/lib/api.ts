@@ -1753,3 +1753,60 @@ export function tierLabel(tier: string): string {
   };
   return labels[normalizeTierValue(tier)] || "A Chapter";
 }
+
+export interface OrderStatusItem {
+  order_number: string;
+  product_name: string;
+  nuansa: string;
+  inisial: string;
+  status: string;
+  dp_verified_at: string | null;
+  vault_locked: boolean;
+  vault_setup_url: string | null;
+}
+
+export interface OrderStatusLookupResult {
+  ok: boolean;
+  message?: string;
+  summary?: {
+    group_number: string;
+    customer_name: string;
+    status: string;
+    total_amount: number;
+    dp_amount: number;
+    created_at: string | null;
+    dp_verified_at: string | null;
+    item_count: number;
+  };
+  items?: OrderStatusItem[];
+}
+
+export async function lookupOrderStatus(
+  orderNumber: string,
+  phoneLast4: string
+): Promise<OrderStatusLookupResult> {
+  if (!isSupabaseConfigured()) {
+    return { ok: false, message: "Layanan pelacakan belum tersedia saat ini." };
+  }
+
+  const res = await fetch(`${FUNCTIONS_BASE}/order-status`, {
+    method: "POST",
+    headers: {
+      apikey: SUPABASE_ANON_KEY,
+      Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      order_number: orderNumber,
+      phone_last4: phoneLast4,
+    }),
+  });
+
+  const data = await res.json().catch(() => ({}));
+  return {
+    ok: res.ok && data.ok === true,
+    message: typeof data.message === "string" ? data.message : undefined,
+    summary: data.summary,
+    items: Array.isArray(data.items) ? data.items : undefined,
+  };
+}

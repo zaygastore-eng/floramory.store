@@ -140,9 +140,9 @@
 
 .atelier-footer-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.2fr);
-  gap: 3rem;
-  padding: 4rem 0 3rem;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1.1fr);
+  gap: 2.5rem;
+  padding: 3rem 0 2.25rem;
 }
 
 .atelier-footer-col {
@@ -216,7 +216,7 @@
 .atelier-footer-links a,
 .atelier-footer-links span {
   display: inline-flex;
-  min-height: 44px;
+  min-height: 36px;
   align-items: center;
   color: rgba(251, 248, 243, 0.68);
   font: 400 0.88rem/1.5 var(--font-body);

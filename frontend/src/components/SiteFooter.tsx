@@ -29,37 +29,27 @@ export default function SiteFooter() {
             </Link>
             <h2 className="atelier-footer-title" id="footer-brand-title">BOTANICAL ARTWARE ATELIER</h2>
             <p className="atelier-footer-copy">
-              Atelier of Botanical Keepsakes &amp; Smart Memory Vault.
-              Handcrafted in Surabaya, East Java, Indonesia.
+              Preserved botanical keepsakes paired with Smart QR Memory Vault.
+              Handcrafted in Surabaya, Indonesia.
             </p>
-            <span className="atelier-footer-location">Surabaya &amp; East Java, ID</span>
           </section>
 
-          <nav className="atelier-footer-col" aria-label="Collections">
-            <h2 className="atelier-footer-title">COLLECTIONS</h2>
+          <nav className="atelier-footer-col" aria-label="Navigasi">
+            <h2 className="atelier-footer-title">NAVIGASI</h2>
             <ul className="atelier-footer-links">
-              <li><Link href="/shop">The Chapters · Framed Keepsakes</Link></li>
+              <li><Link href="/shop">The Chapters · Katalog</Link></li>
+              <li><Link href="/smart-qr-vault">Smart QR Memory Vault</Link></li>
               <li><Link href="/pre-order">Pre-Order Karya</Link></li>
-            </ul>
-          </nav>
-
-          <nav className="atelier-footer-col" aria-label="Technology and privacy">
-            <h2 className="atelier-footer-title">TECHNOLOGY &amp; PRIVACY</h2>
-            <ul className="atelier-footer-links">
-              <li><a href="/#vault">Smart QR Memory Vault</a></li>
-              <li><a href="/#vault">Private URL &amp; Optional PIN</a></li>
-              <li><a href="/#vault">Zero-Subscription Cloud Hosting</a></li>
-              <li><a href="/#vault">Camera-Direct Access</a></li>
+              <li><Link href="/cek-pesanan">Cek Status Pesanan</Link></li>
             </ul>
           </nav>
 
           <section className="atelier-footer-col" aria-labelledby="footer-concierge-title">
             <h2 className="atelier-footer-title" id="footer-concierge-title">CONCIERGE &amp; STUDIO</h2>
             <ul className="atelier-footer-links">
-              <li><a href={conciergeUrl} target="_blank" rel="noopener noreferrer">WhatsApp: +62 852-3524-2425</a></li>
-              <li><a href="mailto:Kontakgaluh11@gmail.com">Email: Kontakgaluh11@gmail.com</a></li>
-              <li><span>Mon – Sat, 09.00 – 18.00</span></li>
-              <li><span>Surabaya Studio Atelier</span></li>
+              <li><a href={conciergeUrl} target="_blank" rel="noopener noreferrer">WhatsApp Concierge</a></li>
+              <li><a href="mailto:Kontakgaluh11@gmail.com">Kontakgaluh11@gmail.com</a></li>
+              <li><span>Mon – Sat, 09.00 – 18.00 · Surabaya</span></li>
             </ul>
           </section>
         </div>

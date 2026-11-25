@@ -152,7 +152,15 @@ const DP_VERIFIED_STATUSES = new Set([
   "paid",
 ]);
 
-const PHOTOBOOTH_THEMES = new Set(["cream", "wine", "periwinkle", "midnight", "blossom"]);
+const PHOTOBOOTH_THEMES = new Set([
+  "cream",
+  "wine",
+  "periwinkle",
+  "crimson",
+  "blossom",
+  "midnight",
+  "sage",
+]);
 const LETTER_FONTS = new Set(["parisienne", "cinzel", "cormorant", "sans"]);
 const LETTER_SIZES = new Set(["sm", "md", "lg", "xl"]);
 const LETTER_ALIGNS = new Set(["left", "center", "right"]);
@@ -253,7 +261,7 @@ function cleanLetterStyle(value: unknown): Record<string, unknown> {
   const color = String(raw.color || "").trim();
 
   return {
-    font: LETTER_FONTS.has(font) ? font : "parisienne",
+    font: LETTER_FONTS.has(font) ? font : "cormorant",
     size: LETTER_SIZES.has(size) ? size : "md",
     bold: raw.bold === true,
     italic: raw.italic === true,

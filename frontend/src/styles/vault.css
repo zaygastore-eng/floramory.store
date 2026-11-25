@@ -3244,6 +3244,35 @@
   }
 }
 
+/* ── Unified Story Mode (/vault/:id) ── */
+.vault-experience.is-story-mode {
+  display: block;
+  height: auto;
+  min-height: 100dvh;
+  overflow-x: clip;
+  overflow-y: visible;
+  padding: 0;
+}
+
+.vault-preview-content .vault-experience.is-story-mode {
+  min-height: 100%;
+  padding: 0;
+}
+
+.vault-experience.is-archive .celebration-eyebrow,
+.vault-experience.is-archive .celebration-for {
+  color: #8C5A3B;
+}
+
+.vault-experience.is-archive .celebration-script {
+  color: #531B21;
+}
+
+.vault-experience.is-archive .celebration-from,
+.vault-experience.is-archive .celebration-footnote {
+  color: #756C64;
+}
+
 /* ══════════════════════════════════════════════════════════════
    CELEBRATION MODE — recipient experience
    ══════════════════════════════════════════════════════════════ */

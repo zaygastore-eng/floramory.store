@@ -2,15 +2,14 @@ import { useState, useEffect } from "react";
 import { Link } from "wouter";
 import SiteHeader from "@/components/SiteHeader";
 import SiteFooter from "@/components/SiteFooter";
-import ProductImage from "@/components/ProductImage";
+import VaultShowcase from "@/components/VaultShowcase";
 import { homeContent } from "@/content/homeContent";
 import { applyPageMeta } from "@/lib/seo";
-import { useAudioPlayback } from "@/hooks/useAudioPlayback";
 
 const VAULT_FAQS = [
   {
     q: "Apakah penerima kado harus mengunduh aplikasi tertentu untuk membuka Memory Vault?",
-    a: "Sama sekali tidak. Micro-chip dan kode QR A Chapter dirancang untuk langsung dipindai menggunakan aplikasi kamera bawaan di iPhone maupun Android. Tautan akan otomatis terbuka di browser ponsel dengan tampilan interaktif yang elegan."
+    a: "Sama sekali tidak. Kode Smart-QR A Chapter dirancang untuk langsung dipindai menggunakan aplikasi kamera bawaan di iPhone maupun Android. Tautan akan otomatis terbuka di browser ponsel dengan alur cerita interaktif."
   },
   {
     q: "Bagaimana jika kado berisi foto atau pesan rahasia yang sangat intim?",
@@ -27,23 +26,6 @@ const VAULT_FAQS = [
 ];
 
 export default function SmartQrVault() {
-  const [vaultSimTab, setVaultSimTab] = useState<
-    "photograph" | "voice-record" | "letter" | "video"
-  >("photograph");
-  const [isVideoPlaying, setIsVideoPlaying] = useState(false);
-  const {
-    isPlaying: isAudioPlaying,
-    currentTime: audioCurrentTime,
-    duration: audioDuration,
-    rate: audioRate,
-    toggle: toggleAudio,
-    pause: pauseAudio,
-    seekTo: seekAudio,
-    skip: skipAudio,
-    cycleRate: cycleAudioRate,
-    seekStart: handleAudioSeekStart,
-    seekEnd: handleAudioSeekEnd,
-  } = useAudioPlayback(131);
   const [activeFaq, setActiveFaq] = useState<number | null>(null);
 
   useEffect(() => {
@@ -51,26 +33,10 @@ export default function SmartQrVault() {
     applyPageMeta({
       title: "Smart QR Memory Vault — A Chapter",
       description:
-        "Satu karya botani abadi, satu micro-chip rahasia. Pindai dengan kamera ponsel untuk membuka foto, rekaman suara, video memoir, dan surat personal.",
+        "Satu karya botani abadi, satu Smart-QR rahasia. Pindai dengan kamera ponsel untuk membuka kaset musik, surat amplop, photobooth 4-cut, dan video memoir.",
       path: window.location.pathname.startsWith("/vault") ? "/vault" : "/smart-qr-vault",
     });
   }, []);
-
-  const handleVaultTabKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>) => {
-    const tabs = ["photograph", "voice-record", "letter", "video"] as const;
-    const currentIndex = tabs.indexOf(vaultSimTab);
-    let nextIndex = currentIndex;
-    if (event.key === "ArrowRight") nextIndex = (currentIndex + 1) % tabs.length;
-    else if (event.key === "ArrowLeft") nextIndex = (currentIndex - 1 + tabs.length) % tabs.length;
-    else if (event.key === "Home") nextIndex = 0;
-    else if (event.key === "End") nextIndex = tabs.length - 1;
-    if (nextIndex !== currentIndex) {
-      event.preventDefault();
-      setVaultSimTab(tabs[nextIndex]);
-      if (tabs[nextIndex] !== "voice-record") pauseAudio();
-      if (tabs[nextIndex] !== "video") setIsVideoPlaying(false);
-    }
-  };
 
   return (
     <div className="subpage-wrapper smart-vault-page public-v2">
@@ -86,9 +52,9 @@ export default function SmartQrVault() {
                 Bunga yang menyimpan <em>suara dan cerita</em> Anda.
               </h1>
               <p className="smart-vault-hero-lead">
-                Satu karya botani abadi, satu micro-chip rahasia. Pilih momen perayaannya
+                Satu karya botani abadi, satu Smart-QR rahasia. Pilih momen perayaannya
                 — ulang tahun, anniversary, wisuda, atau momen milikmu — lalu pindai dengan
-                kamera ponsel untuk membuka foto, rekaman suara, video, dan surat personal.
+                kamera ponsel untuk membuka kaset musik berputar, amplop surat, photobooth 4-cut, dan video.
               </p>
               <ul className="smart-vault-hero-points">
                 <li><span>01</span> Tanpa aplikasi tambahan</li>
@@ -96,7 +62,7 @@ export default function SmartQrVault() {
                 <li><span>03</span> Tersimpan permanen</li>
               </ul>
               <div className="smart-vault-hero-actions">
-                <a href="#simulator" className="hero-cta-primary">
+                <a href="#vault" className="hero-cta-primary">
                   Lihat Simulasi Vault ↓
                 </a>
                 <Link href="/pre-order" className="smart-vault-hero-secondary">
@@ -124,274 +90,18 @@ export default function SmartQrVault() {
                         <span key={index} style={{ height: `${height}%`, animationDelay: `${index * -120}ms` }} />
                       ))}
                     </div>
-                    <span className="hero-vault-caption">Audio memoir · 02:11</span>
+                    <span className="hero-vault-caption">Kaset memoir · 02:11</span>
                   </div>
                 </div>
               </div>
               <span className="hero-visual-tag tag-one">SCAN · TAP · RELIVE</span>
-              <span className="hero-visual-tag tag-two">PHOTO · VOICE · VIDEO</span>
+              <span className="hero-visual-tag tag-two">CASSETTE · LETTER · PHOTO</span>
             </div>
           </div>
         </section>
 
-        {/* 1. Interactive Folio Simulation */}
-        <section className="fm-section vault-section" id="simulator" style={{ paddingTop: "2rem" }}>
-          <div className="vault-inner">
-            <header className="vault-section-header">
-              <span className="vault-eyebrow">DIGITAL MEMOIR SIMULATOR</span>
-              <h2 className="vault-title">A Glimpse Inside Your Secret Vault</h2>
-              <p className="vault-desc">
-                Coba pengalaman membuka brankas rahasia berikut. Setelah PIN 6 digit dimasukkan,
-                animasi pembuka singkat mengantar ke hub berisi Surat, Musik, dan Foto —
-                empat potong kenangan tersusun dalam satu kolase.
-              </p>
-            </header>
-
-            <article className="vault-simulator-wrap" aria-label="Interactive memory vault preview">
-              <div className="vault-simulator-header">
-                <span className="folio-label-left">FOLIO ARCHIVE NO. 2026-A · SURABAYA ATELIER</span>
-                <span className="folio-label-right">
-                  PERMANENT CLOUD RECORD · SECURED
-                  <span className="folio-status-dot" aria-hidden="true" />
-                </span>
-              </div>
-
-              <div className="vault-sim-nav" role="tablist" aria-label="Memory Vault preview">
-                {homeContent.smartVault.mediaTabs.map((tab, index) => {
-                  const tabId = `vault-page-tab-${["foto", "audio", "surat", "video"][index]}`;
-                  const isSelected = vaultSimTab === tab.kind;
-                  return (
-                    <button
-                      key={tab.kind}
-                      type="button"
-                      role="tab"
-                      id={tabId}
-                      aria-controls="vault-page-panel"
-                      aria-selected={isSelected}
-                      tabIndex={isSelected ? 0 : -1}
-                      className={`vault-sim-btn${isSelected ? " active" : ""}`}
-                      onClick={() => {
-                        setVaultSimTab(tab.kind);
-                        if (tab.kind !== "voice-record") pauseAudio();
-                        if (tab.kind !== "video") setIsVideoPlaying(false);
-                      }}
-                      onKeyDown={handleVaultTabKeyDown}
-                    >
-                      {["I.", "II.", "III.", "IV."][index]} {tab.title.toUpperCase()}
-                    </button>
-                  );
-                })}
-              </div>
-
-              <div className="vault-folio-body">
-                <div
-                  className="vault-sim-body"
-                  id="vault-page-panel"
-                  role="tabpanel"
-                  aria-labelledby={`vault-page-tab-${{
-                    photograph: "foto",
-                    "voice-record": "audio",
-                    letter: "surat",
-                    video: "video",
-                  }[vaultSimTab]}`}
-                  tabIndex={0}
-                >
-                  {homeContent.smartVault.mediaTabs.map((tab) => {
-                    if (tab.kind !== vaultSimTab) return null;
-
-                    if (tab.kind === "photograph") {
-                      return (
-                        <div className="sim-panel" key={tab.kind}>
-                          <div className="folio-polaroid">
-                            <div className="folio-polaroid-frame">
-                              <ProductImage
-                                className="folio-polaroid-img"
-                                src={tab.imageUrl}
-                                size="large"
-                                alt={tab.excerpt}
-                                width={900}
-                                height={675}
-                                fallback={
-                                  <div className="folio-polaroid-placeholder" aria-label="A Chapter">
-                                    <img src="/a-chapter-logo.png" alt="A Chapter" className="folio-polaroid-fallback-logo" />
-                                  </div>
-                                }
-                              />
-                            </div>
-                            <p className="folio-polaroid-script">{tab.handwrittenCaption}</p>
-                            <span className="folio-polaroid-stamp">{tab.archivalStamp}</span>
-                          </div>
-                        </div>
-                      );
-                    }
-
-                    if (tab.kind === "voice-record") {
-                      const formatTime = (sec: number) => {
-                        if (!Number.isFinite(sec) || sec < 0) return "00:00";
-                        const m = Math.floor(sec / 60);
-                        const s = Math.floor(sec % 60);
-                        return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
-                      };
-                      const curTimeStr = formatTime(audioCurrentTime);
-                      const totalTimeStr = formatTime(audioDuration);
-
-                      return (
-                        <div className="sim-panel" key={tab.kind}>
-                          <div className="folio-audio-card">
-                            <div className="folio-audio-meta">
-                              <span className="folio-audio-tag">SEE YOU AGAIN · ACOUSTIC KEEPSAKE</span>
-                              <span className="folio-audio-dur">{totalTimeStr}</span>
-                            </div>
-                            <blockquote className="folio-audio-quote">
-                              {tab.quoteExcerpt}
-                            </blockquote>
-                            <p className="folio-audio-cite">— {tab.quoteAttribution}</p>
-                            <div className="folio-audio-scrub">
-                              <input
-                                type="range"
-                                className="folio-audio-range"
-                                min={0}
-                                max={audioDuration > 0 ? audioDuration : 0}
-                                step={0.1}
-                                value={Math.min(audioCurrentTime, audioDuration || 0)}
-                                onChange={(event) => seekAudio(Number(event.target.value))}
-                                onMouseDown={handleAudioSeekStart}
-                                onMouseUp={handleAudioSeekEnd}
-                                onTouchStart={handleAudioSeekStart}
-                                onTouchEnd={handleAudioSeekEnd}
-                                aria-label="Geser posisi lagu"
-                                style={{
-                                  background: `linear-gradient(to right, var(--brand-burgundy) ${audioDuration > 0 ? (audioCurrentTime / audioDuration) * 100 : 0}%, rgba(83, 27, 33, 0.15) ${audioDuration > 0 ? (audioCurrentTime / audioDuration) * 100 : 0}%)`,
-                                }}
-                              />
-                            </div>
-                            <div className="folio-audio-player">
-                              <button
-                                type="button"
-                                className="folio-play-btn"
-                                aria-label={isAudioPlaying ? "Jeda lagu See You Again" : "Putar lagu See You Again"}
-                                onClick={() => toggleAudio(tab.audioSrc || "/see-you-again.mp3")}
-                              >
-                                {isAudioPlaying ? "❚❚" : "▶"}
-                              </button>
-                              <div
-                                className="folio-waveform"
-                                aria-hidden="true"
-                                onClick={() => toggleAudio(tab.audioSrc || "/see-you-again.mp3")}
-                                style={{ cursor: "pointer" }}
-                                title="Klik untuk memutar lagu"
-                              >
-                                {[40, 75, 25, 90, 60, 45, 80, 55, 30, 95, 70, 50, 85, 40, 65, 30, 80, 45].map((h, i) => (
-                                  <span
-                                    key={i}
-                                    style={{
-                                      height: `${h}%`,
-                                      opacity: isAudioPlaying && i < 12 ? 1 : 0.45,
-                                    }}
-                                  />
-                                ))}
-                              </div>
-                              <span className="folio-play-time">
-                                {isAudioPlaying || audioCurrentTime > 0 ? curTimeStr : "00:00"}
-                              </span>
-                            </div>
-                            <div className="folio-audio-extra">
-                              <button
-                                type="button"
-                                className="folio-skip-btn"
-                                onClick={() => skipAudio(-10)}
-                                aria-label="Mundur 10 detik"
-                              >
-                                −10s
-                              </button>
-                              <button
-                                type="button"
-                                className="folio-skip-btn"
-                                onClick={() => skipAudio(10)}
-                                aria-label="Maju 10 detik"
-                              >
-                                +10s
-                              </button>
-                              <button
-                                type="button"
-                                className="folio-speed-btn"
-                                onClick={cycleAudioRate}
-                                aria-label={`Kecepatan putar ${audioRate} kali`}
-                              >
-                                {audioRate}x
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    }
-
-                    if (tab.kind === "letter") {
-                      return (
-                        <div className="sim-panel" key={tab.kind}>
-                          <div className="folio-letter">
-                            <div className="folio-letter-seal" aria-hidden="true">
-                              <img src="/a-chapter-logo-light.png" alt="" className="vault-seal-logo-img" />
-                            </div>
-                            <p className="folio-letter-greeting">{tab.greeting}</p>
-                            <p className="folio-letter-body">{tab.letterText}</p>
-                            <div className="folio-letter-signoff">
-                              <span>{tab.signoff}</span>
-                              <span className="folio-letter-signature">{tab.signature}</span>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    }
-
-                    return (
-                      <div className="sim-panel" key={tab.kind}>
-                        <div className={`folio-video-card${isVideoPlaying ? " is-playing" : ""}`}>
-                          <button
-                            type="button"
-                            className="folio-video-frame"
-                            onClick={() => setIsVideoPlaying(playing => !playing)}
-                            aria-label={isVideoPlaying ? "Jeda simulasi video memoir" : "Putar simulasi video memoir"}
-                          >
-                            <img
-                              className="folio-video-poster"
-                              src={tab.posterUrl}
-                              alt={tab.caption}
-                              loading="lazy"
-                            />
-                            <span className="folio-video-vignette" aria-hidden="true" />
-                            {!isVideoPlaying && (
-                              <span className="folio-video-play" aria-hidden="true">▶</span>
-                            )}
-                            <span className="folio-video-badge">SIMULASI VIDEO MEMOIR · {tab.durationLabel}</span>
-                            <span className="folio-video-progress" aria-hidden="true">
-                              <span className="folio-video-progress-fill" />
-                            </span>
-                          </button>
-                          <p className="folio-video-caption">{tab.caption}</p>
-                          <span className="folio-video-stamp">{tab.archivalStamp}</span>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-
-                <div className="vault-copy">
-                  <span className="vault-copy-eyebrow">TAP &amp; RELIVE</span>
-                  <h3 className="vault-copy-title">Keajaiban di Dasar Bingkai Kristal</h3>
-                  <p className="vault-copy-description">
-                    Ketika penerima memindai micro-chip di dasar bingkai kristal ini, layar gawai
-                    mereka langsung membuka lembar arsip eksklusif berisi foto beresolusi tinggi,
-                    rekaman suara asli, dan surat cinta personal tanpa perlu menginstal aplikasi apapun.
-                  </p>
-                  <Link className="hero-cta-primary vault-commission-cta" href="/pre-order">
-                    BUKA HALAMAN PRE-ORDER →
-                  </Link>
-                </div>
-              </div>
-            </article>
-          </div>
-        </section>
+        {/* 1. Interactive Concept B Simulation (Shared with Landing Page) */}
+        <VaultShowcase />
 
         {/* 2. The Archival Privacy */}
         <section className="vault-privacy" id="privasi" style={{ padding: "5rem 1.5rem" }}>

@@ -303,6 +303,9 @@ export default function PreOrder() {
       </a>
 
       <div className="reservation-success-actions">
+        <Link href={`/cek-pesanan?no=${encodeURIComponent(state.groupNumber)}`} className="reservation-secondary-btn">
+          Cek Status Pesanan
+        </Link>
         <Link href="/shop" className="reservation-secondary-btn">
           Jelajahi Koleksi Lain
         </Link>
